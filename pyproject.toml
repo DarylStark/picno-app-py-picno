@@ -5,7 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 authors = [{ name = "Daryl Stark", email = "daryl@dstark.nl" }]
 requires-python = ">=3.14"
-dependencies = []
+dependencies = ["pydantic>=2.13.5"]
 
 [project.scripts]
 picno = "picno:main"
@@ -24,7 +24,7 @@ dev = [
 ]
 
 [tool.ruff]
-line-length = 79
+line-length = 80
 
 [tool.ruff.lint]
 exclude = ["docs/*.py"]
@@ -72,7 +72,7 @@ exclude = ["docs/*.py"]
 
 [tool.pytest.ini_options]
 addopts = [
-    '--cov=animal_db',
+    '--cov=picno',
     '--cov-report=html',
     '--cov-report=lcov',
     '--cov-context=test',

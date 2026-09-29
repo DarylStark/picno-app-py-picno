@@ -2,7 +2,9 @@
 
 from pathlib import Path
 
-from picno.model import FileResource, Label
+from pytest import approx
+
+from picno.model import Dimensions, FileResource, Label, Video, VideoQuality
 
 
 def test_label_no_group() -> None:
@@ -74,3 +76,113 @@ def test_file_resource_exists_existing_file() -> None:
         physical_file=__file__,
     )
     assert resource.exists
+
+
+def test_dimensions_aspect_ratio() -> None:
+    """Test the `aspect_ratio` method of the `Dimensions` model.
+
+    Tests if the `aspect_ratio` gives the correct value.
+    """
+    dimensions = Dimensions(width=3456, height=2160)
+    assert dimensions.aspect_ratio == 1.6
+
+
+def test_dimensions_megapixels() -> None:
+    """Test the `megapixel` method of the `Dimensions` model.
+
+    Tests if the `megapixel` gives the correct value.
+    """
+    dimensions = Dimensions(width=3456, height=2160)
+    assert dimensions.megapixels == 7.46496
+
+
+def test_video_pixel_density_no_bitrate() -> None:
+    """Test the `pixel_density` method of the `Video` model.
+
+    Test that it doesn't give a value back when there is no bitrate.
+    """
+    video = Video(
+        id=1,
+        physical_file=__file__,
+        dimensions=Dimensions(width=1920, height=1080),
+        duration=10,
+        fps=30,
+    )
+    assert video.pixel_density is None
+
+
+def test_video_pixel_density_no_fps() -> None:
+    """Test the `pixel_density` method of the `Video` model.
+
+    Test that it doesn't give a value back when there is no fps.
+    """
+    video = Video(
+        id=1,
+        physical_file=__file__,
+        dimensions=Dimensions(width=1920, height=1080),
+        duration=10,
+        bitrate_in_bps=8_000_000,
+    )
+    assert video.pixel_density is None
+
+
+def test_video_pixel_density_bitrate_and_fps() -> None:
+    """Test the `pixel_density` method of the `Video` model.
+
+    Test that it gives the correct value when a bitrate and fps is given.
+    """
+    video = Video(
+        id=1,
+        physical_file=__file__,
+        dimensions=Dimensions(width=1920, height=1080),
+        duration=10,
+        fps=30,
+        bitrate_in_bps=8_000_000,
+    )
+    assert video.pixel_density == approx(0.1286, rel=1e-3, abs=1e-6)
+
+
+def test_video_quality_no_bitrate() -> None:
+    """Test the `quality` method of the `Video` model.
+
+    Test that it doesn't give a value back when there is no bitrate.
+    """
+    video = Video(
+        id=1,
+        physical_file=__file__,
+        dimensions=Dimensions(width=1920, height=1080),
+        duration=10,
+        fps=30,
+    )
+    assert video.quality is None
+
+
+def test_video_quality_no_fps() -> None:
+    """Test the `quality` method of the `Video` model.
+
+    Test that it doesn't give a value back when there is no fps.
+    """
+    video = Video(
+        id=1,
+        physical_file=__file__,
+        dimensions=Dimensions(width=1920, height=1080),
+        duration=10,
+        bitrate_in_bps=8_000_000,
+    )
+    assert video.quality is None
+
+
+def test_video_quality_bitrate_and_fps() -> None:
+    """Test the `quality` method of the `Video` model.
+
+    Test that it gives the correct value when a bitrate and fps is given.
+    """
+    video = Video(
+        id=1,
+        physical_file=__file__,
+        dimensions=Dimensions(width=1920, height=1080),
+        duration=10,
+        fps=30,
+        bitrate_in_bps=8_000_000,
+    )
+    assert video.quality is VideoQuality.LOW

@@ -1,8 +1,10 @@
 """The database model."""
 
+from datetime import datetime
+from enum import Enum
 from pathlib import Path
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 
 
 class Label(BaseModel):
@@ -14,6 +16,7 @@ class Label(BaseModel):
 
     name: str
 
+    @computed_field
     @property
     def group(self) -> str | None:
         """Returns the groupname, if set."""
@@ -21,6 +24,7 @@ class Label(BaseModel):
             return self.name.split(':')[0]
         return None
 
+    @computed_field
     @property
     def label_name(self) -> str | None:
         """Returns the name of the label.
@@ -57,6 +61,7 @@ class FileResource(Resource):
     physical_file: Path
     title: str | None = None
 
+    @computed_field
     @property
     def resource_title(self) -> str:
         """Property for the title of the object.
@@ -67,6 +72,7 @@ class FileResource(Resource):
             return self.physical_file.name
         return self.title
 
+    @computed_field
     @property
     def exists(self) -> bool:
         """Property to determine if a file (still) exists."""
@@ -79,13 +85,131 @@ class Person(Resource):
     name: str
 
 
-class Image(Resource):
+class Dimensions(BaseModel):
+    """Model for dimensions.
+
+    Can be used for images and videofiles to specify how big the frames for the
+    video are or how big the image is.
+    """
+
+    width: int
+    height: int
+
+    @computed_field
+    @property
+    def aspect_ratio(self) -> float:
+        """Returns the aspect ration for the dimensions."""
+        return self.width / self.height
+
+    @computed_field
+    @property
+    def megapixels(self) -> float:
+        """Returns the amount of megapixels for the dimensions."""
+        return (self.width * self.height) / 1_000_000
+
+
+class MediaBase(FileResource):
+    """Base model for media."""
+
+    dimensions: Dimensions
+
+
+class BaseExifData(BaseModel):
+    """Base models for exif data.
+
+    Contains generic field that are used for video and images.
+    """
+
+    date: datetime | None = None
+    camera_make: str | None = None
+    camera_model: str | None = None
+    latitude: float | None = None
+    longitude: float | None = None
+    altitude: float | None = None
+
+
+class ImageExifData(BaseExifData):
+    """Base model for Exif Data for images."""
+
+    lens_model: str | None = None
+    focal_length: float | None = None
+    f_number: float | None = None
+    exposure_time: str | None = None
+    iso: int | None = None
+    orientation: int | None = 1
+
+
+class Image(MediaBase):
     """Model for a image file."""
 
-    pass
+    color_space: str | None = None
+    has_alpha: bool = False
+    exif: ImageExifData = Field(default_factory=ImageExifData)
 
 
-class Video(Resource):
+class Scene(Resource):
+    """Model for a scene in a video."""
+
+    title: str
+    start: float
+    end: float
+
+
+class VideoExifData(BaseExifData):
+    """Base model for Exif Data for videos."""
+
+
+class VideoQuality(Enum):
+    """Enum for the possible qualities for videos."""
+
+    LOW = 'low'
+    AVERAGE = 'average'
+    HIGH = 'high'
+    VERY_HIGH = 'very_high'
+
+
+class Video(MediaBase):
     """Model for a video file."""
 
-    pass
+    duration: float
+    fps: float | None = None
+    bitrate_in_bps: int | None = None
+    video_codec: str | None = None
+    audio_coded: str | None = None
+    has_audio: bool = False
+    audio_channels: int | None = None
+    container_format: str | None = None
+    scenens: list[Scene] = Field(default_factory=list)
+    exif: VideoExifData = Field(default_factory=VideoExifData)
+
+    @computed_field
+    @property
+    def pixel_density(self) -> float | None:
+        """Calculate the "pixel density" for the video.
+
+        Values:
+        -      < 0.05 = low quality
+        - 0.05 - 0.10 = acceptable / average quality
+        - 0.10 - 0.20 = high quality
+        -      > 0.20 = very high quality
+        """
+        if not self.bitrate_in_bps or not self.fps:
+            return None
+        return self.bitrate_in_bps / (
+            self.dimensions.width * self.dimensions.height * self.fps
+        )
+
+    @computed_field
+    @property
+    def quality(self) -> VideoQuality | None:
+        """Returns the perspective quality for the video."""
+        pdd = self.pixel_density
+        if not pdd:
+            return None
+        if pdd < 0.5:
+            return VideoQuality.LOW
+        elif pdd < 0.10:
+            return VideoQuality.AVERAGE
+        elif pdd < 0.20:
+            return VideoQuality.HIGH
+        return VideoQuality.VERY_HIGH

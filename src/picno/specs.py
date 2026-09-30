@@ -1,7 +1,9 @@
-"""Module with the database abstraction."""
+"""Module with the generic specification."""
 
 from abc import ABC, abstractmethod
 from typing import override
+
+from sqlalchemy.sql.elements import ColumnElement
 
 
 class Specification[T](ABC):
@@ -10,6 +12,10 @@ class Specification[T](ABC):
     @abstractmethod
     def is_satisfied_by(self, obj: T) -> bool:
         """Abstract method to check if a object satisfies the spec."""
+
+    @abstractmethod
+    def as_sql(self) -> ColumnElement[bool]:
+        """Abstract method to create a SQL query object."""
 
 
 class AndSpecification[T](Specification[T]):
@@ -29,6 +35,11 @@ class AndSpecification[T](Specification[T]):
             obj
         ) and self._spec_b.is_satisfied_by(obj)
 
+    @override
+    def as_sql(self) -> ColumnElement[bool]:
+        """Return the query for the specification."""
+        return self._spec_a.as_sql() & self._spec_b.as_sql()
+
 
 class OrSpecification[T](Specification[T]):
     """Specification for OR logic."""
@@ -47,6 +58,11 @@ class OrSpecification[T](Specification[T]):
             obj
         ) or self._spec_b.is_satisfied_by(obj)
 
+    @override
+    def as_sql(self) -> ColumnElement[bool]:
+        """Return the query for the specification."""
+        return self._spec_a.as_sql() & self._spec_b.as_sql()
+
 
 class NotSpecification[T](Specification[T]):
     """Specification for NOT logic."""
@@ -59,3 +75,8 @@ class NotSpecification[T](Specification[T]):
     def is_satisfied_by(self, obj: T) -> bool:
         """Returns if both specs are satisfied."""
         return not self._spec.is_satisfied_by(obj)
+
+    @override
+    def as_sql(self) -> ColumnElement[bool]:
+        """Return the query for the specification."""
+        return ~self._spec.as_sql()

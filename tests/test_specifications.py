@@ -2,6 +2,8 @@
 
 from typing import override
 
+from sqlalchemy import ColumnElement
+
 from picno.specs import (
     AndSpecification,
     NotSpecification,
@@ -21,6 +23,11 @@ class ConstantSpec[T](Specification[T]):
     def is_satisfied_by(self, obj: T) -> bool:
         """Will always return True."""
         return self._constant
+
+    @override
+    def as_sql(self) -> ColumnElement[bool]:
+        """Returns a empty boolean."""
+        return ColumnElement[bool]()
 
 
 def test_and_specification_true_true() -> None:

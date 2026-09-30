@@ -4,17 +4,24 @@ from datetime import datetime
 from enum import Enum
 from pathlib import Path
 
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, computed_field
+from sqlmodel import Field, SQLModel
 
 
-class Label(BaseModel):
+class TableResource(SQLModel):
+    """Base class for resources that get a SQL table."""
+
+    id: int | None = Field(default=None, primary_key=True)
+
+
+class Label(TableResource, table=True):
     """Model for a label.
 
     A label can contain a group and a name. This should be seperated with a
     colon. If there is no colon, only a name is given.
     """
 
-    name: str
+    name: str = Field(unique=True)
 
     @computed_field
     @property
@@ -37,7 +44,7 @@ class Label(BaseModel):
         return self.name
 
 
-class Resource(BaseModel):
+class Resource(TableResource):
     """Base class for resources.
 
     Contains all the fields and methods required for specific resources. These
@@ -45,7 +52,6 @@ class Resource(BaseModel):
     sure these fields can be used safely.
     """
 
-    id: int
     labels: list[Label] = Field(default_factory=list)
     people: list[Person] = Field(default_factory=list)
 

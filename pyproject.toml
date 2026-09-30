@@ -5,7 +5,10 @@ description = "Add your description here"
 readme = "README.md"
 authors = [{ name = "Daryl Stark", email = "daryl@dstark.nl" }]
 requires-python = ">=3.14"
-dependencies = ["pydantic>=2.13.5"]
+dependencies = [
+    "pydantic>=2.13.5",
+    "sqlmodel>=0.0.47",
+]
 
 [project.scripts]
 picno = "picno:main"

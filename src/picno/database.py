@@ -2,8 +2,9 @@
 
 from abc import ABC, abstractmethod
 
-from .model import Label
+from .model import Label, Person
 from .specs_labels import LabelSpecification
+from .specs_persons import PersonSpecification
 
 
 class Database(ABC):
@@ -39,4 +40,36 @@ class Database(ABC):
 
         Returns:
             The number of labels deleted.
+        """
+
+    @abstractmethod
+    def create_person(self, name: str) -> Person:
+        """Method to add a person to the database."""
+
+    @abstractmethod
+    def get_person(self, id: int) -> Person | None:
+        """Method to retrieve one person."""
+
+    @abstractmethod
+    def get_persons(
+        self, specification: PersonSpecification | None = None
+    ) -> list[Person]:
+        """Method to retrieve (a subset of) the persons in the database."""
+
+    @abstractmethod
+    def update_person(self, id: int, name: str) -> Person | None:
+        """Method to update one person."""
+
+    @abstractmethod
+    def delete_person(self, id: int) -> bool:
+        """Method to delete one person."""
+
+    @abstractmethod
+    def delete_persons(
+        self, specification: PersonSpecification | None = None
+    ) -> int:
+        """Delete persons matching a specification.
+
+        Returns:
+            The number of persons deleted.
         """

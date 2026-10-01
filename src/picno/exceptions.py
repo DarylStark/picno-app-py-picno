@@ -29,5 +29,13 @@ class DatabaseError(PicnoError):
     """Base class for database errors."""
 
 
+class ResourceAlreadyExistsError(DatabaseError):
+    """Exception when a generic resource is created that already exists."""
+
+
 class LabelAlreadyExistsError(DatabaseError):
     """Exception when a Label is created that already exists."""
+
+
+class PersonAlreadyExistsError(DatabaseError):
+    """Exception when a Person is created that already exists."""

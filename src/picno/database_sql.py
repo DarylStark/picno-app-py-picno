@@ -1,16 +1,25 @@
 """Module with the SQL implementation for the database."""
 
+from collections.abc import Callable
 from sqlite3 import Connection as SQLiteConnection
 from sqlite3 import Cursor as SQLiteCursor
-from typing import override
+from typing import TypeVar, override
 
 from sqlalchemy import event
 from sqlalchemy.exc import IntegrityError
-from sqlmodel import Session, SQLModel, create_engine, delete, func, select
+from sqlmodel import Session, SQLModel, create_engine, delete, select
 
 from .database import Database, LabelSpecification
-from .exceptions import LabelAlreadyExistsError
-from .model import Label
+from .exceptions import (
+    LabelAlreadyExistsError,
+    PersonAlreadyExistsError,
+    ResourceAlreadyExistsError,
+)
+from .model import Label, Person
+from .specs import Specification
+from .specs_persons import PersonSpecification
+
+T = TypeVar('T')
 
 
 class DatabaseSql(Database):
@@ -27,83 +36,135 @@ class DatabaseSql(Database):
         ) -> None:
             cursor: SQLiteCursor = dbapi_connection.cursor()
             cursor.execute('PRAGMA case_sensitive_like = ON')
+            cursor.execute('PRAGMA foreign_keys = ON')
             cursor.close()
 
         self._create_tables()
 
     def _create_tables(self) -> None:
+        """Method to create the needed tables."""
         SQLModel.metadata.create_all(self._engine)
 
-    @override
-    def create_label(self, name: str) -> Label:
-        """Create a new label."""
-        new_label = Label(name=name)
-
+    def _create_resource(self, obj: T) -> T:
+        """Method to create resources in the database."""
         with Session(self._engine) as session:
-            session.add(new_label)
+            session.add(obj)
             try:
                 session.commit()
             except IntegrityError as exc:
                 session.rollback()
-                raise LabelAlreadyExistsError(
-                    f'A label named {name!r} already exists.'
-                ) from exc
-            session.refresh(new_label)
+                raise ResourceAlreadyExistsError from exc
+            session.refresh(obj)
+        return obj
 
-        return new_label
+    def _get_resource(self, model: type[T], id: int) -> T | None:
+        """Generic method to retrieve a single item."""
+        with Session(self._engine) as session:
+            return session.get(model, id)
+
+    def _get_resources(
+        self, model: type[T], specification: Specification[T] | None = None
+    ) -> list[T]:
+        """Method to retrieve (a subset of) the resources in the database."""
+        with Session(self._engine) as session:
+            statement = select(model)
+            if specification:
+                statement = statement.where(specification.as_sql())
+            # TODO: Sorting
+            return list(session.exec(statement).all())
+
+    def _update_resource(
+        self, model: type[T], id: int, updater: Callable[[T], T]
+    ) -> T | None:
+        """Method to update one resource."""
+        with Session(self._engine) as session:
+            resource = session.get(model, id)
+
+            if resource is None:
+                return None
+
+            resource = updater(resource)
+
+            try:
+                session.commit()
+            except IntegrityError as exc:
+                session.rollback()
+                raise ResourceAlreadyExistsError from exc
+
+            session.refresh(resource)
+            return resource
+
+    def _delete_resource(self, model: type[T], id: int) -> bool:
+        """Method to delete one resource."""
+        with Session(self._engine) as session:
+            resource = session.get(model, id)
+
+            if resource is None:
+                return False
+
+            session.delete(resource)
+            session.commit()
+        return True
+
+    def _delete_resources(
+        self, model: type[T], specification: Specification[T] | None = None
+    ) -> int:
+        """Delete resources matching a specification.
+
+        Returns:
+            The number of resources deleted.
+        """
+        with Session(self._engine) as session:
+            statement = delete(model)
+            if specification:
+                statement = statement.where(specification.as_sql())
+
+            result = session.exec(statement)
+            session.commit()
+            return result.rowcount
+
+    @override
+    def create_label(self, name: str) -> Label:
+        """Create a new label."""
+        new_resource = Label(name=name)
+        try:
+            return self._create_resource(new_resource)
+        except ResourceAlreadyExistsError as exc:
+            raise LabelAlreadyExistsError(
+                f'A label named {name} already exists.'
+            ) from exc
 
     @override
     def get_label(self, id: int) -> Label | None:
         """Method to retrieve one label."""
-        with Session(self._engine) as session:
-            return session.get(Label, id)
+        return self._get_resource(Label, id)
 
     @override
     def get_labels(
         self, specification: LabelSpecification | None = None
     ) -> list[Label]:
         """Method to retrieve (a subset of) the labels in the database."""
-        with Session(self._engine) as session:
-            statement = select(Label)
-            if specification:
-                statement = statement.where(specification.as_sql())
-            statement = statement.order_by(func.lower(Label.name))
-            return list(session.exec(statement).all())
+        return self._get_resources(Label, specification)
 
     @override
     def update_label(self, id: int, new_name: str) -> Label | None:
         """Method to update one label."""
-        with Session(self._engine) as session:
-            label = session.get(Label, id)
 
-            if label is None:
-                return None
+        def update_resource(res: Label) -> Label:
+            res.name = new_name
+            return res
 
-            label.name = new_name
-
-            try:
-                session.commit()
-            except IntegrityError as exc:
-                session.rollback()
-                raise LabelAlreadyExistsError(
-                    f'A label named {new_name!r} already exists.'
-                ) from exc
-
-            session.refresh(label)
-            return label
+        try:
+            return self._update_resource(Label, id, update_resource)
+        except ResourceAlreadyExistsError as exc:
+            raise LabelAlreadyExistsError(
+                f'A label named "{new_name}" already exists.'
+            ) from exc
 
     @override
     def delete_label(self, id: int) -> bool:
         """Method to delete one label."""
-        with Session(self._engine) as session:
-            label = session.get(Label, id)
-
-            if label is None:
-                return False
-
-            session.delete(label)
-            session.commit()
-            return True
+        return self._delete_resource(Label, id)
 
     @override
     def delete_labels(
@@ -114,11 +175,58 @@ class DatabaseSql(Database):
         Returns:
             The number of labels deleted.
         """
-        with Session(self._engine) as session:
-            statement = delete(Label)
-            if specification:
-                statement = statement.where(specification.as_sql())
+        return self._delete_resources(Label, specification)
 
-            result = session.exec(statement)
-            session.commit()
-            return result.rowcount
+    @override
+    def create_person(self, name: str) -> Person:
+        """Create a new person."""
+        new_resource = Person(name=name)
+        try:
+            return self._create_resource(new_resource)
+        except ResourceAlreadyExistsError as exc:
+            raise PersonAlreadyExistsError(
+                f'A person named "{name}" already exists.'
+            ) from exc
+
+    @override
+    def get_person(self, id: int) -> Person | None:
+        """Method to retrieve one Person."""
+        return self._get_resource(Person, id)
+
+    @override
+    def get_persons(
+        self, specification: PersonSpecification | None = None
+    ) -> list[Person]:
+        """Method to retrieve (a subset of) the persons in the database."""
+        return self._get_resources(Person, specification)
+
+    @override
+    def update_person(self, id: int, name: str) -> Person | None:
+        """Method to update one label."""
+
+        def update_resource(res: Person) -> Person:
+            res.name = name
+            return res
+
+        try:
+            return self._update_resource(Person, id, update_resource)
+        except ResourceAlreadyExistsError as exc:
+            raise PersonAlreadyExistsError(
+                f'A person named "{name}" already exists.'
+            ) from exc
+
+    @override
+    def delete_person(self, id: int) -> bool:
+        """Method to delete one person."""
+        return self._delete_resource(Person, id)
+
+    @override
+    def delete_persons(
+        self, specification: PersonSpecification | None = None
+    ) -> int:
+        """Delete persons matching a specification.
+
+        Returns:
+            The number of persons deleted.
+        """
+        return self._delete_resources(Person, specification)

@@ -44,4 +44,11 @@ def filled_db(empty_db: DatabaseSql) -> DatabaseSql:
     empty_db.create_label('group3:label4')
     empty_db.create_label('group3:label5')
 
+    # Add persons
+    empty_db.create_person('Example Person 1')
+    empty_db.create_person('Example Person 2')
+    empty_db.create_person('Example Person 3')
+    empty_db.create_person('Example Person 4')
+    empty_db.create_person('Example Person 5')
+
     return empty_db

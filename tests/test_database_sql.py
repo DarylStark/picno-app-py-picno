@@ -3,7 +3,7 @@
 import pytest
 
 from picno.database_sql import DatabaseSql
-from picno.exceptions import LabelAlreadyExistsError
+from picno.exceptions import LabelAlreadyExistsError, PersonAlreadyExistsError
 from picno.specs_labels import NameContainsLabelSpec
 
 
@@ -203,3 +203,135 @@ def test_database_sql_filled_db_delete_many_labels_invalid_spec(
 
     labels = filled_db.get_labels()
     assert len(labels) == 20
+
+
+def test_database_sql_empty_db_empty_person_list(empty_db: DatabaseSql) -> None:
+    """Test with a empty database.
+
+    Check if we get a empty list of person.
+    """
+    persons = empty_db.get_persons()
+
+    assert persons == []
+
+
+def test_database_sql_empty_db_empty_create_person(
+    empty_db: DatabaseSql,
+) -> None:
+    """Test with a empty database.
+
+    Check if we can add persons and get the created person.
+    """
+    person = empty_db.create_person('Example Person')
+
+    assert person.id is not None
+    assert person.name == 'Example Person'
+
+
+def test_database_sql_filled_db_add_person_that_already_exists(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Check if we get an error when creating a person that already exists.
+    """
+    with pytest.raises(PersonAlreadyExistsError):
+        filled_db.create_person('Example Person 1')
+
+
+def test_database_sql_filled_db_get_one_person_valid_id(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Check if we can retrieve one person on ID.
+    """
+    person = filled_db.get_person(id=1)
+    assert person is not None
+    assert person.id == 1
+
+
+def test_database_sql_filled_db_get_one_person_invalid_id(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Check if we can retrieve one person on ID.
+    """
+    person = filled_db.get_person(id=999)
+    assert person is None
+
+
+def test_database_sql_filled_db_get_all_persons(filled_db: DatabaseSql) -> None:
+    """Test with a filled database.
+
+    Check if we get all required persons.
+    """
+    persons = filled_db.get_persons()
+    assert len(persons) == 5
+
+
+def test_database_sql_filled_db_update_one_person_already_exists(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Check if we get a exception when updating a person to a name that already
+    exists.
+    """
+    with pytest.raises(PersonAlreadyExistsError):
+        filled_db.update_person(1, name='Example Person 2')
+
+
+def test_database_sql_filled_db_update_one_person_valid_id(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Check if we can update a person based on id.
+    """
+    person = filled_db.update_person(1, name='Updated Name')
+    assert person is not None
+    assert person.id == 1
+    assert person.name == 'Updated Name'
+
+    updated_person = filled_db.get_person(id=1)
+    assert updated_person is not None
+    assert updated_person.id == 1
+    assert updated_person.name == 'Updated Name'
+
+
+def test_database_sql_filled_db_update_one_person_invalid_id(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Check if we get a None value when upating a Person that doesn't exist.
+    """
+    person = filled_db.update_person(999, name='updated_label')
+    assert person is None
+
+
+def test_database_sql_filled_db_delete_one_person_valid_id(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Check if we can delete a person with a valid id.
+    """
+    deleted = filled_db.delete_person(1)
+    assert deleted
+
+    deleted_person = filled_db.get_person(id=1)
+    assert deleted_person is None
+
+
+def test_database_sql_filled_db_delete_one_person_invalid_id(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Check if we get a False value when deleting a Person that doesn't exist.
+    """
+    deleted = filled_db.delete_person(999)
+    assert not deleted

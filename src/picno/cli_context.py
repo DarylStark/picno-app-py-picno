@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 
+from rich.console import Console
 from typer import Context
 
 from picno.database import Database
@@ -16,12 +17,13 @@ class CliContext:
     """Dataclass for the CLI context."""
 
     file: Path
+    console: Console
     manager: ProjectManager | None = None
 
 
 def get_initialized_project(
     ctx: Context,
-) -> tuple[CliContext, ProjectManager, Database]:
+) -> tuple[CliContext, ProjectManager, Database, Console]:
     """Get the context of a initialized project.
 
     Generates an exception when the project is not initialized yet.
@@ -31,4 +33,4 @@ def get_initialized_project(
     if not context.manager:
         raise ProjectNotInitializedError('Project is not initialized')
 
-    return (context, context.manager, context.manager.database)
+    return (context, context.manager, context.manager.database, context.console)

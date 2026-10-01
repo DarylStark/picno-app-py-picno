@@ -7,8 +7,6 @@ from typing import Any
 from rich.console import Console
 from rich.table import Table
 
-console = Console()
-
 
 @dataclass(frozen=True)
 class TableColumn:
@@ -19,6 +17,7 @@ class TableColumn:
 
 
 def print_table(
+    console: Console,
     rows: Sequence[Any],
     columns: Sequence[TableColumn],
     title: str | None = None,

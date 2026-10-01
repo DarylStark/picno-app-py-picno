@@ -1,8 +1,11 @@
 """Module with the main entry point of the CLI application."""
 
+import io
+import sys
 from pathlib import Path
 
 from pydantic import ValidationError
+from rich.console import Console
 from typer import Context, Option, Typer
 
 from .cli_context import CliContext
@@ -23,9 +26,17 @@ def context(
     project_file: Path = Option(
         default=Path('picno.json'), help='The project file to use'
     ),
+    quiet: bool = Option(default=False, help='Supress output'),
 ) -> None:
     """Default context for all CLI operations."""
-    ctx.obj = CliContext(file=project_file)
+    if quiet:
+        console = Console(
+            file=io.StringIO(), force_terminal=False, color_system=None
+        )
+    else:
+        console = Console()
+
+    ctx.obj = CliContext(file=project_file, console=console)
 
     # Create a manager if a project is given
     if project_file.is_file():
@@ -39,12 +50,15 @@ def context(
 
 def main() -> None:
     """Main entry point for the CLI app."""
-    # TODO: Make these errors look better
+    err_console = Console(file=sys.stderr)
+
     try:
         app()
+        sys.exit(0)
     except CliError as e:
-        print(f'CLI error: {e}')
+        err_console.print(f'[red][b]CLI error:[/b][/red] {e}')
     except DatabaseError as e:
-        print(f'Database error: {e}')
+        err_console.print(f'[red][b]Database error:[/b][/red] {e}')
     except Exception as e:
-        print(f'Unknown error: {e}')
+        err_console.print(f'[red][b]Unknown error:[/b][/red] {e}')
+    sys.exit(1)

@@ -36,7 +36,7 @@ def ls(
     ),
 ) -> None:
     """List the labels in the database."""
-    (_, _, db) = get_initialized_project(ctx)
+    (_, _, db, console) = get_initialized_project(ctx)
 
     spec = build_label_spec(
         LabelFilter(
@@ -51,16 +51,21 @@ def ls(
 
     # Retrieve the labels
     labels = db.get_labels(spec)
-    print_table(
-        labels,
-        columns=[
-            TableColumn('ID', lambda label: label.id),
-            TableColumn('Name', lambda label: label.name),
-            TableColumn('Group', lambda label: label.group or ''),
-            TableColumn('Name in group', lambda label: label.label_name or ''),
-        ],
-        title='Labels',
-    )
+    if labels:
+        print_table(
+            console,
+            labels,
+            columns=[
+                TableColumn('ID', lambda label: label.id),
+                TableColumn('Name', lambda label: label.name),
+                TableColumn('Group', lambda label: label.group or ''),
+                TableColumn(
+                    'Name in group', lambda label: label.label_name or ''
+                ),
+            ],
+        )
+    else:
+        print('No labels')
 
 
 @labels.command(name='add', help='Create a label')
@@ -68,8 +73,9 @@ def add(
     ctx: Context, name: str = Argument(help='The name of the label to create')
 ) -> None:
     """Add a label."""
-    (_, _, db) = get_initialized_project(ctx)
+    (_, _, db, console) = get_initialized_project(ctx)
     db.create_label(name=name)
+    console.print(f'Created label "{name}"')
 
 
 @labels.command(name='mv', help='Rename a label')
@@ -79,13 +85,14 @@ def mv(
     new_name: str = Argument(help='New name of the label'),
 ) -> None:
     """Rename a label."""
-    (_, _, db) = get_initialized_project(ctx)
+    (_, _, db, console) = get_initialized_project(ctx)
 
     label = db.get_labels(
         NameIsLabelSpec(name=old_name, case_insensitive=False)
     )
     if len(label) == 1:
         db.update_label(label[0].id or 0, new_name)
+        console.print(f'Renamed label "{old_name}" to "{new_name}"')
     else:
         raise LabelDoesNotExistError(f'Label "{old_name}" does not exist')
 
@@ -96,10 +103,11 @@ def rm(
     name: str = Argument(help='The name of the label to delete'),
 ) -> None:
     """Delete a label."""
-    (_, _, db) = get_initialized_project(ctx)
+    (_, _, db, console) = get_initialized_project(ctx)
 
     label = db.get_labels(NameIsLabelSpec(name=name, case_insensitive=False))
     if len(label) == 1:
         db.delete_label(label[0].id or 0)
+        console.print(f'Deleted label "{name}"')
     else:
         raise LabelDoesNotExistError(f'Label "{name}" does not exist')

@@ -65,7 +65,7 @@ def ls(
             ],
         )
     else:
-        print('No labels')
+        console.print('[yellow]No labels match the filter[/yellow]')
 
 
 @labels.command(name='add', help='Create a label')

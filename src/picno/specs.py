@@ -3,6 +3,7 @@
 from abc import ABC, abstractmethod
 from typing import override
 
+from sqlalchemy import and_, true
 from sqlalchemy.sql.elements import ColumnElement
 
 
@@ -80,3 +81,28 @@ class NotSpecification[T](Specification[T]):
     def as_sql(self) -> ColumnElement[bool]:
         """Return the query for the specification."""
         return ~self._spec.as_sql()
+
+
+class AllSpecification[T](Specification[T]):
+    """Specification for ALL logic."""
+
+    def __init__(self) -> None:
+        """Create empty list of specifications."""
+        self._specs: list[Specification[T]] = []
+
+    def append(self, spec: Specification[T]) -> AllSpecification[T]:
+        """Add a specification."""
+        self._specs.append(spec)
+        return self
+
+    @override
+    def is_satisfied_by(self, obj: T) -> bool:
+        """Returns if both specs are satisfied."""
+        return all(spec.is_satisfied_by(obj) for spec in self._specs)
+
+    @override
+    def as_sql(self) -> ColumnElement[bool]:
+        """Return the query for the specification."""
+        if not self._specs:
+            return true()
+        return and_(*(spec.as_sql() for spec in self._specs))

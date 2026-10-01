@@ -1,7 +1,10 @@
 """Module with the SQL implementation for the database."""
 
+from sqlite3 import Connection as SQLiteConnection
+from sqlite3 import Cursor as SQLiteCursor
 from typing import override
 
+from sqlalchemy import event
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, SQLModel, create_engine, delete, select
 
@@ -16,6 +19,16 @@ class DatabaseSql(Database):
     def __init__(self, database_url: str) -> None:
         """Create the needed engine."""
         self._engine = create_engine(database_url, echo=False)
+
+        @event.listens_for(self._engine, 'connect')
+        def set_sqlite_pragma(
+            dbapi_connection: SQLiteConnection,
+            connection_record: object,
+        ) -> None:
+            cursor: SQLiteCursor = dbapi_connection.cursor()
+            cursor.execute('PRAGMA case_sensitive_like = ON')
+            cursor.close()
+
         self._create_tables()
 
     def _create_tables(self) -> None:

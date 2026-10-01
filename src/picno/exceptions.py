@@ -17,6 +17,14 @@ class ProjectAlreadyInitializedError(CliError):
     """Exception when a project is already initialized."""
 
 
+class ProjectNotInitializedError(CliError):
+    """Exception when the project is not yet initialized."""
+
+
+class LabelDoesNotExistError(CliError):
+    """Exception when a label doesn't exists that is searched for."""
+
+
 class DatabaseError(PicnoError):
     """Base class for database errors."""
 

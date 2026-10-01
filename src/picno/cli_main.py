@@ -6,6 +6,7 @@ from pydantic import ValidationError
 from typer import Context, Option, Typer
 
 from .cli_context import CliContext
+from .cli_labels import labels
 from .cli_project import project
 from .exceptions import CliError, DatabaseError, ProjectParseError
 from .project import Project
@@ -13,6 +14,7 @@ from .project_manager import ProjectManager
 
 app = Typer(name='Picno')
 app.add_typer(project)
+app.add_typer(labels)
 
 
 @app.callback()

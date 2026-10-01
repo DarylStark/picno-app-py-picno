@@ -41,7 +41,7 @@ class Label(TableResource, table=True):
         """
         if ':' in self.name:
             return ':'.join(self.name.split(':')[1:])
-        return self.name
+        return None
 
 
 class Resource(TableResource):

@@ -6,7 +6,7 @@ from typing import override
 
 from sqlalchemy import event
 from sqlalchemy.exc import IntegrityError
-from sqlmodel import Session, SQLModel, create_engine, delete, select
+from sqlmodel import Session, SQLModel, create_engine, delete, func, select
 
 from .database import Database, LabelSpecification
 from .exceptions import LabelAlreadyExistsError
@@ -67,6 +67,7 @@ class DatabaseSql(Database):
             statement = select(Label)
             if specification:
                 statement = statement.where(specification.as_sql())
+            statement = statement.order_by(func.lower(Label.name))
             return list(session.exec(statement).all())
 
     @override

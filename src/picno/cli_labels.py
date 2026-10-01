@@ -3,6 +3,7 @@
 from typer import Argument, Context, Option, Typer
 
 from .cli_context import get_initialized_project
+from .cli_format import TableColumn, print_table
 from .exceptions import LabelDoesNotExistError
 from .specs_labels import (
     LabelFilter,
@@ -50,8 +51,16 @@ def ls(
 
     # Retrieve the labels
     labels = db.get_labels(spec)
-    for label in labels:
-        print(label)
+    print_table(
+        labels,
+        columns=[
+            TableColumn('ID', lambda label: label.id),
+            TableColumn('Name', lambda label: label.name),
+            TableColumn('Group', lambda label: label.group or ''),
+            TableColumn('Name in group', lambda label: label.label_name or ''),
+        ],
+        title='Labels',
+    )
 
 
 @labels.command(name='add', help='Create a label')

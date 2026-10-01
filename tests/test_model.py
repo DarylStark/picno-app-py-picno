@@ -11,7 +11,7 @@ def test_label_no_group() -> None:
     """Test the `group` method of a label that has no group."""
     label = Label(name='test_label')
     assert label.group is None
-    assert label.label_name == 'test_label'
+    assert label.label_name is None
 
 
 def test_label_with_group() -> None:

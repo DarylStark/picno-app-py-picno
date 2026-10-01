@@ -20,6 +20,12 @@ def ls(
     iname: str | None = Option(
         default=None, help='Filter on a specific name (case insensitive)'
     ),
+    group_name: str | None = Option(
+        default=None, help='Filter on a specific groupname'
+    ),
+    igroup_name: str | None = Option(
+        default=None, help='Filter on a specific groupname (case insensitive)'
+    ),
     name_contains: list[str] | None = Option(
         default=None, help='Filter on a text in the name <repeatable>'
     ),
@@ -37,6 +43,8 @@ def ls(
             iname=iname,
             name_contains=name_contains,
             iname_contains=iname_contains,
+            group_name=group_name,
+            igroup_name=igroup_name,
         )
     )
 

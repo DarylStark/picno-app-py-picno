@@ -5,11 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 authors = [{ name = "Daryl Stark", email = "daryl@dstark.nl" }]
 requires-python = ">=3.14"
-dependencies = [
-    "pydantic>=2.13.5",
-    "sqlmodel>=0.0.47",
-    "typer>=0.27.2",
-]
+dependencies = ["pydantic>=2.13.5", "sqlmodel>=0.0.47", "typer>=0.27.2"]
 
 [project.scripts]
 picno = "picno:main"
@@ -58,6 +54,7 @@ ignore = [
     "TD002",   # missing author
     "PLR0913", # too many arguments
     "FIX002",  # fixme found - skipped for now
+    "PLR0917", # too many positional arguments
 ]
 
 [tool.ruff.lint.pydocstyle]

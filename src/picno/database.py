@@ -1,7 +1,9 @@
 """Module with the database abstraction."""
 
 from abc import ABC, abstractmethod
+from collections.abc import Sequence
 from datetime import date
+from enum import Enum
 
 from .model import Label, Person
 from .specs_labels import LabelSpecification
@@ -17,6 +19,12 @@ class _ClearField:
 
 
 CLEARFIELD = _ClearField()
+
+
+class RetrieveOption(Enum):
+    """Options for retrieving resources."""
+
+    LOAD_LABELS = 1
 
 
 class Database(ABC):
@@ -63,7 +71,9 @@ class Database(ABC):
         """Method to add a person to the database."""
 
     @abstractmethod
-    def get_person(self, id: int) -> Person | None:
+    def get_person(
+        self, id: int, options: Sequence[RetrieveOption] | None = None
+    ) -> Person | None:
         """Method to retrieve one person."""
 
     @abstractmethod
@@ -94,3 +104,7 @@ class Database(ABC):
         Returns:
             The number of persons deleted.
         """
+
+    @abstractmethod
+    def add_label_to_person(self, person: str, label: str) -> None:
+        """Method to add a label to a person (on names)."""

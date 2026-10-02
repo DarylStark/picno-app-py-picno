@@ -3,8 +3,9 @@
 from datetime import date
 
 import pytest
+from sqlalchemy.orm.exc import DetachedInstanceError
 
-from picno.database import CLEARFIELD
+from picno.database import CLEARFIELD, RetrieveOption
 from picno.database_sql import DatabaseSql
 from picno.exceptions import LabelAlreadyExistsError, PersonAlreadyExistsError
 from picno.specs_labels import NameContainsLabelSpec
@@ -268,6 +269,23 @@ def test_database_sql_filled_db_get_one_person_valid_id(
     assert person is not None
     assert person.id == 1
 
+    # Labels are not loaded, so we expect an error on that one.
+    with pytest.raises(DetachedInstanceError):
+        assert person.labels == []
+
+
+def test_database_sql_filled_db_get_one_person_valid_id_with_labels(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Check if we can retrieve one person on ID.
+    """
+    person = filled_db.get_person(id=1, options=(RetrieveOption.LOAD_LABELS,))
+    assert person is not None
+    assert person.id == 1
+    assert person.labels == []
+
 
 def test_database_sql_filled_db_get_one_person_invalid_id(
     filled_db: DatabaseSql,
@@ -433,3 +451,53 @@ def test_database_sql_filled_db_delete_many_persons_invalid_spec(
 
     persons = filled_db.get_persons()
     assert len(persons) == 5
+
+
+def test_database_sql_filled_db_add_label_to_person(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Test if we can add labels to persons.
+    """
+    filled_db.add_label_to_person('Example Person 1', 'test_label_1')
+    person = filled_db.get_person(
+        1,
+        (RetrieveOption.LOAD_LABELS,),
+    )
+    assert person is not None
+    assert len(person.labels) == 1
+
+
+def test_database_sql_filled_db_add_double_label_to_person(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Test if we cannot add the same label twice to a person.
+    """
+    filled_db.add_label_to_person('Example Person 1', 'test_label_1')
+    filled_db.add_label_to_person('Example Person 1', 'test_label_1')
+    person = filled_db.get_person(
+        1,
+        (RetrieveOption.LOAD_LABELS,),
+    )
+    assert person is not None
+    assert len(person.labels) == 1
+
+
+def test_database_sql_filled_db_add_multiple_labels_to_person(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Test if we cannot add multiple labels to a person.
+    """
+    filled_db.add_label_to_person('Example Person 1', 'test_label_1')
+    filled_db.add_label_to_person('Example Person 1', 'test_label_2')
+    person = filled_db.get_person(
+        1,
+        (RetrieveOption.LOAD_LABELS,),
+    )
+    assert person is not None
+    assert len(person.labels) == 2

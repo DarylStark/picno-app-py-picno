@@ -1,22 +1,24 @@
 """Module with the SQL implementation for the database."""
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from datetime import date
 from sqlite3 import Connection as SQLiteConnection
 from sqlite3 import Cursor as SQLiteCursor
-from typing import TypeVar, override
+from typing import TypeVar, cast, override
 
 from sqlalchemy import event
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import InstrumentedAttribute, selectinload
+from sqlalchemy.orm.interfaces import ORMOption
 from sqlmodel import Session, SQLModel, create_engine, delete, select
 
-from .database import Database, LabelSpecification, _ClearField
+from .database import Database, LabelSpecification, RetrieveOption, _ClearField
 from .exceptions import (
     LabelAlreadyExistsError,
     PersonAlreadyExistsError,
     ResourceAlreadyExistsError,
 )
-from .model import Label, Person
+from .model import Label, Person, PersonLabelLink
 from .specs import Specification
 from .specs_persons import PersonSpecification
 
@@ -58,19 +60,28 @@ class DatabaseSql(Database):
             session.refresh(obj)
         return obj
 
-    def _get_resource(self, model: type[T], id: int) -> T | None:
+    def _get_resource(
+        self, model: type[T], id: int, options: list[ORMOption] | None = None
+    ) -> T | None:
         """Generic method to retrieve a single item."""
         with Session(self._engine) as session:
-            return session.get(model, id)
+            return session.get(model, id, options=options)
 
     def _get_resources(
-        self, model: type[T], specification: Specification[T] | None = None
+        self,
+        model: type[T],
+        specification: Specification[T] | None = None,
+        options: list[ORMOption] | None = None,
     ) -> list[T]:
         """Method to retrieve (a subset of) the resources in the database."""
         with Session(self._engine) as session:
             statement = select(model)
             if specification:
                 statement = statement.where(specification.as_sql())
+
+                for option in options or []:
+                    statement.options(option)
+
             # TODO: Sorting
             return list(session.exec(statement).all())
 
@@ -195,9 +206,18 @@ class DatabaseSql(Database):
             ) from exc
 
     @override
-    def get_person(self, id: int) -> Person | None:
+    def get_person(
+        self, id: int, options: Sequence[RetrieveOption] | None = None
+    ) -> Person | None:
         """Method to retrieve one Person."""
-        return self._get_resource(Person, id)
+        options = options or []
+        retrieve_options: list[ORMOption] = []
+        if RetrieveOption.LOAD_LABELS in options:
+            retrieve_options.append(
+                selectinload(cast(InstrumentedAttribute, Person.labels))
+            )
+
+        return self._get_resource(Person, id, retrieve_options)
 
     @override
     def get_persons(
@@ -246,3 +266,35 @@ class DatabaseSql(Database):
             The number of persons deleted.
         """
         return self._delete_resources(Person, specification)
+
+    @override
+    def add_label_to_person(self, person: str, label: str) -> None:
+        """Method to add a label to a person (on names)."""
+        with Session(self._engine) as session:
+            person_obj = session.exec(
+                select(Person).where(Person.name == person)
+            ).one_or_none()
+
+            label_obj = session.exec(
+                select(Label).where(Label.name == label)
+            ).one_or_none()
+
+            if person_obj is None or label_obj is None:
+                return  # TODO: raise an exception
+
+            exists = session.exec(
+                select(PersonLabelLink).where(
+                    PersonLabelLink.person_id == person_obj.id,
+                    PersonLabelLink.label_id == label_obj.id,
+                )
+            ).one_or_none()
+
+            if exists is not None:
+                return
+
+            # TODO: check if the label group hasn't been added yet.
+
+            session.add(
+                PersonLabelLink(person_id=person_obj.id, label_id=label_obj.id)
+            )
+            session.commit()

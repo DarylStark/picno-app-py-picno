@@ -25,6 +25,10 @@ class LabelDoesNotExistError(CliError):
     """Exception when a label doesn't exists that is searched for."""
 
 
+class PersonDoesNotExistError(CliError):
+    """Exception when a person doesn't exists that is searched for."""
+
+
 class DatabaseError(PicnoError):
     """Base class for database errors."""
 

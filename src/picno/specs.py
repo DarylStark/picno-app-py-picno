@@ -5,6 +5,7 @@ from typing import override
 
 from sqlalchemy import and_, true
 from sqlalchemy.sql.elements import ColumnElement
+from sqlmodel import col
 
 
 class Specification[T](ABC):
@@ -106,3 +107,33 @@ class AllSpecification[T](Specification[T]):
         if not self._specs:
             return true()
         return and_(*(spec.as_sql() for spec in self._specs))
+
+
+class StrIsSpecification[T](Specification[T]):
+    """Specification that checks if a specific string is equal."""
+
+    def __init__(
+        self,
+        model: type[T],
+        field_name: str,
+        expected_value: str,
+        case_insensitive: bool = True,
+    ) -> None:
+        """Set the default values."""
+        self._model = model
+        self._field_name = field_name
+        self._expected_value = expected_value
+        self._case_insensitive = case_insensitive
+
+    @override
+    def is_satisfied_by(self, obj: T) -> bool:
+        """Returns True for now since this method is to be deleted."""
+        return True
+
+    @override
+    def as_sql(self) -> ColumnElement[bool]:
+        """Return the query for the specification."""
+        field = getattr(self._model, self._field_name)
+        if self._case_insensitive:
+            return col(field).ilike(self._expected_value)
+        return col(field) == self._expected_value

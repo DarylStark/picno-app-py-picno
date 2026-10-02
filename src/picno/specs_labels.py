@@ -7,7 +7,7 @@ from sqlalchemy import ColumnElement
 from sqlmodel import and_, col, func
 
 from .model import Label
-from .specs import AllSpecification, Specification
+from .specs import AllSpecification, Specification, StrIsSpecification
 
 LabelSpecification = Specification[Label]
 LabelAllSpecification = AllSpecification[Label]
@@ -18,21 +18,18 @@ class NameIsLabelSpec(LabelSpecification):
 
     def __init__(self, name: str, case_insensitive: bool = True) -> None:
         """Set the given values."""
-        self._name = name
-        self._case_insensitive = case_insensitive
+        self._parent_spec = StrIsSpecification(
+            Label, 'name', name, case_insensitive
+        )
 
     @override
     def is_satisfied_by(self, obj: Label) -> bool:
-        if self._case_insensitive:
-            return self._name.lower() == obj.name.lower()
-        return self._name == obj.name
+        return self._parent_spec.is_satisfied_by(obj)
 
     @override
     def as_sql(self) -> ColumnElement[bool]:
         """Returns the SQL code for the specification."""
-        if self._case_insensitive:
-            return col(Label.name).ilike(self._name)
-        return col(Label.name) == self._name
+        return self._parent_spec.as_sql()
 
 
 class NameContainsLabelSpec(LabelSpecification):

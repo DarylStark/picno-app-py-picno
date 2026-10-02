@@ -9,6 +9,10 @@ class CliError(PicnoError):
     """Base class for CLI errors."""
 
 
+class InvalidArgumentInputError(CliError):
+    """Error for invalid input into the CLI arguments."""
+
+
 class ProjectParseError(CliError):
     """Exception when a project file cannot be parsed."""
 

@@ -1,10 +1,22 @@
 """Module with the database abstraction."""
 
 from abc import ABC, abstractmethod
+from datetime import date
 
 from .model import Label, Person
 from .specs_labels import LabelSpecification
 from .specs_persons import PersonSpecification
+
+
+class _ClearField:
+    """Empty class that indicates that a field should be cleared.
+
+    Useful for fields that are Null-able. By using this, we can give a update
+    method to command to clear a field, without providing it None.
+    """
+
+
+CLEARFIELD = _ClearField()
 
 
 class Database(ABC):
@@ -43,7 +55,7 @@ class Database(ABC):
         """
 
     @abstractmethod
-    def create_person(self, name: str) -> Person:
+    def create_person(self, name: str, birthdate: date | None = None) -> Person:
         """Method to add a person to the database."""
 
     @abstractmethod
@@ -57,7 +69,12 @@ class Database(ABC):
         """Method to retrieve (a subset of) the persons in the database."""
 
     @abstractmethod
-    def update_person(self, id: int, name: str) -> Person | None:
+    def update_person(
+        self,
+        id: int,
+        name: str | None = None,
+        birthdate: date | None | _ClearField = None,
+    ) -> Person | None:
         """Method to update one person."""
 
     @abstractmethod

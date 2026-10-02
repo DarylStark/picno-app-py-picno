@@ -1,7 +1,10 @@
 """Tests for the DatabaseSql class."""
 
+from datetime import date
+
 import pytest
 
+from picno.database import CLEARFIELD
 from picno.database_sql import DatabaseSql
 from picno.exceptions import LabelAlreadyExistsError, PersonAlreadyExistsError
 from picno.specs_labels import NameContainsLabelSpec
@@ -228,6 +231,20 @@ def test_database_sql_empty_db_empty_create_person(
     assert person.name == 'Example Person'
 
 
+def test_database_sql_empty_db_empty_create_person_with_birthdate(
+    empty_db: DatabaseSql,
+) -> None:
+    """Test with a empty database.
+
+    Check if we can add persons and get the created person.
+    """
+    person = empty_db.create_person('Example Person', date(1986, 10, 26))
+
+    assert person.id is not None
+    assert person.name == 'Example Person'
+    assert person.birthdate == date(1986, 10, 26)
+
+
 def test_database_sql_filled_db_add_person_that_already_exists(
     filled_db: DatabaseSql,
 ) -> None:
@@ -283,6 +300,26 @@ def test_database_sql_filled_db_update_one_person_already_exists(
         filled_db.update_person(1, name='Example Person 2')
 
 
+def test_database_sql_filled_db_update_one_person_set_birthdate(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Check if we can update the birthdate of a person.
+    """
+    person = filled_db.update_person(1, birthdate=date(1986, 10, 26))
+    assert person is not None
+    assert person.id == 1
+    assert person.name == 'Example Person 1'
+    assert person.birthdate == date(1986, 10, 26)
+
+    updated_person = filled_db.get_person(id=1)
+    assert updated_person is not None
+    assert updated_person.id == 1
+    assert updated_person.name == 'Example Person 1'
+    assert updated_person.birthdate == date(1986, 10, 26)
+
+
 def test_database_sql_filled_db_update_one_person_valid_id(
     filled_db: DatabaseSql,
 ) -> None:
@@ -299,6 +336,24 @@ def test_database_sql_filled_db_update_one_person_valid_id(
     assert updated_person is not None
     assert updated_person.id == 1
     assert updated_person.name == 'Updated Name'
+
+
+def test_database_sql_filled_db_update_one_person_clear_date(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Check if we can update a person based on id.
+    """
+    person = filled_db.update_person(5, birthdate=CLEARFIELD)
+    assert person is not None
+    assert person.id == 5
+    assert person.birthdate is None
+
+    updated_person = filled_db.get_person(id=5)
+    assert updated_person is not None
+    assert updated_person.id == 5
+    assert updated_person.birthdate is None
 
 
 def test_database_sql_filled_db_update_one_person_invalid_id(

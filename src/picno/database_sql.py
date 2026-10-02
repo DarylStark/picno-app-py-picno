@@ -1,6 +1,7 @@
 """Module with the SQL implementation for the database."""
 
 from collections.abc import Callable
+from datetime import date
 from sqlite3 import Connection as SQLiteConnection
 from sqlite3 import Cursor as SQLiteCursor
 from typing import TypeVar, override
@@ -9,7 +10,7 @@ from sqlalchemy import event
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, SQLModel, create_engine, delete, select
 
-from .database import Database, LabelSpecification
+from .database import Database, LabelSpecification, _ClearField
 from .exceptions import (
     LabelAlreadyExistsError,
     PersonAlreadyExistsError,
@@ -178,9 +179,9 @@ class DatabaseSql(Database):
         return self._delete_resources(Label, specification)
 
     @override
-    def create_person(self, name: str) -> Person:
+    def create_person(self, name: str, birthdate: date | None = None) -> Person:
         """Create a new person."""
-        new_resource = Person(name=name)
+        new_resource = Person(name=name, birthdate=birthdate)
         try:
             return self._create_resource(new_resource)
         except ResourceAlreadyExistsError as exc:
@@ -201,11 +202,21 @@ class DatabaseSql(Database):
         return self._get_resources(Person, specification)
 
     @override
-    def update_person(self, id: int, name: str) -> Person | None:
+    def update_person(
+        self,
+        id: int,
+        name: str | None = None,
+        birthdate: date | None | _ClearField = None,
+    ) -> Person | None:
         """Method to update one label."""
 
         def update_resource(res: Person) -> Person:
-            res.name = name
+            if name is not None:
+                res.name = name
+            if isinstance(birthdate, _ClearField):
+                res.birthdate = None
+            elif birthdate is not None:
+                res.birthdate = birthdate
             return res
 
         try:

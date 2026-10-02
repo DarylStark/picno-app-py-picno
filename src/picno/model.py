@@ -1,6 +1,6 @@
 """The database model."""
 
-from datetime import datetime
+from datetime import date, datetime
 from enum import Enum
 from pathlib import Path
 
@@ -72,6 +72,7 @@ class Person(TableResource, table=True):
     """Model for persons."""
 
     name: str = Field(unique=True)
+    birthdate: date | None = Field(default=None)
 
     labels: list[Label] = Relationship(
         back_populates='people',

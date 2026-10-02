@@ -8,6 +8,7 @@ from picno.database import CLEARFIELD
 from picno.database_sql import DatabaseSql
 from picno.exceptions import LabelAlreadyExistsError, PersonAlreadyExistsError
 from picno.specs_labels import NameContainsLabelSpec
+from picno.specs_persons import NameContainsPersonSpec
 
 
 def test_database_sql_empty_db_empty_label_list(empty_db: DatabaseSql) -> None:
@@ -390,3 +391,45 @@ def test_database_sql_filled_db_delete_one_person_invalid_id(
     """
     deleted = filled_db.delete_person(999)
     assert not deleted
+
+
+def test_database_sql_filled_db_delete_many_persons_valid_spec(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Check if we can delete multiple persons based on a spec.
+    """
+    deleted = filled_db.delete_persons(NameContainsPersonSpec('Example Person'))
+    assert deleted == 5
+
+    persons = filled_db.get_persons(NameContainsPersonSpec('Example Person'))
+    assert len(persons) == 0
+
+
+def test_database_sql_filled_db_delete_many_persons_no_spec(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Check if we can delete all persons by not giving a spec.
+    """
+    deleted = filled_db.delete_labels()
+    assert deleted == 20
+
+    persons = filled_db.get_labels()
+    assert len(persons) == 0
+
+
+def test_database_sql_filled_db_delete_many_persons_invalid_spec(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Check if we get a 0 result when deleting persons that don't exist.
+    """
+    deleted = filled_db.delete_persons(NameContainsPersonSpec('not_existing'))
+    assert deleted == 0
+
+    persons = filled_db.get_persons()
+    assert len(persons) == 5

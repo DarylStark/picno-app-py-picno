@@ -125,6 +125,11 @@ class DatabaseSql(Database):
             return result.rowcount
 
     @override
+    def close(self) -> None:
+        """Close the database."""
+        self._engine.dispose()
+
+    @override
     def create_label(self, name: str) -> Label:
         """Create a new label."""
         new_resource = Label(name=name)

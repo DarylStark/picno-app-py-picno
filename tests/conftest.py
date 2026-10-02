@@ -1,5 +1,6 @@
 """Configuration for PyTest."""
 
+from collections.abc import Generator
 from datetime import date
 from pathlib import Path
 
@@ -15,9 +16,11 @@ def temp_db_path(tmp_path: Path) -> str:
 
 
 @pytest.fixture
-def empty_db(temp_db_path: str) -> DatabaseSql:
+def empty_db(temp_db_path: str) -> Generator[DatabaseSql]:
     """Create a empty database to test with."""
-    return DatabaseSql(temp_db_path)
+    db = DatabaseSql(temp_db_path)
+    yield db
+    db.close()
 
 
 @pytest.fixture

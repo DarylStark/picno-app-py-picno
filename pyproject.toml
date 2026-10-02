@@ -76,7 +76,6 @@ addopts = [
     '--cov=picno',
     '--cov-report=html',
     '--cov-report=lcov',
-    '--cov-context=test',
     '--cov-branch',
 ]
 testpaths = ['tests']

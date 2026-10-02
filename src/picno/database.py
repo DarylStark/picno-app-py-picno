@@ -23,6 +23,10 @@ class Database(ABC):
     """Abstract class for databases."""
 
     @abstractmethod
+    def close(self) -> None:
+        """Close the database."""
+
+    @abstractmethod
     def create_label(self, name: str) -> Label:
         """Method to add a label to the database."""
 

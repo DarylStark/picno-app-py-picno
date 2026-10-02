@@ -12,10 +12,6 @@ class Specification[T](ABC):
     """Generic baseclass for Specifications."""
 
     @abstractmethod
-    def is_satisfied_by(self, obj: T) -> bool:
-        """Abstract method to check if a object satisfies the spec."""
-
-    @abstractmethod
     def as_sql(self) -> ColumnElement[bool]:
         """Abstract method to create a SQL query object."""
 
@@ -29,13 +25,6 @@ class AndSpecification[T](Specification[T]):
         """Set the specification."""
         self._spec_a = spec_a
         self._spec_b = spec_b
-
-    @override
-    def is_satisfied_by(self, obj: T) -> bool:
-        """Returns if both specs are satisfied."""
-        return self._spec_a.is_satisfied_by(
-            obj
-        ) and self._spec_b.is_satisfied_by(obj)
 
     @override
     def as_sql(self) -> ColumnElement[bool]:
@@ -54,13 +43,6 @@ class OrSpecification[T](Specification[T]):
         self._spec_b = spec_b
 
     @override
-    def is_satisfied_by(self, obj: T) -> bool:
-        """Returns if both specs are satisfied."""
-        return self._spec_a.is_satisfied_by(
-            obj
-        ) or self._spec_b.is_satisfied_by(obj)
-
-    @override
     def as_sql(self) -> ColumnElement[bool]:
         """Return the query for the specification."""
         return self._spec_a.as_sql() & self._spec_b.as_sql()
@@ -72,11 +54,6 @@ class NotSpecification[T](Specification[T]):
     def __init__(self, spec: Specification[T]) -> None:
         """Set the specification."""
         self._spec = spec
-
-    @override
-    def is_satisfied_by(self, obj: T) -> bool:
-        """Returns if both specs are satisfied."""
-        return not self._spec.is_satisfied_by(obj)
 
     @override
     def as_sql(self) -> ColumnElement[bool]:
@@ -97,11 +74,6 @@ class AllSpecification[T](Specification[T]):
         return self
 
     @override
-    def is_satisfied_by(self, obj: T) -> bool:
-        """Returns if both specs are satisfied."""
-        return all(spec.is_satisfied_by(obj) for spec in self._specs)
-
-    @override
     def as_sql(self) -> ColumnElement[bool]:
         """Return the query for the specification."""
         if not self._specs:
@@ -118,10 +90,6 @@ class ParentSpecification[T](Specification[T]):
     def __init__(self, parent: Specification[T]) -> None:
         """Set the parent specification."""
         self._parent_spec = parent
-
-    @override
-    def is_satisfied_by(self, obj: T) -> bool:
-        return self._parent_spec.is_satisfied_by(obj)
 
     @override
     def as_sql(self) -> ColumnElement[bool]:
@@ -144,11 +112,6 @@ class StrIsSpecification[T](Specification[T]):
         self._field_name = field_name
         self._expected_value = expected_value
         self._case_insensitive = case_insensitive
-
-    @override
-    def is_satisfied_by(self, obj: T) -> bool:
-        """Returns True for now since this method is to be deleted."""
-        return True
 
     @override
     def as_sql(self) -> ColumnElement[bool]:
@@ -174,11 +137,6 @@ class StrContainsSpecification[T](Specification[T]):
         self._field_name = field_name
         self._search_value = search_value
         self._case_insensitive = case_insensitive
-
-    @override
-    def is_satisfied_by(self, obj: T) -> bool:
-        """Returns True for now since this method is to be deleted."""
-        return True
 
     @override
     def as_sql(self) -> ColumnElement[bool]:

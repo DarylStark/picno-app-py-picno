@@ -47,15 +47,6 @@ class GroupIsLabelSpec(LabelSpecification):
         self._group = group
         self._case_insensitive = case_insensitive
 
-    @override
-    def is_satisfied_by(self, obj: Label) -> bool:
-        if obj.group is None:
-            return False
-
-        if self._case_insensitive:
-            return obj.group.lower() == self._group.lower()
-        return obj.group == self._group
-
     def _as_sql_case_sensitive(self) -> ColumnElement[bool]:
         colon_pos = func.instr(Label.name, ':')
         return and_(

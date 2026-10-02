@@ -20,6 +20,13 @@ def ls(
     iname: str | None = Option(
         default=None, help='Filter on a specific name (case insensitive)'
     ),
+    name_contains: list[str] | None = Option(
+        default=None, help='Filter on a text in the name <repeatable>'
+    ),
+    iname_contains: list[str] | None = Option(
+        default=None,
+        help='Filter on a text in the name (case insensitive) <repeatable>',
+    ),
 ) -> None:
     """List the persons in the database."""
     (_, _, db, console) = get_initialized_project(ctx)
@@ -28,6 +35,8 @@ def ls(
         PersonFilter(
             name=name,
             iname=iname,
+            name_contains=name_contains,
+            iname_contains=iname_contains,
         )
     )
 

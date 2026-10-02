@@ -137,3 +137,33 @@ class StrIsSpecification[T](Specification[T]):
         if self._case_insensitive:
             return col(field).ilike(self._expected_value)
         return col(field) == self._expected_value
+
+
+class StrContainsSpecification[T](Specification[T]):
+    """Specification that checks if a specific string is equal."""
+
+    def __init__(
+        self,
+        model: type[T],
+        field_name: str,
+        search_value: str,
+        case_insensitive: bool = True,
+    ) -> None:
+        """Set the default values."""
+        self._model = model
+        self._field_name = field_name
+        self._search_value = search_value
+        self._case_insensitive = case_insensitive
+
+    @override
+    def is_satisfied_by(self, obj: T) -> bool:
+        """Returns True for now since this method is to be deleted."""
+        return True
+
+    @override
+    def as_sql(self) -> ColumnElement[bool]:
+        """Return the query for the specification."""
+        field = getattr(self._model, self._field_name)
+        if self._case_insensitive:
+            return col(field).ilike(f'%{self._search_value}%')
+        return col(field).contains(self._search_value)

@@ -4,10 +4,15 @@ from typing import override
 
 from pydantic import BaseModel
 from sqlalchemy import ColumnElement
-from sqlmodel import and_, col, func
+from sqlmodel import and_, func
 
 from .model import Label
-from .specs import AllSpecification, Specification, StrIsSpecification
+from .specs import (
+    AllSpecification,
+    Specification,
+    StrContainsSpecification,
+    StrIsSpecification,
+)
 
 LabelSpecification = Specification[Label]
 LabelAllSpecification = AllSpecification[Label]
@@ -37,21 +42,18 @@ class NameContainsLabelSpec(LabelSpecification):
 
     def __init__(self, text: str, case_insensitive: bool = True) -> None:
         """Set the given values."""
-        self._text = text
-        self._case_insensitive = case_insensitive
+        self._parent_spec = StrContainsSpecification(
+            Label, 'name', text, case_insensitive
+        )
 
     @override
     def is_satisfied_by(self, obj: Label) -> bool:
-        if self._case_insensitive:
-            return self._text.lower() in obj.name.lower()
-        return self._text in obj.name
+        return self._parent_spec.is_satisfied_by(obj)
 
     @override
     def as_sql(self) -> ColumnElement[bool]:
         """Returns the SQL code for the specification."""
-        if self._case_insensitive:
-            return col(Label.name).ilike(f'%{self._text}%')
-        return col(Label.name).contains(self._text)
+        return self._parent_spec.as_sql()
 
 
 class GroupIsLabelSpec(LabelSpecification):

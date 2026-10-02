@@ -12,3 +12,5 @@ docs/build/
 package.json
 package-lock.json
 node_modules/
+picno.json
+picno.db

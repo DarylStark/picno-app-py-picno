@@ -109,6 +109,26 @@ class AllSpecification[T](Specification[T]):
         return and_(*(spec.as_sql() for spec in self._specs))
 
 
+class ParentSpecification[T](Specification[T]):
+    """Specification with a parent.
+
+    Can be used to simplify specifications.
+    """
+
+    def __init__(self, parent: Specification[T]) -> None:
+        """Set the parent specification."""
+        self._parent_spec = parent
+
+    @override
+    def is_satisfied_by(self, obj: T) -> bool:
+        return self._parent_spec.is_satisfied_by(obj)
+
+    @override
+    def as_sql(self) -> ColumnElement[bool]:
+        """Returns the SQL code for the specification."""
+        return self._parent_spec.as_sql()
+
+
 class StrIsSpecification[T](Specification[T]):
     """Specification that checks if a specific string is equal."""
 

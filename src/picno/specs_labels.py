@@ -9,6 +9,7 @@ from sqlmodel import and_, func
 from .model import Label
 from .specs import (
     AllSpecification,
+    ParentSpecification,
     Specification,
     StrContainsSpecification,
     StrIsSpecification,
@@ -18,42 +19,24 @@ LabelSpecification = Specification[Label]
 LabelAllSpecification = AllSpecification[Label]
 
 
-class NameIsLabelSpec(LabelSpecification):
+class NameIsLabelSpec(ParentSpecification[Label]):
     """Specification for when the name should be the same."""
 
     def __init__(self, name: str, case_insensitive: bool = True) -> None:
         """Set the given values."""
-        self._parent_spec = StrIsSpecification(
-            Label, 'name', name, case_insensitive
+        super().__init__(
+            StrIsSpecification(Label, 'name', name, case_insensitive)
         )
 
-    @override
-    def is_satisfied_by(self, obj: Label) -> bool:
-        return self._parent_spec.is_satisfied_by(obj)
 
-    @override
-    def as_sql(self) -> ColumnElement[bool]:
-        """Returns the SQL code for the specification."""
-        return self._parent_spec.as_sql()
-
-
-class NameContainsLabelSpec(LabelSpecification):
+class NameContainsLabelSpec(ParentSpecification[Label]):
     """Specification for when the name contains text."""
 
     def __init__(self, text: str, case_insensitive: bool = True) -> None:
         """Set the given values."""
-        self._parent_spec = StrContainsSpecification(
-            Label, 'name', text, case_insensitive
+        super().__init__(
+            StrContainsSpecification(Label, 'name', text, case_insensitive)
         )
-
-    @override
-    def is_satisfied_by(self, obj: Label) -> bool:
-        return self._parent_spec.is_satisfied_by(obj)
-
-    @override
-    def as_sql(self) -> ColumnElement[bool]:
-        """Returns the SQL code for the specification."""
-        return self._parent_spec.as_sql()
 
 
 class GroupIsLabelSpec(LabelSpecification):

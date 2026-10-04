@@ -78,7 +78,9 @@ class Database(ABC):
 
     @abstractmethod
     def get_persons(
-        self, specification: PersonSpecification | None = None
+        self,
+        specification: PersonSpecification | None = None,
+        options: Sequence[RetrieveOption] | None = None,
     ) -> list[Person]:
         """Method to retrieve (a subset of) the persons in the database."""
 
@@ -108,3 +110,7 @@ class Database(ABC):
     @abstractmethod
     def add_label_to_person(self, person: str, label: str) -> None:
         """Method to add a label to a person (on names)."""
+
+    @abstractmethod
+    def remove_label_from_person(self, person: str, label: str) -> None:
+        """Remove a label from a person."""

@@ -80,7 +80,7 @@ class DatabaseSql(Database):
                 statement = statement.where(specification.as_sql())
 
                 for option in options or []:
-                    statement.options(option)
+                    statement = statement.options(option)
 
             # TODO: Sorting
             return list(session.exec(statement).all())
@@ -221,10 +221,18 @@ class DatabaseSql(Database):
 
     @override
     def get_persons(
-        self, specification: PersonSpecification | None = None
+        self,
+        specification: PersonSpecification | None = None,
+        options: Sequence[RetrieveOption] | None = None,
     ) -> list[Person]:
         """Method to retrieve (a subset of) the persons in the database."""
-        return self._get_resources(Person, specification)
+        options = options or []
+        retrieve_options: list[ORMOption] = []
+        if RetrieveOption.LOAD_LABELS in options:
+            retrieve_options.append(
+                selectinload(cast(InstrumentedAttribute, Person.labels))
+            )
+        return self._get_resources(Person, specification, retrieve_options)
 
     @override
     def update_person(
@@ -280,7 +288,8 @@ class DatabaseSql(Database):
             ).one_or_none()
 
             if person_obj is None or label_obj is None:
-                return  # TODO: raise an exception
+                # TODO: Exception!
+                return
 
             exists = session.exec(
                 select(PersonLabelLink).where(
@@ -290,9 +299,8 @@ class DatabaseSql(Database):
             ).one_or_none()
 
             if exists is not None:
+                # TODO: Exception!
                 return
-
-            # TODO: check if the label group hasn't been added yet.
 
             session.add(
                 PersonLabelLink(person_id=person_obj.id, label_id=label_obj.id)
@@ -311,6 +319,7 @@ class DatabaseSql(Database):
             ).one_or_none()
 
             if person_obj is None or label_obj is None:
+                # TODO: Exception!
                 return
 
             statement = delete(PersonLabelLink).where(

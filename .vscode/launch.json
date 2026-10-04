@@ -10,8 +10,8 @@
             "request": "launch",
             "module": "picno",
             "args": [
-                "project",
-                "init"
+                "persons",
+                "ls"
             ],
             "python": "${workspaceFolder}/.venv/bin/python",
             "console": "integratedTerminal"

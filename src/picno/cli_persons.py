@@ -3,7 +3,7 @@
 from typer import Argument, Context, Option, Typer
 
 from picno.cli_helpers import date_string_to_date
-from picno.database import CLEARFIELD
+from picno.database import CLEARFIELD, RetrieveOption
 
 from .cli_context import get_initialized_project
 from .cli_format import TableColumn, print_table
@@ -41,7 +41,7 @@ def ls(
     )
 
     # Retrieve the persons
-    persons = db.get_persons(spec)
+    persons = db.get_persons(spec, options=[RetrieveOption.LOAD_LABELS])
     if persons:
         print_table(
             console,
@@ -50,6 +50,12 @@ def ls(
                 TableColumn('ID', lambda person: person.id),
                 TableColumn('Name', lambda person: person.name),
                 TableColumn('Birthdate', lambda person: person.birthdate or ''),
+                TableColumn(
+                    'Labels',
+                    lambda person: (
+                        ', '.join([label.name for label in person.labels]) or ''
+                    ),
+                ),
             ],
         )
     else:
@@ -140,3 +146,31 @@ def rm(
         console.print(f'Deleted person "{name}"')
     else:
         raise PersonDoesNotExistError(f'Person "{name}" does not exist')
+
+
+@persons.command(name='add-label', help='Add a label to a person')
+def add_label(
+    ctx: Context,
+    name: str = Argument(help='The name of the person to add the label too'),
+    label: str = Argument(help='The name of the label to add'),
+) -> None:
+    """Add a label to a person."""
+    (_, _, db, console) = get_initialized_project(ctx)
+
+    db.add_label_to_person(name, label)
+    console.print(f'Added label "{label}" to "{name}"')
+
+
+@persons.command(name='remove-label', help='Remove a label from a person')
+def remove_label(
+    ctx: Context,
+    name: str = Argument(
+        help='The name of the person to remove the label from'
+    ),
+    label: str = Argument(help='The name of the label to remove'),
+) -> None:
+    """Add a label to a person."""
+    (_, _, db, console) = get_initialized_project(ctx)
+
+    db.remove_label_from_person(name, label)
+    console.print(f'Removed label "{label}" from "{name}"')

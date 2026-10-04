@@ -55,4 +55,10 @@ def filled_db(empty_db: DatabaseSql) -> DatabaseSql:
     empty_db.create_person('Example Person 4')
     empty_db.create_person('Example Person 5', birthdate=date(1986, 10, 26))
 
+    # Add labels to persons
+    empty_db.add_label_to_person('Example Person 2', 'test_label_1')
+    empty_db.add_label_to_person('Example Person 2', 'test_label_2')
+    empty_db.add_label_to_person('Example Person 2', 'group1:label2')
+    empty_db.add_label_to_person('Example Person 2', 'group2:label1')
+
     return empty_db

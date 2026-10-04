@@ -501,3 +501,20 @@ def test_database_sql_filled_db_add_multiple_labels_to_person(
     )
     assert person is not None
     assert len(person.labels) == 2
+
+
+def test_database_sql_filled_db_remove_label_from_person(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Test if we cannot remove labels from a person.
+    """
+    filled_db.remove_label_from_person('Example Person 2', 'test_label_1')
+    filled_db.remove_label_from_person('Example Person 2', 'group1:label2')
+    person = filled_db.get_person(
+        2,
+        (RetrieveOption.LOAD_LABELS,),
+    )
+    assert person is not None
+    assert len(person.labels) == 2

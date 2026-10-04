@@ -10,7 +10,7 @@ from sqlalchemy import event
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import InstrumentedAttribute, selectinload
 from sqlalchemy.orm.interfaces import ORMOption
-from sqlmodel import Session, SQLModel, create_engine, delete, select
+from sqlmodel import Session, SQLModel, and_, create_engine, delete, select
 
 from .database import Database, LabelSpecification, RetrieveOption, _ClearField
 from .exceptions import (
@@ -297,4 +297,28 @@ class DatabaseSql(Database):
             session.add(
                 PersonLabelLink(person_id=person_obj.id, label_id=label_obj.id)
             )
+            session.commit()
+
+    def remove_label_from_person(self, person: str, label: str) -> None:
+        """Remove a label from a person."""
+        with Session(self._engine) as session:
+            person_obj = session.exec(
+                select(Person).where(Person.name == person)
+            ).one_or_none()
+
+            label_obj = session.exec(
+                select(Label).where(Label.name == label)
+            ).one_or_none()
+
+            if person_obj is None or label_obj is None:
+                return
+
+            statement = delete(PersonLabelLink).where(
+                and_(
+                    PersonLabelLink.person_id == person_obj.id,
+                    PersonLabelLink.label_id == label_obj.id,
+                )
+            )
+
+            session.exec(statement)
             session.commit()

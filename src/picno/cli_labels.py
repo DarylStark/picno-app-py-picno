@@ -4,10 +4,7 @@ from typer import Argument, Context, Option, Typer
 
 from .cli_context import get_initialized_project
 from .cli_format import TableColumn, print_table
-from .specs_labels import (
-    LabelFilter,
-    build_label_spec,
-)
+from .specs_labels import LabelFilter
 
 labels = Typer(name='labels', help='Label management')
 
@@ -36,19 +33,17 @@ def ls(
     """List the labels in the database."""
     (_, _, db, console) = get_initialized_project(ctx)
 
-    spec = build_label_spec(
-        LabelFilter(
-            name=name,
-            iname=iname,
-            name_contains=name_contains,
-            iname_contains=iname_contains,
-            group_name=group_name,
-            igroup_name=igroup_name,
-        )
+    filter = LabelFilter(
+        name=name,
+        iname=iname,
+        name_contains=name_contains,
+        iname_contains=iname_contains,
+        group_name=group_name,
+        igroup_name=igroup_name,
     )
 
     # Retrieve the labels
-    labels = db.get_labels(spec)
+    labels = db.get_labels(filter.get_specifications())
     if labels:
         print_table(
             console,

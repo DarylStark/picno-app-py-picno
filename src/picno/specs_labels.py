@@ -1,11 +1,12 @@
 """Module with the specifications for labels."""
 
+from dataclasses import dataclass
 from typing import override
 
-from pydantic import BaseModel
 from sqlalchemy import ColumnElement
 from sqlmodel import and_, func
 
+from .filter import Filter
 from .model import Label
 from .specs import (
     AllSpecification,
@@ -70,7 +71,8 @@ class GroupIsLabelSpec(LabelSpecification):
         return self._as_sql_case_sensitive()
 
 
-class LabelFilter(BaseModel):
+@dataclass(frozen=True)
+class LabelFilter(Filter[LabelSpecification]):
     """Class for Label Filter builder."""
 
     name: str | None = None
@@ -80,31 +82,38 @@ class LabelFilter(BaseModel):
     name_contains: list[str] | None = None
     iname_contains: list[str] | None = None
 
+    def get_specifications(self) -> LabelSpecification | None:
+        """Builder for Label Specifications."""
+        specs = LabelAllSpecification()
 
-def build_label_spec(filter: LabelFilter) -> LabelSpecification | None:
-    """Builder for Label Specifications."""
-    specs = LabelAllSpecification()
+        if self.name:
+            specs.append(
+                NameIsLabelSpec(name=self.name, case_insensitive=False)
+            )
 
-    if filter.name:
-        specs.append(NameIsLabelSpec(name=filter.name, case_insensitive=False))
+        if self.iname:
+            specs.append(
+                NameIsLabelSpec(name=self.iname, case_insensitive=True)
+            )
 
-    if filter.iname:
-        specs.append(NameIsLabelSpec(name=filter.iname, case_insensitive=True))
+        if self.group_name:
+            specs.append(
+                GroupIsLabelSpec(group=self.group_name, case_insensitive=False)
+            )
 
-    if filter.group_name:
-        specs.append(
-            GroupIsLabelSpec(group=filter.group_name, case_insensitive=False)
-        )
+        if self.igroup_name:
+            specs.append(
+                GroupIsLabelSpec(group=self.igroup_name, case_insensitive=True)
+            )
 
-    if filter.igroup_name:
-        specs.append(
-            GroupIsLabelSpec(group=filter.igroup_name, case_insensitive=True)
-        )
+        for value in self.name_contains or []:
+            specs.append(
+                NameContainsLabelSpec(text=value, case_insensitive=False)
+            )
 
-    for value in filter.name_contains or []:
-        specs.append(NameContainsLabelSpec(text=value, case_insensitive=False))
+        for value in self.iname_contains or []:
+            specs.append(
+                NameContainsLabelSpec(text=value, case_insensitive=True)
+            )
 
-    for value in filter.iname_contains or []:
-        specs.append(NameContainsLabelSpec(text=value, case_insensitive=True))
-
-    return specs if specs else None
+        return specs if specs else None

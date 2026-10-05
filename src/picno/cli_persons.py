@@ -7,7 +7,7 @@ from picno.database import RetrieveOption
 
 from .cli_context import get_initialized_project
 from .cli_format import TableColumn, print_table
-from .specs_persons import PersonFilter, build_person_spec
+from .specs_persons import PersonFilter
 
 persons = Typer(name='persons', help='Person management')
 
@@ -30,17 +30,17 @@ def ls(
     """List the persons in the database."""
     (_, _, db, console) = get_initialized_project(ctx)
 
-    spec = build_person_spec(
-        PersonFilter(
-            name=name,
-            iname=iname,
-            name_contains=name_contains,
-            iname_contains=iname_contains,
-        )
+    filter = PersonFilter(
+        name=name,
+        iname=iname,
+        name_contains=name_contains,
+        iname_contains=iname_contains,
     )
 
     # Retrieve the persons
-    persons = db.get_persons(spec, options=[RetrieveOption.LOAD_LABELS])
+    persons = db.get_persons(
+        filter.get_specifications(), options=[RetrieveOption.LOAD_LABELS]
+    )
     if persons:
         print_table(
             console,

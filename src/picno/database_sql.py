@@ -391,6 +391,28 @@ class DatabaseSql(Database):
         ).one_or_none()
         return exists is not None
 
+    def _get_person_from_name_with_session(
+        self, session: Session, name: str
+    ) -> Person:
+        """Retrieves a person or throws an error."""
+        person = self._get_resource_from_field_with_session(
+            session, Person, 'name', name
+        )
+        if person is None:
+            raise PersonDoesNotExistError(f'Person "{name}" does not exist')
+        return person
+
+    def _get_label_from_name_with_session(
+        self, session: Session, name: str
+    ) -> Label:
+        """Retrieves a label or throws an error."""
+        label = self._get_resource_from_field_with_session(
+            session, Label, 'name', name
+        )
+        if label is None:
+            raise LabelDoesNotExistError(f'Label "{name}" does not exist')
+        return label
+
     @override
     def close(self) -> None:
         """Close the database."""
@@ -442,17 +464,6 @@ class DatabaseSql(Database):
             raise LabelAlreadyExistsError(
                 f'A label named "{new_name}" already exists.'
             ) from exc
-
-    def _get_label_from_name_with_session(
-        self, session: Session, name: str
-    ) -> Label:
-        """Retrieves a label or throws an error."""
-        label = self._get_resource_from_field_with_session(
-            session, Label, 'name', name
-        )
-        if label is None:
-            raise LabelDoesNotExistError(f'Label "{name}" does not exist')
-        return label
 
     @override
     def rename_label(self, label_name: str, new_name: str) -> Label:
@@ -558,17 +569,6 @@ class DatabaseSql(Database):
             raise PersonAlreadyExistsError(
                 f'A person named "{name}" already exists.'
             ) from exc
-
-    def _get_person_from_name_with_session(
-        self, session: Session, name: str
-    ) -> Person:
-        """Retrieves a person or throws an error."""
-        person = self._get_resource_from_field_with_session(
-            session, Person, 'name', name
-        )
-        if person is None:
-            raise PersonDoesNotExistError(f'Person "{name}" does not exist')
-        return person
 
     @override
     def rename_person(self, person_name: str, new_name: str) -> Person:

@@ -657,6 +657,41 @@ def test_database_sql_filled_db_add_label_to_person(
     assert len(person.labels) == 1
 
 
+def test_database_sql_filled_db_add_label_to_person_group(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Test if we can add label groups to persons.
+    """
+    filled_db.add_label_to_person('Example Person 1', 'group1:label1')
+    person = filled_db.get_person(
+        1,
+        (RetrieveOption.LOAD_LABELS,),
+    )
+    assert person is not None
+    assert len(person.labels) == 1
+    assert person.labels[0].name == 'group1:label1'
+
+
+def test_database_sql_filled_db_add_label_to_person_regroup(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Test if we can change the specific value in a group for a user.
+    """
+    filled_db.add_label_to_person('Example Person 1', 'group1:label1')
+    filled_db.add_label_to_person('Example Person 1', 'group1:label2')
+    person = filled_db.get_person(
+        1,
+        (RetrieveOption.LOAD_LABELS,),
+    )
+    assert person is not None
+    assert len(person.labels) == 1
+    assert person.labels[0].name == 'group1:label2'
+
+
 def test_database_sql_filled_db_add_label_to_person_invalid_person(
     filled_db: DatabaseSql,
 ) -> None:

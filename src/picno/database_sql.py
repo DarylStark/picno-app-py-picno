@@ -634,7 +634,11 @@ class DatabaseSql(Database):
         """Method to add a label to a person (on names)."""
         with Session(self._engine) as session:
             person_obj = self._get_resource_from_field(
-                Person, 'name', person, session=session
+                Person,
+                'name',
+                person,
+                session=session,
+                options=[RetrieveOption.LOAD_LABELS],
             )
             label_obj = self._get_resource_from_field(
                 Label, 'name', label, session=session
@@ -652,6 +656,22 @@ class DatabaseSql(Database):
                 person_obj.id, label_obj.id, session=session
             ):
                 return None
+
+            group_name = label_obj.group
+            if group_name is not None:
+                current_group = [
+                    linked_label
+                    for linked_label in person_obj.labels
+                    if (linked_label.name or '').startswith(group_name)
+                ]
+                if current_group:
+                    statement = delete(PersonLabelLink).where(
+                        and_(
+                            PersonLabelLink.person_id == person_obj.id,
+                            PersonLabelLink.label_id == current_group[0].id,
+                        )
+                    )
+                    session.exec(statement)
 
             self._create_resource(
                 PersonLabelLink(person_id=person_obj.id, label_id=label_obj.id),

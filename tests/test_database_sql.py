@@ -7,7 +7,12 @@ from sqlalchemy.orm.exc import DetachedInstanceError
 
 from picno.database import CLEARFIELD, RetrieveOption
 from picno.database_sql import DatabaseSql
-from picno.exceptions import LabelAlreadyExistsError, PersonAlreadyExistsError
+from picno.exceptions import (
+    LabelAlreadyExistsError,
+    LabelDoesNotExistError,
+    PersonAlreadyExistsError,
+    PersonDoesNotExistError,
+)
 from picno.specs_labels import NameContainsLabelSpec
 from picno.specs_persons import NameContainsPersonSpec
 
@@ -66,6 +71,29 @@ def test_database_sql_filled_db_get_one_label_invalid_id(
     Check if we can retrieve one label on ID.
     """
     label = filled_db.get_label(id=999)
+    assert label is None
+
+
+def test_database_sql_filled_db_get_one_label_by_name_valid_name(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Check if we can retrieve one label on name.
+    """
+    label = filled_db.get_label_by_name('test_label_1')
+    assert label is not None
+    assert label.id == 1
+
+
+def test_database_sql_filled_db_get_one_label_by_name_invalid_name(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Check if we can retrieve one label on name.
+    """
+    label = filled_db.get_label_by_name('not_existing')
     assert label is None
 
 
@@ -298,6 +326,48 @@ def test_database_sql_filled_db_get_one_person_invalid_id(
     assert person is None
 
 
+def test_database_sql_filled_db_get_one_person_by_name_valid_name(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Check if we can retrieve one person on name.
+    """
+    person = filled_db.get_person_by_name(name='Example Person 1')
+    assert person is not None
+    assert person.id == 1
+
+    # Labels are not loaded, so we expect an error on that one.
+    with pytest.raises(DetachedInstanceError):
+        assert person.labels == []
+
+
+def test_database_sql_filled_db_get_one_person_by_name_valid_name_with_labels(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Check if we can retrieve one person on name.
+    """
+    person = filled_db.get_person_by_name(
+        name='Example Person 1', options=(RetrieveOption.LOAD_LABELS,)
+    )
+    assert person is not None
+    assert person.id == 1
+    assert person.labels == []
+
+
+def test_database_sql_filled_db_get_one_person_by_name_invalid_name(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Check if we can retrieve one person on name.
+    """
+    person = filled_db.get_person_by_name(name='non_existing_name')
+    assert person is None
+
+
 def test_database_sql_filled_db_get_all_persons(filled_db: DatabaseSql) -> None:
     """Test with a filled database.
 
@@ -469,6 +539,28 @@ def test_database_sql_filled_db_add_label_to_person(
     assert len(person.labels) == 1
 
 
+def test_database_sql_filled_db_add_label_to_person_invalid_person(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Test if we can add labels to persons.
+    """
+    with pytest.raises(PersonDoesNotExistError):
+        filled_db.add_label_to_person('Example Person 999', 'test_label_1')
+
+
+def test_database_sql_filled_db_add_label_to_person_invalid_label(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Test if we can add labels to persons.
+    """
+    with pytest.raises(LabelDoesNotExistError):
+        filled_db.add_label_to_person('Example Person 1', 'test_label_999')
+
+
 def test_database_sql_filled_db_add_double_label_to_person(
     filled_db: DatabaseSql,
 ) -> None:
@@ -518,3 +610,25 @@ def test_database_sql_filled_db_remove_label_from_person(
     )
     assert person is not None
     assert len(person.labels) == 2
+
+
+def test_database_sql_filled_db_remove_label_from_person_invalid_person(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Test if we can add labels to persons.
+    """
+    with pytest.raises(PersonDoesNotExistError):
+        filled_db.remove_label_from_person('Example Person 999', 'test_label_1')
+
+
+def test_database_sql_filled_db_remove_label_from_person_invalid_label(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Test if we can add labels to persons.
+    """
+    with pytest.raises(LabelDoesNotExistError):
+        filled_db.remove_label_from_person('Example Person 1', 'test_label_999')

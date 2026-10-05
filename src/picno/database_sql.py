@@ -10,12 +10,15 @@ from sqlalchemy import event
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import InstrumentedAttribute, selectinload
 from sqlalchemy.orm.interfaces import ORMOption
-from sqlmodel import Session, SQLModel, and_, create_engine, delete, select
+from sqlmodel import Session, SQLModel, and_, col, create_engine, delete, select
+from sqlmodel.sql.expression import SelectOfScalar
 
 from .database import Database, LabelSpecification, RetrieveOption, _ClearField
 from .exceptions import (
     LabelAlreadyExistsError,
+    LabelDoesNotExistError,
     PersonAlreadyExistsError,
+    PersonDoesNotExistError,
     ResourceAlreadyExistsError,
 )
 from .model import Label, Person, PersonLabelLink
@@ -48,92 +51,308 @@ class DatabaseSql(Database):
         """Method to create the needed tables."""
         SQLModel.metadata.create_all(self._engine)
 
-    def _create_resource(self, obj: T) -> T:
+    def _convert_options_to_sql_options(
+        self, options: Sequence[RetrieveOption] | None = None
+    ) -> list[ORMOption]:
+        """Convert the RetrieveOptions to options SQLModel can understand."""
+        if options is None:
+            return []
+
+        retrieve_options: list[ORMOption] = []
+        if RetrieveOption.LOAD_LABELS in options:
+            retrieve_options.append(
+                selectinload(cast(InstrumentedAttribute, Person.labels))
+            )
+        return retrieve_options
+
+    def _set_options_in_statement(
+        self,
+        statement: SelectOfScalar,
+        *,
+        options: Sequence[RetrieveOption] | None = None,
+    ) -> SelectOfScalar:
+        """Set the options in a statement."""
+        sql_options = self._convert_options_to_sql_options(options=options)
+        for option in sql_options:
+            statement = statement.options(option)
+        return statement
+
+    def _create_resource(self, obj: T, *, session: Session | None = None) -> T:
         """Method to create resources in the database."""
-        with Session(self._engine) as session:
-            session.add(obj)
-            try:
-                session.commit()
-            except IntegrityError as exc:
-                session.rollback()
-                raise ResourceAlreadyExistsError from exc
-            session.refresh(obj)
+        if session is None:
+            with Session(self._engine) as created_session:
+                obj = self._create_resource_with_session(created_session, obj)
+                try:
+                    created_session.commit()
+                except IntegrityError as exc:
+                    created_session.rollback()
+                    raise ResourceAlreadyExistsError from exc
+                created_session.refresh(obj)
+                return obj
+        return self._create_resource_with_session(session, obj)
+
+    def _create_resource_with_session(self, session: Session, obj: T) -> T:
+        """Method to create resources in the database."""
+        session.add(obj)
         return obj
 
     def _get_resource(
-        self, model: type[T], id: int, options: list[ORMOption] | None = None
+        self,
+        model: type[T],
+        id: int,
+        *,
+        options: list[ORMOption] | None = None,
+        session: Session | None = None,
     ) -> T | None:
         """Generic method to retrieve a single item."""
-        with Session(self._engine) as session:
-            return session.get(model, id, options=options)
+        if session is None:
+            with Session(self._engine) as created_session:
+                return self._get_resource_with_session(
+                    created_session, model=model, id=id, options=options
+                )
+        return self._get_resource_with_session(
+            session, model=model, id=id, options=options
+        )
+
+    def _get_resource_with_session(
+        self,
+        session: Session,
+        model: type[T],
+        id: int,
+        *,
+        options: list[ORMOption] | None = None,
+    ) -> T | None:
+        """Generic method to retrieve a single item."""
+        return session.get(model, id, options=options)
+
+    def _get_resource_from_field(
+        self,
+        model: type[T],
+        field_name: str,
+        field_value: str,
+        *,
+        session: Session | None = None,
+        options: Sequence[RetrieveOption] | None = None,
+    ) -> T | None:
+        """Generic method to retrieve a single item on a arbitrary value."""
+        if session is None:
+            with Session(self._engine) as created_session:
+                return self._get_resource_from_field_with_session(
+                    created_session,
+                    model,
+                    field_name,
+                    field_value,
+                    options=options,
+                )
+        return self._get_resource_from_field_with_session(
+            session,
+            model,
+            field_name,
+            field_value,
+            options=options,
+        )
+
+    def _get_resource_from_field_with_session(
+        self,
+        session: Session,
+        model: type[T],
+        field_name: str,
+        field_value: str,
+        *,
+        options: Sequence[RetrieveOption] | None = None,
+    ) -> T | None:
+        """Generic method to retrieve a single item on a arbitrary value."""
+        field_name = getattr(model, field_name)
+        query = col(field_name) == field_value
+        statement = select(model).where(query)
+        statement = self._set_options_in_statement(statement, options=options)
+        return session.exec(statement).one_or_none()
 
     def _get_resources(
         self,
         model: type[T],
+        *,
+        specification: Specification[T] | None = None,
+        options: list[ORMOption] | None = None,
+        session: Session | None = None,
+    ) -> list[T]:
+        """Method to retrieve (a subset of) the resources in the database."""
+        if session is None:
+            with Session(self._engine) as created_session:
+                return self._get_resources_with_session(
+                    created_session,
+                    model,
+                    specification=specification,
+                    options=options,
+                )
+        return self._get_resources_with_session(
+            session,
+            model,
+            specification=specification,
+            options=options,
+        )
+
+    def _get_resources_with_session(
+        self,
+        session: Session,
+        model: type[T],
+        *,
         specification: Specification[T] | None = None,
         options: list[ORMOption] | None = None,
     ) -> list[T]:
         """Method to retrieve (a subset of) the resources in the database."""
-        with Session(self._engine) as session:
-            statement = select(model)
-            if specification:
-                statement = statement.where(specification.as_sql())
+        statement = select(model)
+        if specification:
+            statement = statement.where(specification.as_sql())
 
-                for option in options or []:
-                    statement = statement.options(option)
+        for option in options or []:
+            statement = statement.options(option)
 
-            # TODO: Sorting
-            return list(session.exec(statement).all())
+        # TODO: Sorting
+        return list(session.exec(statement).all())
 
     def _update_resource(
-        self, model: type[T], id: int, updater: Callable[[T], T]
+        self,
+        model: type[T],
+        id: int,
+        obj_updater: Callable[[T], T],
+        *,
+        session: Session | None = None,
     ) -> T | None:
         """Method to update one resource."""
-        with Session(self._engine) as session:
-            resource = session.get(model, id)
+        if session is None:
+            with Session(self._engine) as created_session:
+                resource = self._update_resource_with_session(
+                    created_session, model, id, obj_updater
+                )
+                if resource is None:
+                    return None
+                try:
+                    created_session.commit()
+                    created_session.refresh(resource)
+                except IntegrityError as exc:
+                    created_session.rollback()
+                    raise ResourceAlreadyExistsError from exc
+                return resource
+        return self._update_resource_with_session(
+            session, model, id, obj_updater
+        )
 
-            if resource is None:
-                return None
+    def _update_resource_with_session(
+        self,
+        session: Session,
+        model: type[T],
+        id: int,
+        obj_updater: Callable[[T], T],
+    ) -> T | None:
+        """Method to update one resource."""
+        resource = session.get(model, id)
 
-            resource = updater(resource)
+        if resource is None:
+            return None
 
-            try:
-                session.commit()
-            except IntegrityError as exc:
-                session.rollback()
-                raise ResourceAlreadyExistsError from exc
+        resource = obj_updater(resource)
+        return resource
 
-            session.refresh(resource)
-            return resource
-
-    def _delete_resource(self, model: type[T], id: int) -> bool:
+    def _delete_resource(
+        self, model: type[T], id: int, *, session: Session | None = None
+    ) -> bool:
         """Method to delete one resource."""
-        with Session(self._engine) as session:
-            resource = session.get(model, id)
-
-            if resource is None:
+        if session is None:
+            with Session(self._engine) as created_session:
+                if self._delete_resource_with_session(
+                    created_session, model, id
+                ):
+                    created_session.commit()
+                    return True
                 return False
+        return self._delete_resource_with_session(session, model, id)
 
-            session.delete(resource)
-            session.commit()
+    def _delete_resource_with_session(
+        self, session: Session, model: type[T], id: int
+    ) -> bool:
+        """Method to delete one resource."""
+        resource = session.get(model, id)
+
+        if resource is None:
+            return False
+
+        session.delete(resource)
         return True
 
     def _delete_resources(
-        self, model: type[T], specification: Specification[T] | None = None
+        self,
+        model: type[T],
+        *,
+        specification: Specification[T] | None = None,
+        session: Session | None = None,
     ) -> int:
         """Delete resources matching a specification.
 
         Returns:
             The number of resources deleted.
         """
-        with Session(self._engine) as session:
-            statement = delete(model)
-            if specification:
-                statement = statement.where(specification.as_sql())
+        if session is None:
+            with Session(self._engine) as created_session:
+                count = self._delete_resources_with_session(
+                    created_session, model, specification=specification
+                )
+                if count:
+                    created_session.commit()
+                return count
+        return self._delete_resources_with_session(
+            session, model, specification=specification
+        )
 
-            result = session.exec(statement)
-            session.commit()
-            return result.rowcount
+    def _delete_resources_with_session(
+        self,
+        session: Session,
+        model: type[T],
+        *,
+        specification: Specification[T] | None = None,
+    ) -> int:
+        """Delete resources matching a specification.
+
+        Returns:
+            The number of resources deleted.
+        """
+        statement = delete(model)
+        if specification:
+            statement = statement.where(specification.as_sql())
+
+        result = session.exec(statement)
+        return result.rowcount
+
+    def _person_is_labelled(
+        self,
+        person_id: int | None,
+        label_id: int | None,
+        *,
+        session: Session | None = None,
+    ) -> bool:
+        """Check if a person is already labelled with a specific label."""
+        if person_id is None or label_id is None:
+            return False
+        if session is None:
+            with Session(self._engine) as created_session:
+                return self._person_is_labelled_with_session(
+                    created_session, person_id, label_id
+                )
+        return self._person_is_labelled_with_session(
+            session, person_id, label_id
+        )
+
+    def _person_is_labelled_with_session(
+        self, session: Session, person_id: int, label_id: int
+    ) -> bool:
+        """Check if a person is already labelled with a specific label."""
+        exists = session.exec(
+            select(PersonLabelLink).where(
+                PersonLabelLink.person_id == person_id,
+                PersonLabelLink.label_id == label_id,
+            )
+        ).one_or_none()
+        return exists is not None
 
     @override
     def close(self) -> None:
@@ -157,11 +376,20 @@ class DatabaseSql(Database):
         return self._get_resource(Label, id)
 
     @override
+    def get_label_by_name(
+        self, name: str, options: Sequence[RetrieveOption] | None = None
+    ) -> Label | None:
+        """Method to retrieve one label by name."""
+        return self._get_resource_from_field(
+            Label, 'name', name, options=options
+        )
+
+    @override
     def get_labels(
         self, specification: LabelSpecification | None = None
     ) -> list[Label]:
         """Method to retrieve (a subset of) the labels in the database."""
-        return self._get_resources(Label, specification)
+        return self._get_resources(Label, specification=specification)
 
     @override
     def update_label(self, id: int, new_name: str) -> Label | None:
@@ -192,7 +420,7 @@ class DatabaseSql(Database):
         Returns:
             The number of labels deleted.
         """
-        return self._delete_resources(Label, specification)
+        return self._delete_resources(Label, specification=specification)
 
     @override
     def create_person(self, name: str, birthdate: date | None = None) -> Person:
@@ -210,14 +438,17 @@ class DatabaseSql(Database):
         self, id: int, options: Sequence[RetrieveOption] | None = None
     ) -> Person | None:
         """Method to retrieve one Person."""
-        options = options or []
-        retrieve_options: list[ORMOption] = []
-        if RetrieveOption.LOAD_LABELS in options:
-            retrieve_options.append(
-                selectinload(cast(InstrumentedAttribute, Person.labels))
-            )
+        retrieve_options = self._convert_options_to_sql_options(options)
+        return self._get_resource(Person, id, options=retrieve_options)
 
-        return self._get_resource(Person, id, retrieve_options)
+    @override
+    def get_person_by_name(
+        self, name: str, options: Sequence[RetrieveOption] | None = None
+    ) -> Person | None:
+        """Method to retrieve one person by name."""
+        return self._get_resource_from_field(
+            Person, 'name', name, options=options
+        )
 
     @override
     def get_persons(
@@ -226,13 +457,10 @@ class DatabaseSql(Database):
         options: Sequence[RetrieveOption] | None = None,
     ) -> list[Person]:
         """Method to retrieve (a subset of) the persons in the database."""
-        options = options or []
-        retrieve_options: list[ORMOption] = []
-        if RetrieveOption.LOAD_LABELS in options:
-            retrieve_options.append(
-                selectinload(cast(InstrumentedAttribute, Person.labels))
-            )
-        return self._get_resources(Person, specification, retrieve_options)
+        retrieve_options = self._convert_options_to_sql_options(options)
+        return self._get_resources(
+            Person, specification=specification, options=retrieve_options
+        )
 
     @override
     def update_person(
@@ -273,54 +501,55 @@ class DatabaseSql(Database):
         Returns:
             The number of persons deleted.
         """
-        return self._delete_resources(Person, specification)
+        return self._delete_resources(Person, specification=specification)
 
     @override
     def add_label_to_person(self, person: str, label: str) -> None:
         """Method to add a label to a person (on names)."""
         with Session(self._engine) as session:
-            person_obj = session.exec(
-                select(Person).where(Person.name == person)
-            ).one_or_none()
+            person_obj = self._get_resource_from_field(
+                Person, 'name', person, session=session
+            )
+            label_obj = self._get_resource_from_field(
+                Label, 'name', label, session=session
+            )
 
-            label_obj = session.exec(
-                select(Label).where(Label.name == label)
-            ).one_or_none()
-
-            if person_obj is None or label_obj is None:
-                # TODO: Exception!
-                return
-
-            exists = session.exec(
-                select(PersonLabelLink).where(
-                    PersonLabelLink.person_id == person_obj.id,
-                    PersonLabelLink.label_id == label_obj.id,
+            if person_obj is None:
+                raise PersonDoesNotExistError(
+                    f'Person "{person}" does not exist'
                 )
-            ).one_or_none()
 
-            if exists is not None:
-                # TODO: Exception!
-                return
+            if label_obj is None:
+                raise LabelDoesNotExistError(f'Label "{label}" does not exist')
 
-            session.add(
-                PersonLabelLink(person_id=person_obj.id, label_id=label_obj.id)
+            if self._person_is_labelled(
+                person_obj.id, label_obj.id, session=session
+            ):
+                return None
+
+            self._create_resource(
+                PersonLabelLink(person_id=person_obj.id, label_id=label_obj.id),
+                session=session,
             )
             session.commit()
 
     def remove_label_from_person(self, person: str, label: str) -> None:
         """Remove a label from a person."""
         with Session(self._engine) as session:
-            person_obj = session.exec(
-                select(Person).where(Person.name == person)
-            ).one_or_none()
+            person_obj = self._get_resource_from_field(
+                Person, 'name', person, session=session
+            )
+            label_obj = self._get_resource_from_field(
+                Label, 'name', label, session=session
+            )
 
-            label_obj = session.exec(
-                select(Label).where(Label.name == label)
-            ).one_or_none()
+            if person_obj is None:
+                raise PersonDoesNotExistError(
+                    f'Person "{person}" does not exist'
+                )
 
-            if person_obj is None or label_obj is None:
-                # TODO: Exception!
-                return
+            if label_obj is None:
+                raise LabelDoesNotExistError(f'Label "{label}" does not exist')
 
             statement = delete(PersonLabelLink).where(
                 and_(

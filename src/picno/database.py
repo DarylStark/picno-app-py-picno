@@ -43,6 +43,12 @@ class Database(ABC):
         """Method to retrieve one label."""
 
     @abstractmethod
+    def get_label_by_name(
+        self, name: str, options: Sequence[RetrieveOption] | None = None
+    ) -> Label | None:
+        """Method to retrieve one label by name."""
+
+    @abstractmethod
     def get_labels(
         self, specification: LabelSpecification | None = None
     ) -> list[Label]:
@@ -75,6 +81,12 @@ class Database(ABC):
         self, id: int, options: Sequence[RetrieveOption] | None = None
     ) -> Person | None:
         """Method to retrieve one person."""
+
+    @abstractmethod
+    def get_person_by_name(
+        self, name: str, options: Sequence[RetrieveOption] | None = None
+    ) -> Person | None:
+        """Method to retrieve one person by name."""
 
     @abstractmethod
     def get_persons(

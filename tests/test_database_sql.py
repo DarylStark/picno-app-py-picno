@@ -279,6 +279,29 @@ def test_database_sql_filled_db_delete_many_labels_invalid_spec(
     assert len(labels) == 20
 
 
+def test_database_sql_filled_db_delete_label_by_name(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Test if we can remove labels by name.
+    """
+    filled_db.delete_label_by_name('test_label_1')
+    labels = filled_db.get_labels()
+    assert len(labels) == 19
+
+
+def test_database_sql_filled_db_delete_label_by_name_invalid_ame(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Test if we can get an error when removing a label that doesn't exist.
+    """
+    with pytest.raises(LabelDoesNotExistError):
+        filled_db.delete_label_by_name('test_label_999')
+
+
 def test_database_sql_empty_db_empty_person_list(empty_db: DatabaseSql) -> None:
     """Test with a empty database.
 

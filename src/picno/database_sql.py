@@ -487,6 +487,16 @@ class DatabaseSql(Database):
         return self._delete_resources(Label, specification=specification)
 
     @override
+    def delete_label_by_name(self, name: str) -> None:
+        """Method to delete a label by name."""
+        try:
+            self._delete_resource_from_field(Label, 'name', name)
+        except ResourceNotFoundError as exc:
+            raise LabelDoesNotExistError(
+                f'Label "{name}" does not exist'
+            ) from exc
+
+    @override
     def create_person(self, name: str, birthdate: date | None = None) -> Person:
         """Create a new person."""
         new_resource = Person(name=name, birthdate=birthdate)

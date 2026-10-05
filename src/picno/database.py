@@ -66,6 +66,10 @@ class Database(ABC):
         """
 
     @abstractmethod
+    def delete_label_by_name(self, name: str) -> None:
+        """Method to delete a label by name."""
+
+    @abstractmethod
     def create_person(self, name: str, birthdate: date | None = None) -> Person:
         """Method to add a person to the database."""
 

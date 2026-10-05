@@ -4,10 +4,8 @@ from typer import Argument, Context, Option, Typer
 
 from .cli_context import get_initialized_project
 from .cli_format import TableColumn, print_table
-from .exceptions import LabelDoesNotExistError
 from .specs_labels import (
     LabelFilter,
-    NameIsLabelSpec,
     build_label_spec,
 )
 
@@ -97,10 +95,5 @@ def rm(
 ) -> None:
     """Delete a label."""
     (_, _, db, console) = get_initialized_project(ctx)
-
-    label = db.get_labels(NameIsLabelSpec(name=name, case_insensitive=False))
-    if len(label) == 1:
-        db.delete_label(label[0].id or 0)
-        console.print(f'Deleted label "{name}"')
-    else:
-        raise LabelDoesNotExistError(f'Label "{name}" does not exist')
+    db.delete_label_by_name(name)
+    console.print(f'Deleted label "{name}"')

@@ -5,7 +5,7 @@ from datetime import date
 import pytest
 from sqlalchemy.orm.exc import DetachedInstanceError
 
-from picno.database import CLEARFIELD, RetrieveOption
+from picno.database import RetrieveOption
 from picno.database_sql import DatabaseSql
 from picno.exceptions import (
     LabelAlreadyExistsError,
@@ -169,6 +169,47 @@ def test_database_sql_filled_db_update_one_label_invalid_id(
     """
     label = filled_db.update_label(999, 'updated_label')
     assert label is None
+
+
+def test_database_sql_filled_db_rename_label(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Check if we can rename a label.
+    """
+    label = filled_db.rename_label('test_label_1', 'test_label_999')
+    assert label is not None
+    assert label.id == 1
+    assert label.name == 'test_label_999'
+
+    updated_person = filled_db.get_label(id=1)
+    assert updated_person is not None
+    assert updated_person.id == 1
+    assert updated_person.name == 'test_label_999'
+
+
+def test_database_sql_filled_db_rename_label_unknown_name(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Check if we get an error when giving a unknown name.
+    """
+    with pytest.raises(LabelDoesNotExistError):
+        _ = filled_db.rename_label('test_label_999', 'test')
+
+
+def test_database_sql_filled_db_rename_label_already_existing(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Check if we get an error when giving a new name that is already present in
+    the database.
+    """
+    with pytest.raises(LabelAlreadyExistsError):
+        _ = filled_db.rename_label('test_label_1', 'test_label_2')
 
 
 def test_database_sql_filled_db_delete_one_label_valid_id(
@@ -427,14 +468,45 @@ def test_database_sql_filled_db_update_one_person_valid_id(
     assert updated_person.name == 'Updated Name'
 
 
-def test_database_sql_filled_db_update_one_person_clear_date(
+def test_database_sql_filled_db_update_one_person_invalid_id(
     filled_db: DatabaseSql,
 ) -> None:
     """Test with a filled database.
 
-    Check if we can update a person based on id.
+    Check if we get a None value when upating a Person that doesn't exist.
     """
-    person = filled_db.update_person(5, birthdate=CLEARFIELD)
+    person = filled_db.update_person(999, name='updated_label')
+    assert person is None
+
+
+def test_database_sql_filled_db_set_birthday_for_person(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Check if we can set the birthday for a person.
+    """
+    person = filled_db.set_birthdate_for_person(
+        'Example Person 1', date(year=1986, month=10, day=26)
+    )
+    assert person is not None
+    assert person.id == 1
+    assert person.birthdate == date(year=1986, month=10, day=26)
+
+    updated_person = filled_db.get_person(id=1)
+    assert updated_person is not None
+    assert updated_person.id == 1
+    assert updated_person.birthdate == date(year=1986, month=10, day=26)
+
+
+def test_database_sql_filled_db_set_birthday_for_person_clear(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Check if we can clear the birthday for a person.
+    """
+    person = filled_db.set_birthdate_for_person('Example Person 5', None)
     assert person is not None
     assert person.id == 5
     assert person.birthdate is None
@@ -445,15 +517,15 @@ def test_database_sql_filled_db_update_one_person_clear_date(
     assert updated_person.birthdate is None
 
 
-def test_database_sql_filled_db_update_one_person_invalid_id(
+def test_database_sql_filled_db_set_birthday_for_person_unknown_user(
     filled_db: DatabaseSql,
 ) -> None:
     """Test with a filled database.
 
-    Check if we get a None value when upating a Person that doesn't exist.
+    Check if we get an error when giving a unknown user.
     """
-    person = filled_db.update_person(999, name='updated_label')
-    assert person is None
+    with pytest.raises(PersonDoesNotExistError):
+        _ = filled_db.set_birthdate_for_person('Example Person 999', None)
 
 
 def test_database_sql_filled_db_delete_one_person_valid_id(
@@ -521,6 +593,29 @@ def test_database_sql_filled_db_delete_many_persons_invalid_spec(
 
     persons = filled_db.get_persons()
     assert len(persons) == 5
+
+
+def test_database_sql_filled_db_delete_person_by_name(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Test if we can remove persons by name.
+    """
+    filled_db.delete_person_by_name('Example Person 1')
+    persons = filled_db.get_persons()
+    assert len(persons) == 4
+
+
+def test_database_sql_filled_db_delete_person_by_name_invalid_ame(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Test if we can get an error when removing a person that doesn't exist.
+    """
+    with pytest.raises(PersonDoesNotExistError):
+        filled_db.delete_person_by_name('Example Person 999')
 
 
 def test_database_sql_filled_db_add_label_to_person(
@@ -632,3 +727,44 @@ def test_database_sql_filled_db_remove_label_from_person_invalid_label(
     """
     with pytest.raises(LabelDoesNotExistError):
         filled_db.remove_label_from_person('Example Person 1', 'test_label_999')
+
+
+def test_database_sql_filled_db_rename_person(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Check if we can set the birthday for a person.
+    """
+    person = filled_db.rename_person('Example Person 1', 'Example Person 123')
+    assert person is not None
+    assert person.id == 1
+    assert person.name == 'Example Person 123'
+
+    updated_person = filled_db.get_person(id=1)
+    assert updated_person is not None
+    assert updated_person.id == 1
+    assert updated_person.name == 'Example Person 123'
+
+
+def test_database_sql_filled_db_rename_person_unknown_user(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Check if we get an error when giving a unknown user.
+    """
+    with pytest.raises(PersonDoesNotExistError):
+        _ = filled_db.rename_person('Example Person 999', 'test')
+
+
+def test_database_sql_filled_db_rename_person_already_existing(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Check if we get an error when giving a new name that is already present in
+    the database.
+    """
+    with pytest.raises(PersonAlreadyExistsError):
+        _ = filled_db.rename_person('Example Person 1', 'Example Person 2')

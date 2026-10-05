@@ -13,13 +13,14 @@ from sqlalchemy.orm.interfaces import ORMOption
 from sqlmodel import Session, SQLModel, and_, col, create_engine, delete, select
 from sqlmodel.sql.expression import SelectOfScalar
 
-from .database import Database, LabelSpecification, RetrieveOption, _ClearField
+from .database import Database, LabelSpecification, RetrieveOption
 from .exceptions import (
     LabelAlreadyExistsError,
     LabelDoesNotExistError,
     PersonAlreadyExistsError,
     PersonDoesNotExistError,
     ResourceAlreadyExistsError,
+    ResourceNotFoundError,
 )
 from .model import Label, Person, PersonLabelLink
 from .specs import Specification
@@ -280,6 +281,42 @@ class DatabaseSql(Database):
         session.delete(resource)
         return True
 
+    def _delete_resource_from_field(
+        self,
+        model: type[T],
+        field_name: str,
+        field_value: str,
+        *,
+        session: Session | None = None,
+    ) -> None:
+        """Generic method to delete a single item on a arbitrary value."""
+        if session is None:
+            with Session(self._engine) as created_session:
+                self._delete_resource_from_field_with_session(
+                    created_session, model, field_name, field_value
+                )
+                created_session.commit()
+                return
+        self._get_resource_from_field_with_session(
+            session, model, field_name, field_value
+        )
+
+    def _delete_resource_from_field_with_session(
+        self,
+        session: Session,
+        model: type[T],
+        field_name: str,
+        field_value: str,
+    ) -> None:
+        """Generic method to delete a single item on a arbitrary value."""
+        obj = self._get_resource_from_field_with_session(
+            session, model, field_name, field_value
+        )
+        if obj is not None:
+            session.delete(obj)
+            return
+        raise ResourceNotFoundError('Resource is not found')
+
     def _delete_resources(
         self,
         model: type[T],
@@ -406,6 +443,33 @@ class DatabaseSql(Database):
                 f'A label named "{new_name}" already exists.'
             ) from exc
 
+    def _get_label_from_name_with_session(
+        self, session: Session, name: str
+    ) -> Label:
+        """Retrieves a label or throws an error."""
+        label = self._get_resource_from_field_with_session(
+            session, Label, 'name', name
+        )
+        if label is None:
+            raise LabelDoesNotExistError(f'Label "{name}" does not exist')
+        return label
+
+    @override
+    def rename_label(self, label_name: str, new_name: str) -> Label:
+        """Rename a label."""
+        with Session(self._engine) as session:
+            label = self._get_label_from_name_with_session(session, label_name)
+            label.name = new_name
+            session.add(label)
+            try:
+                session.commit()
+                session.refresh(label)
+            except IntegrityError as exc:
+                raise LabelAlreadyExistsError(
+                    f'A label named "{new_name}" already exists.'
+                ) from exc
+            return label
+
     @override
     def delete_label(self, id: int) -> bool:
         """Method to delete one label."""
@@ -467,16 +531,14 @@ class DatabaseSql(Database):
         self,
         id: int,
         name: str | None = None,
-        birthdate: date | None | _ClearField = None,
+        birthdate: date | None = None,
     ) -> Person | None:
         """Method to update one label."""
 
         def update_resource(res: Person) -> Person:
             if name is not None:
                 res.name = name
-            if isinstance(birthdate, _ClearField):
-                res.birthdate = None
-            elif birthdate is not None:
+            if birthdate is not None:
                 res.birthdate = birthdate
             return res
 
@@ -486,6 +548,50 @@ class DatabaseSql(Database):
             raise PersonAlreadyExistsError(
                 f'A person named "{name}" already exists.'
             ) from exc
+
+    def _get_person_from_name_with_session(
+        self, session: Session, name: str
+    ) -> Person:
+        """Retrieves a person or throws an error."""
+        person = self._get_resource_from_field_with_session(
+            session, Person, 'name', name
+        )
+        if person is None:
+            raise PersonDoesNotExistError(f'Person "{name}" does not exist')
+        return person
+
+    @override
+    def rename_person(self, person_name: str, new_name: str) -> Person:
+        """Rename a person."""
+        with Session(self._engine) as session:
+            person = self._get_person_from_name_with_session(
+                session, person_name
+            )
+            person.name = new_name
+            session.add(person)
+            try:
+                session.commit()
+                session.refresh(person)
+            except IntegrityError as exc:
+                raise PersonAlreadyExistsError(
+                    f'A person named "{new_name}" already exists.'
+                ) from exc
+            return person
+
+    @override
+    def set_birthdate_for_person(
+        self, person_name: str, new_birthdate: date | None = None
+    ) -> Person:
+        """Set the birthday for a person."""
+        with Session(self._engine) as session:
+            person = self._get_person_from_name_with_session(
+                session, person_name
+            )
+            person.birthdate = new_birthdate
+            session.add(person)
+            session.commit()
+            session.refresh(person)
+            return person
 
     @override
     def delete_person(self, id: int) -> bool:
@@ -502,6 +608,16 @@ class DatabaseSql(Database):
             The number of persons deleted.
         """
         return self._delete_resources(Person, specification=specification)
+
+    @override
+    def delete_person_by_name(self, name: str) -> None:
+        """Method to delete a person by name."""
+        try:
+            self._delete_resource_from_field(Person, 'name', name)
+        except ResourceNotFoundError as exc:
+            raise PersonDoesNotExistError(
+                f'Person "{name}" does not exist'
+            ) from exc
 
     @override
     def add_label_to_person(self, person: str, label: str) -> None:

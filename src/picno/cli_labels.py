@@ -86,15 +86,8 @@ def mv(
 ) -> None:
     """Rename a label."""
     (_, _, db, console) = get_initialized_project(ctx)
-
-    label = db.get_labels(
-        NameIsLabelSpec(name=old_name, case_insensitive=False)
-    )
-    if len(label) == 1:
-        db.update_label(label[0].id or 0, new_name)
-        console.print(f'Renamed label "{old_name}" to "{new_name}"')
-    else:
-        raise LabelDoesNotExistError(f'Label "{old_name}" does not exist')
+    db.rename_label(old_name, new_name)
+    console.print(f'Renamed label "{old_name}" to "{new_name}"')
 
 
 @labels.command(name='rm', help='Delete a label')

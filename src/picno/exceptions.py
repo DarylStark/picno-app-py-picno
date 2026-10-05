@@ -25,14 +25,6 @@ class ProjectNotInitializedError(CliError):
     """Exception when the project is not yet initialized."""
 
 
-class LabelDoesNotExistError(CliError):
-    """Exception when a label doesn't exists that is searched for."""
-
-
-class PersonDoesNotExistError(CliError):
-    """Exception when a person doesn't exists that is searched for."""
-
-
 class DatabaseError(PicnoError):
     """Base class for database errors."""
 
@@ -41,9 +33,21 @@ class ResourceAlreadyExistsError(DatabaseError):
     """Exception when a generic resource is created that already exists."""
 
 
-class LabelAlreadyExistsError(DatabaseError):
-    """Exception when a Label is created that already exists."""
+class ResourceNotFoundError(DatabaseError):
+    """Exception when a generic resource is not found."""
 
 
 class PersonAlreadyExistsError(DatabaseError):
     """Exception when a Person is created that already exists."""
+
+
+class PersonDoesNotExistError(DatabaseError):
+    """Exception when a person doesn't exists that is searched for."""
+
+
+class LabelAlreadyExistsError(DatabaseError):
+    """Exception when a Label is created that already exists."""
+
+
+class LabelDoesNotExistError(DatabaseError):
+    """Exception when a label doesn't exists that is searched for."""

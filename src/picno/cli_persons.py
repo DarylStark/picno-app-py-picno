@@ -3,12 +3,11 @@
 from typer import Argument, Context, Option, Typer
 
 from picno.cli_helpers import date_string_to_date
-from picno.database import CLEARFIELD, RetrieveOption
+from picno.database import RetrieveOption
 
 from .cli_context import get_initialized_project
 from .cli_format import TableColumn, print_table
-from .exceptions import PersonDoesNotExistError
-from .specs_persons import NameIsPersonSpec, PersonFilter, build_person_spec
+from .specs_persons import PersonFilter, build_person_spec
 
 persons = Typer(name='persons', help='Person management')
 
@@ -84,15 +83,8 @@ def mv(
 ) -> None:
     """Rename a person."""
     (_, _, db, console) = get_initialized_project(ctx)
-
-    person = db.get_persons(
-        NameIsPersonSpec(name=old_name, case_insensitive=False)
-    )
-    if len(person) == 1:
-        db.update_person(person[0].id or 0, new_name)
-        console.print(f'Renamed person "{old_name}" to "{new_name}"')
-    else:
-        raise PersonDoesNotExistError(f'Person "{old_name}" does not exist')
+    db.rename_person(old_name, new_name)
+    console.print(f'Renamed person "{old_name}" to "{new_name}"')
 
 
 @persons.command(name='set-birthdate', help='Set the birthdate for a person')
@@ -103,15 +95,8 @@ def set_birthdate(
 ) -> None:
     """Set the birthdate for a person."""
     (_, _, db, console) = get_initialized_project(ctx)
-
-    person = db.get_persons(NameIsPersonSpec(name=name, case_insensitive=False))
-    if len(person) == 1:
-        db.update_person(
-            person[0].id or 0, birthdate=date_string_to_date(birthdate)
-        )
-        console.print(f'Set birthdate for "{name}" to "{birthdate}"')
-    else:
-        raise PersonDoesNotExistError(f'Person "{name}" does not exist')
+    db.set_birthdate_for_person(name, date_string_to_date(birthdate))
+    console.print(f'Set birthdate for "{name}" to "{birthdate}"')
 
 
 @persons.command(
@@ -123,13 +108,8 @@ def delete_birthdate(
 ) -> None:
     """Delete the birthdate for a person."""
     (_, _, db, console) = get_initialized_project(ctx)
-
-    person = db.get_persons(NameIsPersonSpec(name=name, case_insensitive=False))
-    if len(person) == 1:
-        db.update_person(person[0].id or 0, birthdate=CLEARFIELD)
-        console.print(f'Deleted birthdate for "{name}"')
-    else:
-        raise PersonDoesNotExistError(f'Person "{name}" does not exist')
+    db.set_birthdate_for_person(name, None)
+    console.print(f'Deleted birthdate for "{name}"')
 
 
 @persons.command(name='rm', help='Delete a person')
@@ -139,13 +119,8 @@ def rm(
 ) -> None:
     """Delete a person."""
     (_, _, db, console) = get_initialized_project(ctx)
-
-    person = db.get_persons(NameIsPersonSpec(name=name, case_insensitive=False))
-    if len(person) == 1:
-        db.delete_person(person[0].id or 0)
-        console.print(f'Deleted person "{name}"')
-    else:
-        raise PersonDoesNotExistError(f'Person "{name}" does not exist')
+    db.delete_person_by_name(name)
+    console.print(f'Deleted person "{name}"')
 
 
 @persons.command(name='add-label', help='Add a label to a person')
@@ -156,7 +131,6 @@ def add_label(
 ) -> None:
     """Add a label to a person."""
     (_, _, db, console) = get_initialized_project(ctx)
-
     db.add_label_to_person(name, label)
     console.print(f'Added label "{label}" to "{name}"')
 
@@ -171,6 +145,5 @@ def remove_label(
 ) -> None:
     """Add a label to a person."""
     (_, _, db, console) = get_initialized_project(ctx)
-
     db.remove_label_from_person(name, label)
     console.print(f'Removed label "{label}" from "{name}"')

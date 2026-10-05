@@ -10,17 +10,6 @@ from .specs_labels import LabelSpecification
 from .specs_persons import PersonSpecification
 
 
-class _ClearField:
-    """Empty class that indicates that a field should be cleared.
-
-    Useful for fields that are Null-able. By using this, we can give a update
-    method to command to clear a field, without providing it None.
-    """
-
-
-CLEARFIELD = _ClearField()
-
-
 class RetrieveOption(Enum):
     """Options for retrieving resources."""
 
@@ -57,6 +46,10 @@ class Database(ABC):
     @abstractmethod
     def update_label(self, id: int, new_name: str) -> Label | None:
         """Method to update one label."""
+
+    @abstractmethod
+    def rename_label(self, label_name: str, new_name: str) -> Label:
+        """Rename a label."""
 
     @abstractmethod
     def delete_label(self, id: int) -> bool:
@@ -101,13 +94,27 @@ class Database(ABC):
         self,
         id: int,
         name: str | None = None,
-        birthdate: date | None | _ClearField = None,
+        birthdate: date | None = None,
     ) -> Person | None:
         """Method to update one person."""
 
     @abstractmethod
+    def rename_person(self, person_name: str, new_name: str) -> Person:
+        """Rename a person."""
+
+    @abstractmethod
+    def set_birthdate_for_person(
+        self, person_name: str, new_birthdate: date | None = None
+    ) -> Person:
+        """Set the birthday for a person."""
+
+    @abstractmethod
     def delete_person(self, id: int) -> bool:
         """Method to delete one person."""
+
+    @abstractmethod
+    def delete_person_by_name(self, name: str) -> None:
+        """Method to delete a person by name."""
 
     @abstractmethod
     def delete_persons(

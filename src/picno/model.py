@@ -1,20 +1,51 @@
 """The database model."""
 
-from datetime import datetime
+from datetime import date, datetime
 from enum import Enum
 from pathlib import Path
 
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, computed_field
+from sqlmodel import Field, Relationship, SQLModel
 
 
-class Label(BaseModel):
+class TableResource(SQLModel):
+    """Base class for resources that get a SQL table."""
+
+    id: int | None = Field(default=None, primary_key=True)
+
+
+class PersonLabelLink(SQLModel, table=True):
+    """Link model for Persons and Labels."""
+
+    __tablename__ = 'person_label_link'
+
+    person_id: int | None = Field(
+        default=None,
+        foreign_key='person.id',
+        primary_key=True,
+        ondelete='CASCADE',
+    )
+    label_id: int | None = Field(
+        default=None,
+        foreign_key='label.id',
+        primary_key=True,
+        ondelete='CASCADE',
+    )
+
+
+class Label(TableResource, table=True):
     """Model for a label.
 
     A label can contain a group and a name. This should be seperated with a
     colon. If there is no colon, only a name is given.
     """
 
-    name: str
+    name: str = Field(unique=True)
+
+    people: list[Person] = Relationship(
+        back_populates='labels',
+        link_model=PersonLabelLink,
+    )
 
     @computed_field
     @property
@@ -34,23 +65,30 @@ class Label(BaseModel):
         """
         if ':' in self.name:
             return ':'.join(self.name.split(':')[1:])
-        return self.name
+        return None
 
 
-class Resource(BaseModel):
-    """Base class for resources.
+class Person(TableResource, table=True):
+    """Model for persons."""
 
-    Contains all the fields and methods required for specific resources. These
-    resources have a id, an title, tagged people and labels. The methods make
-    sure these fields can be used safely.
-    """
+    name: str = Field(unique=True)
+    birthdate: date | None = Field(default=None)
 
-    id: int
-    labels: list[Label] = Field(default_factory=list)
-    people: list[Person] = Field(default_factory=list)
+    labels: list[Label] = Relationship(
+        back_populates='people',
+        link_model=PersonLabelLink,
+    )
 
 
-class FileResource(Resource):
+class Scene(TableResource):
+    """Model for a scene in a video."""
+
+    title: str
+    start: float
+    end: float
+
+
+class FileResource(TableResource):
     """Base class for resources for files.
 
     Contains all the fields and methods for file-based resources. These types of
@@ -77,12 +115,6 @@ class FileResource(Resource):
     def exists(self) -> bool:
         """Property to determine if a file (still) exists."""
         return self.physical_file.is_file()
-
-
-class Person(Resource):
-    """Model for persons."""
-
-    name: str
 
 
 class Dimensions(BaseModel):
@@ -139,24 +171,16 @@ class ImageExifData(BaseExifData):
     orientation: int | None = 1
 
 
+class VideoExifData(BaseExifData):
+    """Base model for Exif Data for videos."""
+
+
 class Image(MediaBase):
     """Model for a image file."""
 
     color_space: str | None = None
     has_alpha: bool = False
     exif: ImageExifData = Field(default_factory=ImageExifData)
-
-
-class Scene(Resource):
-    """Model for a scene in a video."""
-
-    title: str
-    start: float
-    end: float
-
-
-class VideoExifData(BaseExifData):
-    """Base model for Exif Data for videos."""
 
 
 class VideoQuality(Enum):

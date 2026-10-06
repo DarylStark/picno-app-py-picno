@@ -1,3 +1,5 @@
-from .main import main
+"""Initialized for the package."""
+
+from .cli_main import main
 
 __all__ = ['main']

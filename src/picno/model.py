@@ -88,7 +88,7 @@ class Scene(TableResource):
     end: float
 
 
-class FileResource(TableResource):
+class FileResource(SQLModel):
     """Base class for resources for files.
 
     Contains all the fields and methods for file-based resources. These types of
@@ -117,7 +117,7 @@ class FileResource(TableResource):
         return self.physical_file.is_file()
 
 
-class Dimensions(BaseModel):
+class Dimensions(SQLModel):
     """Model for dimensions.
 
     Can be used for images and videofiles to specify how big the frames for the
@@ -138,12 +138,6 @@ class Dimensions(BaseModel):
     def megapixels(self) -> float:
         """Returns the amount of megapixels for the dimensions."""
         return (self.width * self.height) / 1_000_000
-
-
-class MediaBase(FileResource):
-    """Base model for media."""
-
-    dimensions: Dimensions
 
 
 class BaseExifData(BaseModel):
@@ -175,12 +169,11 @@ class VideoExifData(BaseExifData):
     """Base model for Exif Data for videos."""
 
 
-class Image(MediaBase):
+class Image(ImageExifData, Dimensions, FileResource, TableResource, table=True):
     """Model for a image file."""
 
     color_space: str | None = None
     has_alpha: bool = False
-    exif: ImageExifData = Field(default_factory=ImageExifData)
 
 
 class VideoQuality(Enum):
@@ -192,7 +185,7 @@ class VideoQuality(Enum):
     VERY_HIGH = 'very_high'
 
 
-class Video(MediaBase):
+class Video(VideoExifData, Dimensions, FileResource, TableResource, table=True):
     """Model for a video file."""
 
     duration: float
@@ -203,8 +196,6 @@ class Video(MediaBase):
     has_audio: bool = False
     audio_channels: int | None = None
     container_format: str | None = None
-    scenens: list[Scene] = Field(default_factory=list)
-    exif: VideoExifData = Field(default_factory=VideoExifData)
 
     @computed_field
     @property
@@ -219,18 +210,16 @@ class Video(MediaBase):
         """
         if not self.bitrate_in_bps or not self.fps:
             return None
-        return self.bitrate_in_bps / (
-            self.dimensions.width * self.dimensions.height * self.fps
-        )
+        return self.bitrate_in_bps / (self.width * self.height * self.fps)
 
     @computed_field
     @property
     def quality(self) -> VideoQuality | None:
-        """Returns the perspective quality for the video."""
+        """Returns the video quality based on pixel density."""
         pdd = self.pixel_density
-        if not pdd:
+        if pdd is None:
             return None
-        if pdd < 0.5:
+        if pdd < 0.05:
             return VideoQuality.LOW
         elif pdd < 0.10:
             return VideoQuality.AVERAGE

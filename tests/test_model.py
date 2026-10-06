@@ -104,7 +104,8 @@ def test_video_pixel_density_no_bitrate() -> None:
     video = Video(
         id=1,
         physical_file=__file__,
-        dimensions=Dimensions(width=1920, height=1080),
+        width=1920,
+        height=1080,
         duration=10,
         fps=30,
     )
@@ -119,7 +120,8 @@ def test_video_pixel_density_no_fps() -> None:
     video = Video(
         id=1,
         physical_file=__file__,
-        dimensions=Dimensions(width=1920, height=1080),
+        width=1920,
+        height=1080,
         duration=10,
         bitrate_in_bps=8_000_000,
     )
@@ -134,7 +136,8 @@ def test_video_pixel_density_bitrate_and_fps() -> None:
     video = Video(
         id=1,
         physical_file=__file__,
-        dimensions=Dimensions(width=1920, height=1080),
+        width=1920,
+        height=1080,
         duration=10,
         fps=30,
         bitrate_in_bps=8_000_000,
@@ -150,7 +153,8 @@ def test_video_quality_no_bitrate() -> None:
     video = Video(
         id=1,
         physical_file=__file__,
-        dimensions=Dimensions(width=1920, height=1080),
+        width=1920,
+        height=1080,
         duration=10,
         fps=30,
     )
@@ -165,14 +169,15 @@ def test_video_quality_no_fps() -> None:
     video = Video(
         id=1,
         physical_file=__file__,
-        dimensions=Dimensions(width=1920, height=1080),
+        width=1920,
+        height=1080,
         duration=10,
         bitrate_in_bps=8_000_000,
     )
     assert video.quality is None
 
 
-def test_video_quality_bitrate_and_fps() -> None:
+def test_video_quality_bitrate_and_fps_low() -> None:
     """Test the `quality` method of the `Video` model.
 
     Test that it gives the correct value when a bitrate and fps is given.
@@ -180,9 +185,61 @@ def test_video_quality_bitrate_and_fps() -> None:
     video = Video(
         id=1,
         physical_file=__file__,
-        dimensions=Dimensions(width=1920, height=1080),
+        width=1920,
+        height=1080,
+        duration=10,
+        fps=30,
+        bitrate_in_bps=3_000_000,
+    )
+    assert video.quality is VideoQuality.LOW
+
+
+def test_video_quality_bitrate_and_fps_average() -> None:
+    """Test the `quality` method of the `Video` model.
+
+    Test that it gives the correct value when a bitrate and fps is given.
+    """
+    video = Video(
+        id=1,
+        physical_file=__file__,
+        width=1920,
+        height=1080,
+        duration=10,
+        fps=30,
+        bitrate_in_bps=4_000_000,
+    )
+    assert video.quality is VideoQuality.AVERAGE
+
+
+def test_video_quality_bitrate_and_fps_high() -> None:
+    """Test the `quality` method of the `Video` model.
+
+    Test that it gives the correct value when a bitrate and fps is given.
+    """
+    video = Video(
+        id=1,
+        physical_file=__file__,
+        width=1920,
+        height=1080,
         duration=10,
         fps=30,
         bitrate_in_bps=8_000_000,
     )
-    assert video.quality is VideoQuality.LOW
+    assert video.quality is VideoQuality.HIGH
+
+
+def test_video_quality_bitrate_and_fps_very_high() -> None:
+    """Test the `quality` method of the `Video` model.
+
+    Test that it gives the correct value when a bitrate and fps is given.
+    """
+    video = Video(
+        id=1,
+        physical_file=__file__,
+        width=1920,
+        height=1080,
+        duration=10,
+        fps=30,
+        bitrate_in_bps=15_000_000,
+    )
+    assert video.quality is VideoQuality.VERY_HIGH

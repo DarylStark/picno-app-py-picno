@@ -124,8 +124,8 @@ class Dimensions(SQLModel):
     video are or how big the image is.
     """
 
-    width: int
-    height: int
+    width: int = 0
+    height: int = 0
 
     @computed_field
     @property
@@ -160,7 +160,7 @@ class ImageExifData(BaseExifData):
     lens_model: str | None = None
     focal_length: float | None = None
     f_number: float | None = None
-    exposure_time: str | None = None
+    exposure_time: float | None = None
     iso: int | None = None
     orientation: int | None = 1
 

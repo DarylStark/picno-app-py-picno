@@ -5,6 +5,14 @@ class PicnoError(Exception):
     """Base class for exceptions."""
 
 
+class ProjectError(PicnoError):
+    """Errors for the project itself."""
+
+
+class ImageFileNotFoundError(ProjectError):
+    """Error for when a given image is not found."""
+
+
 class CliError(PicnoError):
     """Base class for CLI errors."""
 

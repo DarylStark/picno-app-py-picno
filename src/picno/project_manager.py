@@ -67,6 +67,8 @@ class ProjectManager:
         self._structure = structure
         self._database: Database = DatabaseSql(self._structure.database_str)
 
+        self._structure.set_sync_ignore_list_to_path()
+
     @property
     def database(self) -> Database:
         """Property to retrieve the database object."""
@@ -79,7 +81,7 @@ class ProjectManager:
                 f'Image "{file.resolve()}" is not found'
             )
 
-        image_obj = Image(physical_path=str(file))
+        image_obj = Image(physical_path=str(file), title=file.name)
 
         with PilImage.open(file) as img:
             image_obj.width, image_obj.height = img.size
@@ -159,6 +161,12 @@ class ProjectManager:
         new_data: list[Image] = []
         all_media = self.scan_directory(self._structure.data_folder)
         for media in all_media:
+            if any(
+                media.is_relative_to(ignore_path)
+                for ignore_path in self._structure.sync_ignore
+            ):
+                continue
+
             if self._is_new_image(media):
                 image_obj = self.get_image_object_from_file(media)
                 image_obj.physical_file = self._get_relative_path(media)

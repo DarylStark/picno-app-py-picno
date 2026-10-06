@@ -16,6 +16,7 @@ from sqlmodel.sql.expression import SelectOfScalar
 
 from .database import Database, LabelSpecification, RetrieveOption
 from .exceptions import (
+    ImageAlreadyExistsError,
     LabelAlreadyExistsError,
     LabelDoesNotExistError,
     PersonAlreadyExistsError,
@@ -25,6 +26,7 @@ from .exceptions import (
 )
 from .model import Image, Label, Person, PersonLabelLink
 from .specs import Specification
+from .specs_images import ImageSpecification
 from .specs_persons import PersonSpecification
 
 T = TypeVar('T')
@@ -711,7 +713,12 @@ class DatabaseSql(Database):
     @override
     def create_image_from_object(self, image: Image) -> Image:
         """Create and image from a Image object."""
-        return self._create_resource(image)
+        try:
+            return self._create_resource(image)
+        except IntegrityError as exc:
+            raise ImageAlreadyExistsError(
+                'Image with this name already exists'
+            ) from exc
 
     @override
     def create_images_from_objects(
@@ -719,8 +726,19 @@ class DatabaseSql(Database):
     ) -> list[Image]:
         """Create and image from a Image object."""
         return_list: list[Image] = []
-        for image in images:
-            return_list.append(self._create_resource(image))
+        with Session(self._engine) as session:
+            for image in images:
+                return_list.append(
+                    self._create_resource_with_session(session, image)
+                )
+
+            try:
+                session.commit()
+            except IntegrityError as exc:
+                session.rollback()
+                raise ImageAlreadyExistsError(
+                    'Image with this name already exists'
+                ) from exc
         return return_list
 
     @override
@@ -729,3 +747,10 @@ class DatabaseSql(Database):
         return self._get_resource_from_field(
             Image, field_name='physical_path', field_value=str(path)
         )
+
+    @override
+    def get_images(
+        self, specification: ImageSpecification | None = None
+    ) -> list[Image]:
+        """Method to retrieve (a subset of) the labels in the database."""
+        return self._get_resources(Image, specification=specification)

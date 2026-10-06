@@ -41,10 +41,7 @@ def test_get_image_object_from_file_valid_file() -> None:
     image = manager.get_image_object_from_file(filename)
 
     assert image.physical_file == filename
-    assert (
-        image.resource_title == 'image_001.jpg'
-    )  # TODO: Extension should be gone
-    assert image.exists
+    assert image.title == 'image_001.jpg'  # TODO: Extension should be gone
     assert image.width == 100
     assert image.height == 68
     assert image.camera_make == 'Canon'

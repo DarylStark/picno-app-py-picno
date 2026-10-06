@@ -63,3 +63,7 @@ class LabelAlreadyExistsError(DatabaseError):
 
 class LabelDoesNotExistError(DatabaseError):
     """Exception when a label doesn't exists that is searched for."""
+
+
+class ImageAlreadyExistsError(DatabaseError):
+    """Exception when a Image is created that already exists."""

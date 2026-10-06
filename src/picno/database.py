@@ -6,6 +6,8 @@ from datetime import date
 from enum import Enum
 from pathlib import Path
 
+from picno.specs_images import ImageSpecification
+
 from .model import Image, Label, Person
 from .specs_labels import LabelSpecification
 from .specs_persons import PersonSpecification
@@ -152,3 +154,9 @@ class Database(ABC):
     @abstractmethod
     def get_image_on_path(self, path: Path) -> Image | None:
         """Get a image from it's relative path."""
+
+    @abstractmethod
+    def get_images(
+        self, specification: ImageSpecification | None = None
+    ) -> list[Image]:
+        """Method to retrieve (a subset of) the labels in the database."""

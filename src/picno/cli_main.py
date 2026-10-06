@@ -9,6 +9,7 @@ from rich.console import Console
 from typer import Context, Option, Typer
 
 from .cli_context import CliContext
+from .cli_images import images
 from .cli_labels import labels
 from .cli_media import media
 from .cli_persons import persons
@@ -22,6 +23,7 @@ app.add_typer(project)
 app.add_typer(labels)
 app.add_typer(persons)
 app.add_typer(media)
+app.add_typer(images)
 
 
 @app.callback()
@@ -63,6 +65,6 @@ def main() -> None:
         err_console.print(f'[red][b]CLI error:[/b][/red] {e}')
     except DatabaseError as e:
         err_console.print(f'[red][b]Database error:[/b][/red] {e}')
-    except Exception as e:
-        err_console.print(f'[red][b]Unknown error:[/b][/red] {e}')
+    # except Exception as e:
+    #     err_console.print(f'[red][b]Unknown error:[/b][/red] {e}')
     sys.exit(1)

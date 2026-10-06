@@ -1,0 +1,96 @@
+"""Module with the `pico images` options."""
+
+from enum import Enum
+
+from typer import Context, Option, Typer
+
+from picno.specs_images import ImageFilter
+
+from .cli_context import get_initialized_project
+from .cli_format import TableColumn, print_table
+
+images = Typer(name='images', help='Image management')
+
+
+class OutputFormat(Enum):
+    """Output foramts."""
+
+    TABLE = 'table'
+    DETAILS = 'details'
+
+
+@images.command(name='ls', help='List images')
+def ls(
+    ctx: Context,
+    name: str | None = Option(default=None, help='Filter on a specific name'),
+    output_format: OutputFormat = Option(
+        default=OutputFormat.TABLE, help='The way to output data'
+    ),
+    iname: str | None = Option(
+        default=None, help='Filter on a specific name (case insensitive)'
+    ),
+    name_contains: list[str] | None = Option(
+        default=None, help='Filter on a text in the name <repeatable>'
+    ),
+    iname_contains: list[str] | None = Option(
+        default=None,
+        help='Filter on a text in the name (case insensitive) <repeatable>',
+    ),
+    path_name_contains: list[str] | None = Option(
+        default=None, help='Filter on a text in the path name <repeatable>'
+    ),
+    ipath_name_contains: list[str] | None = Option(
+        default=None,
+        help='Filter on a text in the path name (case insensitive) '
+        '<repeatable>',
+    ),
+) -> None:
+    """List the images in the database."""
+    (_, _, db, console) = get_initialized_project(ctx)
+
+    filter = ImageFilter(
+        name=name,
+        iname=iname,
+        name_contains=name_contains,
+        iname_contains=iname_contains,
+        path_name_contains=path_name_contains,
+        ipath_name_contains=ipath_name_contains,
+    )
+
+    # Retrieve the images
+    images = db.get_images(filter.get_specifications())
+    if images:
+        if output_format == OutputFormat.TABLE:
+            print_table(
+                console,
+                images,
+                columns=[
+                    TableColumn('ID', lambda image: image.id),
+                    TableColumn(
+                        'Physical path', lambda image: image.physical_path
+                    ),
+                    TableColumn('Name', lambda image: image.title),
+                    TableColumn('Width', lambda image: image.width),
+                    TableColumn('Height', lambda image: image.height),
+                    TableColumn('Megapixels', lambda image: image.megapixels),
+                    TableColumn('Datetime', lambda image: image.date or ''),
+                    TableColumn(
+                        'Camera', lambda image: image.camera_model or ''
+                    ),
+                    TableColumn(
+                        'Has location',
+                        lambda image: (
+                            image.latitude is not None
+                            and image.longitude is not None
+                        ),
+                    ),
+                ],
+            )
+        elif output_format == OutputFormat.DETAILS:
+            for image in images:
+                console.print(f'[b]Title: [/b]: {image.title}')
+                console.print(
+                    f'[b]Location: [/b]: {image.latitude}, {image.longitude}'
+                )
+    else:
+        console.print('[yellow]No images match the filter[/yellow]')

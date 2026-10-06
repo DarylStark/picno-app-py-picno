@@ -4,7 +4,7 @@ from datetime import date, datetime
 from enum import Enum
 from pathlib import Path
 
-from pydantic import BaseModel, computed_field
+from pydantic import BaseModel, computed_field, model_validator
 from sqlmodel import Field, Relationship, SQLModel
 
 
@@ -97,7 +97,14 @@ class FileResource(SQLModel):
     """
 
     physical_path: str
-    title: str | None = None
+    title: str | None = Field(default=None, unique=True)
+
+    @model_validator(mode='after')
+    def set_title_from_path(self) -> FileResource:
+        """Automatically fill the title."""
+        if not self.title:
+            self.title = Path(self.physical_path).name
+        return self
 
     @property
     def physical_file(self) -> Path:
@@ -108,21 +115,6 @@ class FileResource(SQLModel):
     def physical_file(self, value: Path) -> None:
         """Setter for the phycal file."""
         self.physical_path = str(value)
-
-    @property
-    def resource_title(self) -> str:
-        """Property for the title of the object.
-
-        If no title is set, the filename will be returned.
-        """
-        if not self.title:
-            return self.physical_file.name
-        return self.title
-
-    @property
-    def exists(self) -> bool:
-        """Property to determine if a file (still) exists."""
-        return self.physical_file.is_file()
 
 
 class Dimensions(SQLModel):

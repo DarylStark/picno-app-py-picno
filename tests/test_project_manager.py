@@ -9,7 +9,7 @@ from picno.project import Project, ProjectType
 from picno.project_manager import ProjectManager
 
 
-def test_adding_image_from_file_non_existing_file() -> None:
+def test_get_image_object_from_file_invalid_file() -> None:
     """Test if we get an error when importing a non-existing file."""
     manager = ProjectManager(
         Project(
@@ -21,12 +21,12 @@ def test_adding_image_from_file_non_existing_file() -> None:
     )
 
     with pytest.raises(ImageFileNotFoundError):
-        manager.add_image_from_file(
+        manager.get_image_object_from_file(
             Path('./tests/unmanaged_project/not_existing.jpg')
         )
 
 
-def test_adding_image_from_file_real_file() -> None:
+def test_get_image_object_from_file_valid_file() -> None:
     """Test if we get the correct information from a real file."""
     manager = ProjectManager(
         Project(
@@ -38,7 +38,7 @@ def test_adding_image_from_file_real_file() -> None:
     )
 
     filename = Path('./tests/unmanaged_project/image_001.jpg')
-    image = manager.add_image_from_file(filename)
+    image = manager.get_image_object_from_file(filename)
 
     assert image.physical_file == filename
     assert (
@@ -54,3 +54,17 @@ def test_adding_image_from_file_real_file() -> None:
     assert image.f_number == 7.1
     assert image.exposure_time == 0.00625
     assert image.iso == 100
+
+
+def test_scan_data_directory() -> None:
+    """Test scanning the data directory."""
+    manager = ProjectManager(
+        Project(
+            name='Unmanaged project',
+            data_folder='./tests/unmanaged_project',
+            project_type=ProjectType.UNMANAGED,
+            database_str='sqlite:///./picno.db',
+        )
+    )
+    new_files = manager.scan_directory(Path('./tests/unmanaged_project'))
+    assert len(new_files) == 4

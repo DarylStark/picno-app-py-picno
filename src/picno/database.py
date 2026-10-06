@@ -4,8 +4,9 @@ from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from datetime import date
 from enum import Enum
+from pathlib import Path
 
-from .model import Label, Person
+from .model import Image, Label, Person
 from .specs_labels import LabelSpecification
 from .specs_persons import PersonSpecification
 
@@ -137,3 +138,17 @@ class Database(ABC):
     @abstractmethod
     def remove_label_from_person(self, person: str, label: str) -> None:
         """Remove a label from a person."""
+
+    @abstractmethod
+    def create_image_from_object(self, image: Image) -> Image:
+        """Create image from a Image object."""
+
+    @abstractmethod
+    def create_images_from_objects(
+        self, images: Sequence[Image]
+    ) -> list[Image]:
+        """Create multiple images from mulitple image objects."""
+
+    @abstractmethod
+    def get_image_on_path(self, path: Path) -> Image | None:
+        """Get a image from it's relative path."""

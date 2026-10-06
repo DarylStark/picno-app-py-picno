@@ -1,5 +1,6 @@
 """Module with the project manager."""
 
+from datetime import UTC, datetime
 from fractions import Fraction
 from pathlib import Path
 
@@ -7,7 +8,7 @@ from PIL import ExifTags
 from PIL import Image as PilImage
 from PIL.TiffImagePlugin import IFDRational
 
-from picno.exceptions import ImageFileNotFoundError
+from picno.exceptions import FileNotInDataDirectoryError, ImageFileNotFoundError
 
 from .database import Database
 from .database_sql import DatabaseSql
@@ -48,6 +49,16 @@ def _dms_to_decimal(
     return decimal
 
 
+def _parse_exif_datetime(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        dt = datetime.strptime(value, '%Y:%m:%d %H:%M:%S')
+        return dt.replace(tzinfo=UTC)
+    except ValueError:
+        return None
+
+
 class ProjectManager:
     """Project class represents a project."""
 
@@ -61,14 +72,14 @@ class ProjectManager:
         """Property to retrieve the database object."""
         return self._database
 
-    def add_image_from_file(self, file: Path) -> Image:
+    def get_image_object_from_file(self, file: Path) -> Image:
         """Create a image object from a file."""
         if not file.is_file():
             raise ImageFileNotFoundError(
                 f'Image "{file.resolve()}" is not found'
             )
 
-        image_obj = Image(physical_file=file)
+        image_obj = Image(physical_path=str(file))
 
         with PilImage.open(file) as img:
             image_obj.width, image_obj.height = img.size
@@ -76,7 +87,9 @@ class ProjectManager:
             extended = exif.get_ifd(ExifTags.Base.ExifOffset)
 
             # Basic tags
-            image_obj.date = exif.get(306) or exif.get(36867)
+            image_obj.date = _parse_exif_datetime(
+                exif.get(306) or exif.get(36867)
+            )
             image_obj.camera_make = exif.get(271)
             image_obj.camera_model = exif.get(272)
             image_obj.lens_model = exif.get(42036)
@@ -101,3 +114,62 @@ class ProjectManager:
             image_obj.altitude = _to_float(alt)
 
         return image_obj
+
+    def scan_directory(self, directory: Path) -> list[Path]:
+        """Scan the data directory for the project.
+
+        Returns a list of images and videos in the directory.
+        """
+        found_files: list[Path] = []
+        for file_path in directory.rglob('*'):
+            if file_path.is_file() and file_path.suffix.lower() in {
+                '.jpg',
+                '.jpeg',
+                '.png',
+                '.webp',
+            }:
+                found_files.append(file_path)
+
+        return found_files
+
+    def _get_relative_path(self, file_path: Path) -> Path:
+        """Retrieve the relative path for a file."""
+        data_folder = self._structure.data_folder
+        try:
+            return file_path.relative_to(data_folder)
+        except ValueError as exc:
+            raise FileNotInDataDirectoryError(
+                f'File "{file_path}" is not in directory {data_folder}'
+            ) from exc
+
+    def _is_new_image(self, image_path: Path) -> bool:
+        """Check if a image is new."""
+        return (
+            self._database.get_image_on_path(
+                self._get_relative_path(image_path)
+            )
+            is None
+        )
+
+    def _get_new_files_in_data_directory(self) -> list[Image]:
+        """Sync the media directory.
+
+        Returns a list of new media items.
+        """
+        new_data: list[Image] = []
+        all_media = self.scan_directory(self._structure.data_folder)
+        for media in all_media:
+            if self._is_new_image(media):
+                image_obj = self.get_image_object_from_file(media)
+                image_obj.physical_file = self._get_relative_path(media)
+                new_data.append(image_obj)
+        return new_data
+
+    def sync_data_directory(self) -> list[Image]:
+        """Sync the media directory.
+
+        Returns a list of new media items.
+        """
+        return self._database.create_images_from_objects(
+            self._get_new_files_in_data_directory()
+        )

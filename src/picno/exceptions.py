@@ -13,6 +13,10 @@ class ImageFileNotFoundError(ProjectError):
     """Error for when a given image is not found."""
 
 
+class FileNotInDataDirectoryError(ProjectError):
+    """Error when a file is not in de data directory."""
+
+
 class CliError(PicnoError):
     """Base class for CLI errors."""
 

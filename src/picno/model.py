@@ -96,10 +96,19 @@ class FileResource(SQLModel):
     be used as title.
     """
 
-    physical_file: Path
+    physical_path: str
     title: str | None = None
 
-    @computed_field
+    @property
+    def physical_file(self) -> Path:
+        """Get the `Path` object for the file."""
+        return Path(self.physical_path)
+
+    @physical_file.setter
+    def physical_file(self, value: Path) -> None:
+        """Setter for the phycal file."""
+        self.physical_path = str(value)
+
     @property
     def resource_title(self) -> str:
         """Property for the title of the object.
@@ -110,7 +119,6 @@ class FileResource(SQLModel):
             return self.physical_file.name
         return self.title
 
-    @computed_field
     @property
     def exists(self) -> bool:
         """Property to determine if a file (still) exists."""

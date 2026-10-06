@@ -27,7 +27,7 @@ def test_file_resource_title_no_title() -> None:
     Checks if the filename is returned when no real title is set.
     """
     resource = FileResource(
-        id=1, physical_file='/home/user/Pictures/IMG_100_01.jpg'
+        id=1, physical_path='/home/user/Pictures/IMG_100_01.jpg'
     )
     assert resource.resource_title == 'IMG_100_01.jpg'
 
@@ -40,7 +40,7 @@ def test_file_resource_title_with_title() -> None:
     resource = FileResource(
         id=1,
         title='Test image',
-        physical_file='/home/user/Pictures/IMG_100_01.jpg',
+        physical_path='/home/user/Pictures/IMG_100_01.jpg',
     )
     assert resource.resource_title == 'Test image'
 
@@ -51,7 +51,7 @@ def test_file_resource_exists_no_file() -> None:
     Tests if the `exists` method returns `False` when the file doesn't exist.
     """
     resource = FileResource(
-        id=1, physical_file='/home/user/Pictures/IMG_100_01.jpg'
+        id=1, physical_path='/home/user/Pictures/IMG_100_01.jpg'
     )
     assert resource.exists is False
 
@@ -62,7 +62,7 @@ def test_file_resource_exists_pointing_to_directory() -> None:
     Tests if the `exists` method returns `False` when the given filename is
     actually a directory.
     """
-    resource = FileResource(id=1, physical_file=Path(__file__).parent)
+    resource = FileResource(id=1, physical_path=str(Path(__file__).parent))
     assert resource.exists is False
 
 
@@ -73,7 +73,7 @@ def test_file_resource_exists_existing_file() -> None:
     """
     resource = FileResource(
         id=1,
-        physical_file=__file__,
+        physical_path=__file__,
     )
     assert resource.exists
 
@@ -103,7 +103,7 @@ def test_video_pixel_density_no_bitrate() -> None:
     """
     video = Video(
         id=1,
-        physical_file=__file__,
+        physical_path=__file__,
         width=1920,
         height=1080,
         duration=10,
@@ -119,7 +119,7 @@ def test_video_pixel_density_no_fps() -> None:
     """
     video = Video(
         id=1,
-        physical_file=__file__,
+        physical_path=__file__,
         width=1920,
         height=1080,
         duration=10,
@@ -135,7 +135,7 @@ def test_video_pixel_density_bitrate_and_fps() -> None:
     """
     video = Video(
         id=1,
-        physical_file=__file__,
+        physical_path=__file__,
         width=1920,
         height=1080,
         duration=10,
@@ -152,7 +152,7 @@ def test_video_quality_no_bitrate() -> None:
     """
     video = Video(
         id=1,
-        physical_file=__file__,
+        physical_path=__file__,
         width=1920,
         height=1080,
         duration=10,
@@ -168,7 +168,7 @@ def test_video_quality_no_fps() -> None:
     """
     video = Video(
         id=1,
-        physical_file=__file__,
+        physical_path=__file__,
         width=1920,
         height=1080,
         duration=10,
@@ -184,7 +184,7 @@ def test_video_quality_bitrate_and_fps_low() -> None:
     """
     video = Video(
         id=1,
-        physical_file=__file__,
+        physical_path=__file__,
         width=1920,
         height=1080,
         duration=10,
@@ -201,7 +201,7 @@ def test_video_quality_bitrate_and_fps_average() -> None:
     """
     video = Video(
         id=1,
-        physical_file=__file__,
+        physical_path=__file__,
         width=1920,
         height=1080,
         duration=10,
@@ -218,7 +218,7 @@ def test_video_quality_bitrate_and_fps_high() -> None:
     """
     video = Video(
         id=1,
-        physical_file=__file__,
+        physical_path=__file__,
         width=1920,
         height=1080,
         duration=10,
@@ -235,7 +235,7 @@ def test_video_quality_bitrate_and_fps_very_high() -> None:
     """
     video = Video(
         id=1,
-        physical_file=__file__,
+        physical_path=__file__,
         width=1920,
         height=1080,
         duration=10,

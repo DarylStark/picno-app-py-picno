@@ -2,6 +2,7 @@
 
 from collections.abc import Callable, Sequence
 from datetime import date
+from pathlib import Path
 from sqlite3 import Connection as SQLiteConnection
 from sqlite3 import Cursor as SQLiteCursor
 from typing import TypeVar, cast, override
@@ -22,7 +23,7 @@ from .exceptions import (
     ResourceAlreadyExistsError,
     ResourceNotFoundError,
 )
-from .model import Label, Person, PersonLabelLink
+from .model import Image, Label, Person, PersonLabelLink
 from .specs import Specification
 from .specs_persons import PersonSpecification
 
@@ -163,8 +164,8 @@ class DatabaseSql(Database):
         options: Sequence[RetrieveOption] | None = None,
     ) -> T | None:
         """Generic method to retrieve a single item on a arbitrary value."""
-        field_name = getattr(model, field_name)
-        query = col(field_name) == field_value
+        field_name_sql = getattr(model, field_name)
+        query = col(field_name_sql) == field_value
         statement = select(model).where(query)
         statement = self._set_options_in_statement(statement, options=options)
         return session.exec(statement).one_or_none()
@@ -706,3 +707,25 @@ class DatabaseSql(Database):
 
             session.exec(statement)
             session.commit()
+
+    @override
+    def create_image_from_object(self, image: Image) -> Image:
+        """Create and image from a Image object."""
+        return self._create_resource(image)
+
+    @override
+    def create_images_from_objects(
+        self, images: Sequence[Image]
+    ) -> list[Image]:
+        """Create and image from a Image object."""
+        return_list: list[Image] = []
+        for image in images:
+            return_list.append(self._create_resource(image))
+        return return_list
+
+    @override
+    def get_image_on_path(self, path: Path) -> Image | None:
+        """Get a image from it's relative path."""
+        return self._get_resource_from_field(
+            Image, field_name='physical_path', field_value=str(path)
+        )

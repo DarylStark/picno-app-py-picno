@@ -15,7 +15,8 @@ from .specs_persons import PersonSpecification
 class RetrieveOption(Enum):
     """Options for retrieving resources."""
 
-    LOAD_LABELS = 1
+    LOAD_PERSON_LABELS = 1
+    LOAD_IMAGE_LABELS = 2
 
 
 class Database(ABC):
@@ -156,7 +157,9 @@ class Database(ABC):
 
     @abstractmethod
     def get_images(
-        self, specification: ImageSpecification | None = None
+        self,
+        specification: ImageSpecification | None = None,
+        options: Sequence[RetrieveOption] | None = None,
     ) -> list[Image]:
         """Method to retrieve (a subset of) the labels in the database."""
 
@@ -167,3 +170,11 @@ class Database(ABC):
         specification: ImageSpecification | None = None,
     ) -> list[Image]:
         """Method to set the status of specific images."""
+
+    @abstractmethod
+    def add_label_to_image(self, image: str, label: str) -> None:
+        """Method to add a label to a image (on names)."""
+
+    @abstractmethod
+    def remove_label_from_image(self, image: str, label: str) -> None:
+        """Remove a label from a image."""

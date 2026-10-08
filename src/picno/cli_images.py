@@ -4,6 +4,7 @@ from enum import Enum
 
 from typer import Argument, Context, Option, Typer
 
+from picno.database import RetrieveOption
 from picno.model import ResourceStatus
 from picno.specs_images import ImageFilter
 
@@ -66,7 +67,9 @@ def ls(
     )
 
     # Retrieve the images
-    images = db.get_images(filter.get_specifications())
+    images = db.get_images(
+        filter.get_specifications(), options=[RetrieveOption.LOAD_IMAGE_LABELS]
+    )
     if images:
         if output_format == OutputFormat.TABLE:
             print_table(
@@ -94,6 +97,13 @@ def ls(
                         lambda image: (
                             image.latitude is not None
                             and image.longitude is not None
+                        ),
+                    ),
+                    TableColumn(
+                        'Labels',
+                        lambda image: (
+                            ', '.join([label.name for label in image.labels])
+                            or ''
                         ),
                     ),
                 ],
@@ -155,3 +165,27 @@ def set_status(
         specification=filter.get_specifications(),
     )
     console.print(f'Updated {len(images)} images')
+
+
+@images.command(name='add-label', help='Add a label to a image')
+def add_label(
+    ctx: Context,
+    name: str = Argument(help='The name of the image to add the label too'),
+    label: str = Argument(help='The name of the label to add'),
+) -> None:
+    """Add a label to a person."""
+    (_, _, db, console) = get_initialized_project(ctx)
+    db.add_label_to_image(name, label)
+    console.print(f'Added label "{label}" to "{name}"')
+
+
+@images.command(name='remove-label', help='Remoev a label from a image')
+def remove_label(
+    ctx: Context,
+    name: str = Argument(help='The name of the image to remove the label from'),
+    label: str = Argument(help='The name of the label to remove'),
+) -> None:
+    """Remove a label from a person."""
+    (_, _, db, console) = get_initialized_project(ctx)
+    db.remove_label_from_image(name, label)
+    console.print(f'Removed label "{label}" from "{name}"')

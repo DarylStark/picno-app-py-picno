@@ -11,6 +11,7 @@ from picno.exceptions import (
     LabelDoesNotExistError,
     PersonAlreadyExistsError,
     PersonDoesNotExistError,
+    PersonLabelLinkAlreadyExistsError,
 )
 from picno.specs_persons import NameContainsPersonSpec
 
@@ -86,7 +87,9 @@ def test_database_sql_filled_db_get_one_person_valid_id_with_labels(
 
     Check if we can retrieve one person on ID.
     """
-    person = filled_db.get_person(id=1, options=(RetrieveOption.LOAD_LABELS,))
+    person = filled_db.get_person(
+        id=1, options=(RetrieveOption.LOAD_PERSON_LABELS,)
+    )
     assert person is not None
     assert person.id == 1
     assert person.labels == []
@@ -127,7 +130,7 @@ def test_database_sql_filled_db_get_one_person_by_name_valid_name_with_labels(
     Check if we can retrieve one person on name.
     """
     person = filled_db.get_person_by_name(
-        name='Example Person 1', options=(RetrieveOption.LOAD_LABELS,)
+        name='Example Person 1', options=(RetrieveOption.LOAD_PERSON_LABELS,)
     )
     assert person is not None
     assert person.id == 1
@@ -364,7 +367,7 @@ def test_database_sql_filled_db_add_label_to_person(
     filled_db.add_label_to_person('Example Person 1', 'test_label_1')
     person = filled_db.get_person(
         1,
-        (RetrieveOption.LOAD_LABELS,),
+        (RetrieveOption.LOAD_PERSON_LABELS,),
     )
     assert person is not None
     assert len(person.labels) == 1
@@ -380,7 +383,7 @@ def test_database_sql_filled_db_add_label_to_person_group(
     filled_db.add_label_to_person('Example Person 1', 'group1:label1')
     person = filled_db.get_person(
         1,
-        (RetrieveOption.LOAD_LABELS,),
+        (RetrieveOption.LOAD_PERSON_LABELS,),
     )
     assert person is not None
     assert len(person.labels) == 1
@@ -398,7 +401,7 @@ def test_database_sql_filled_db_add_label_to_person_regroup(
     filled_db.add_label_to_person('Example Person 1', 'group1:label2')
     person = filled_db.get_person(
         1,
-        (RetrieveOption.LOAD_LABELS,),
+        (RetrieveOption.LOAD_PERSON_LABELS,),
     )
     assert person is not None
     assert len(person.labels) == 1
@@ -435,13 +438,8 @@ def test_database_sql_filled_db_add_double_label_to_person(
     Test if we cannot add the same label twice to a person.
     """
     filled_db.add_label_to_person('Example Person 1', 'test_label_1')
-    filled_db.add_label_to_person('Example Person 1', 'test_label_1')
-    person = filled_db.get_person(
-        1,
-        (RetrieveOption.LOAD_LABELS,),
-    )
-    assert person is not None
-    assert len(person.labels) == 1
+    with pytest.raises(PersonLabelLinkAlreadyExistsError):
+        filled_db.add_label_to_person('Example Person 1', 'test_label_1')
 
 
 def test_database_sql_filled_db_add_multiple_labels_to_person(
@@ -455,7 +453,7 @@ def test_database_sql_filled_db_add_multiple_labels_to_person(
     filled_db.add_label_to_person('Example Person 1', 'test_label_2')
     person = filled_db.get_person(
         1,
-        (RetrieveOption.LOAD_LABELS,),
+        (RetrieveOption.LOAD_PERSON_LABELS,),
     )
     assert person is not None
     assert len(person.labels) == 2
@@ -472,7 +470,7 @@ def test_database_sql_filled_db_remove_label_from_person(
     filled_db.remove_label_from_person('Example Person 2', 'group1:label2')
     person = filled_db.get_person(
         2,
-        (RetrieveOption.LOAD_LABELS,),
+        (RetrieveOption.LOAD_PERSON_LABELS,),
     )
     assert person is not None
     assert len(person.labels) == 2

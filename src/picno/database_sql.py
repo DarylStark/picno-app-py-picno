@@ -17,14 +17,24 @@ from sqlmodel.sql.expression import SelectOfScalar
 from .database import Database, LabelSpecification, RetrieveOption
 from .exceptions import (
     ImageAlreadyExistsError,
+    ImageDoesNotExistError,
+    ImageLabelLinkAlreadyExistsError,
     LabelAlreadyExistsError,
     LabelDoesNotExistError,
     PersonAlreadyExistsError,
     PersonDoesNotExistError,
+    PersonLabelLinkAlreadyExistsError,
     ResourceAlreadyExistsError,
     ResourceNotFoundError,
 )
-from .model import Image, Label, Person, PersonLabelLink, ResourceStatus
+from .model import (
+    Image,
+    ImageLabelLink,
+    Label,
+    Person,
+    PersonLabelLink,
+    ResourceStatus,
+)
 from .specs import Specification
 from .specs_images import ImageSpecification
 from .specs_persons import PersonSpecification
@@ -63,9 +73,13 @@ class DatabaseSql(Database):
             return []
 
         retrieve_options: list[ORMOption] = []
-        if RetrieveOption.LOAD_LABELS in options:
+        if RetrieveOption.LOAD_PERSON_LABELS in options:
             retrieve_options.append(
                 selectinload(cast(InstrumentedAttribute, Person.labels))
+            )
+        if RetrieveOption.LOAD_IMAGE_LABELS in options:
+            retrieve_options.append(
+                selectinload(cast(InstrumentedAttribute, Image.labels))
             )
         return retrieve_options
 
@@ -363,37 +377,6 @@ class DatabaseSql(Database):
         result = session.exec(statement)
         return result.rowcount
 
-    def _person_is_labelled(
-        self,
-        person_id: int | None,
-        label_id: int | None,
-        *,
-        session: Session | None = None,
-    ) -> bool:
-        """Check if a person is already labelled with a specific label."""
-        if person_id is None or label_id is None:
-            return False
-        if session is None:
-            with Session(self._engine) as created_session:
-                return self._person_is_labelled_with_session(
-                    created_session, person_id, label_id
-                )
-        return self._person_is_labelled_with_session(
-            session, person_id, label_id
-        )
-
-    def _person_is_labelled_with_session(
-        self, session: Session, person_id: int, label_id: int
-    ) -> bool:
-        """Check if a person is already labelled with a specific label."""
-        exists = session.exec(
-            select(PersonLabelLink).where(
-                PersonLabelLink.person_id == person_id,
-                PersonLabelLink.label_id == label_id,
-            )
-        ).one_or_none()
-        return exists is not None
-
     def _get_person_from_name_with_session(
         self, session: Session, name: str
     ) -> Person:
@@ -641,7 +624,7 @@ class DatabaseSql(Database):
                 'name',
                 person,
                 session=session,
-                options=[RetrieveOption.LOAD_LABELS],
+                options=[RetrieveOption.LOAD_PERSON_LABELS],
             )
             label_obj = self._get_resource_from_field(
                 Label, 'name', label, session=session
@@ -655,17 +638,13 @@ class DatabaseSql(Database):
             if label_obj is None:
                 raise LabelDoesNotExistError(f'Label "{label}" does not exist')
 
-            if self._person_is_labelled(
-                person_obj.id, label_obj.id, session=session
-            ):
-                return None
-
             group_name = label_obj.group
             if group_name is not None:
                 current_group = [
                     linked_label
                     for linked_label in person_obj.labels
                     if (linked_label.name or '').startswith(group_name)
+                    and (linked_label.name or '') != label_obj.name
                 ]
                 if current_group:
                     statement = delete(PersonLabelLink).where(
@@ -680,7 +659,12 @@ class DatabaseSql(Database):
                 PersonLabelLink(person_id=person_obj.id, label_id=label_obj.id),
                 session=session,
             )
-            session.commit()
+            try:
+                session.commit()
+            except IntegrityError as exc:
+                raise PersonLabelLinkAlreadyExistsError(
+                    f'Person "{person}" is already labelled with "{label}"'
+                ) from exc
 
     def remove_label_from_person(self, person: str, label: str) -> None:
         """Remove a label from a person."""
@@ -750,10 +734,15 @@ class DatabaseSql(Database):
 
     @override
     def get_images(
-        self, specification: ImageSpecification | None = None
+        self,
+        specification: ImageSpecification | None = None,
+        options: Sequence[RetrieveOption] | None = None,
     ) -> list[Image]:
         """Method to retrieve (a subset of) the labels in the database."""
-        return self._get_resources(Image, specification=specification)
+        retrieve_options = self._convert_options_to_sql_options(options)
+        return self._get_resources(
+            Image, specification=specification, options=retrieve_options
+        )
 
     @override
     def set_image_status(
@@ -773,3 +762,83 @@ class DatabaseSql(Database):
                     return_list.append(resource)
             session.commit()
         return return_list
+
+    @override
+    def add_label_to_image(self, image: str, label: str) -> None:
+        """Method to add a label to a image (on names)."""
+        with Session(self._engine) as session:
+            image_obj = self._get_resource_from_field(
+                Image,
+                'title',
+                image,
+                session=session,
+                options=[RetrieveOption.LOAD_IMAGE_LABELS],
+            )
+            label_obj = self._get_resource_from_field(
+                Label, 'name', label, session=session
+            )
+
+            if image_obj is None:
+                raise ImageDoesNotExistError(f'Image "{image}" does not exist')
+
+            if label_obj is None:
+                raise LabelDoesNotExistError(f'Label "{label}" does not exist')
+
+            group_name = label_obj.group
+            if group_name is not None:
+                current_group = [
+                    linked_label
+                    for linked_label in image_obj.labels
+                    if (linked_label.name or '').startswith(group_name)
+                    and (linked_label.name or '') != label_obj.name
+                ]
+                if current_group:
+                    statement = delete(ImageLabelLink).where(
+                        and_(
+                            ImageLabelLink.image_id == image_obj.id,
+                            ImageLabelLink.label_id == current_group[0].id,
+                        )
+                    )
+                    session.exec(statement)
+
+            self._create_resource(
+                ImageLabelLink(image_id=image_obj.id, label_id=label_obj.id),
+                session=session,
+            )
+            try:
+                session.commit()
+            except IntegrityError as exc:
+                raise ImageLabelLinkAlreadyExistsError(
+                    f'Image "{image}" is already labelled with "{label}"'
+                ) from exc
+
+    @override
+    def remove_label_from_image(self, image: str, label: str) -> None:
+        """Remove a label from a image."""
+        with Session(self._engine) as session:
+            image_obj = self._get_resource_from_field(
+                Image,
+                'title',
+                image,
+                session=session,
+                options=[RetrieveOption.LOAD_IMAGE_LABELS],
+            )
+            label_obj = self._get_resource_from_field(
+                Label, 'name', label, session=session
+            )
+
+            if image_obj is None:
+                raise ImageDoesNotExistError(f'Image "{image}" does not exist')
+
+            if label_obj is None:
+                raise LabelDoesNotExistError(f'Label "{label}" does not exist')
+
+            statement = delete(ImageLabelLink).where(
+                and_(
+                    ImageLabelLink.image_id == image_obj.id,
+                    ImageLabelLink.label_id == label_obj.id,
+                )
+            )
+
+            session.exec(statement)
+            session.commit()

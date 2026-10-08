@@ -57,6 +57,10 @@ class PersonDoesNotExistError(DatabaseError):
     """Exception when a person doesn't exists that is searched for."""
 
 
+class PersonLabelLinkAlreadyExistsError(DatabaseError):
+    """Exception when a person is already linked to a label."""
+
+
 class LabelAlreadyExistsError(DatabaseError):
     """Exception when a Label is created that already exists."""
 
@@ -67,3 +71,11 @@ class LabelDoesNotExistError(DatabaseError):
 
 class ImageAlreadyExistsError(DatabaseError):
     """Exception when a Image is created that already exists."""
+
+
+class ImageDoesNotExistError(DatabaseError):
+    """Exception when a image doesn't exists that is searched for."""
+
+
+class ImageLabelLinkAlreadyExistsError(DatabaseError):
+    """Exception when a image is already linked to a label."""

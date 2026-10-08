@@ -40,6 +40,25 @@ class PersonLabelLink(SQLModel, table=True):
     )
 
 
+class ImageLabelLink(SQLModel, table=True):
+    """Link model for Images and Labels."""
+
+    __tablename__ = 'image_label_link'
+
+    image_id: int | None = Field(
+        default=None,
+        foreign_key='image.id',
+        primary_key=True,
+        ondelete='CASCADE',
+    )
+    label_id: int | None = Field(
+        default=None,
+        foreign_key='label.id',
+        primary_key=True,
+        ondelete='CASCADE',
+    )
+
+
 class Label(TableResource, table=True):
     """Model for a label.
 
@@ -52,6 +71,11 @@ class Label(TableResource, table=True):
     people: list[Person] = Relationship(
         back_populates='labels',
         link_model=PersonLabelLink,
+    )
+
+    images: list[Image] = Relationship(
+        back_populates='labels',
+        link_model=ImageLabelLink,
     )
 
     @computed_field
@@ -182,6 +206,11 @@ class Image(ImageExifData, Dimensions, FileResource, TableResource, table=True):
     status: ResourceStatus = ResourceStatus.NEW
     color_space: str | None = None
     has_alpha: bool = False
+
+    labels: list[Label] = Relationship(
+        back_populates='images',
+        link_model=ImageLabelLink,
+    )
 
 
 class VideoQuality(Enum):

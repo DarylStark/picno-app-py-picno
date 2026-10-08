@@ -39,7 +39,7 @@ def ls(
 
     # Retrieve the persons
     persons = db.get_persons(
-        filter.get_specifications(), options=[RetrieveOption.LOAD_LABELS]
+        filter.get_specifications(), options=[RetrieveOption.LOAD_PERSON_LABELS]
     )
     if persons:
         print_table(

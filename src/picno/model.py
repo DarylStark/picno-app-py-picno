@@ -8,6 +8,13 @@ from pydantic import BaseModel, computed_field, model_validator
 from sqlmodel import Field, Relationship, SQLModel
 
 
+class ResourceStatus(Enum):
+    """Enum for the status of a resource."""
+
+    NEW = 'new'
+    ARCHIVED = 'archived'
+
+
 class TableResource(SQLModel):
     """Base class for resources that get a SQL table."""
 
@@ -172,6 +179,7 @@ class VideoExifData(BaseExifData):
 class Image(ImageExifData, Dimensions, FileResource, TableResource, table=True):
     """Model for a image file."""
 
+    status: ResourceStatus = ResourceStatus.NEW
     color_space: str | None = None
     has_alpha: bool = False
 

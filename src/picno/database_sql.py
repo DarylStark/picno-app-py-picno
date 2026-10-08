@@ -24,7 +24,7 @@ from .exceptions import (
     ResourceAlreadyExistsError,
     ResourceNotFoundError,
 )
-from .model import Image, Label, Person, PersonLabelLink
+from .model import Image, Label, Person, PersonLabelLink, ResourceStatus
 from .specs import Specification
 from .specs_images import ImageSpecification
 from .specs_persons import PersonSpecification
@@ -754,3 +754,22 @@ class DatabaseSql(Database):
     ) -> list[Image]:
         """Method to retrieve (a subset of) the labels in the database."""
         return self._get_resources(Image, specification=specification)
+
+    @override
+    def set_image_status(
+        self,
+        status: ResourceStatus,
+        specification: ImageSpecification | None = None,
+    ) -> list[Image]:
+        """Method to set the status of specific images."""
+        return_list: list[Image] = []
+        with Session(self._engine) as session:
+            resources = self._get_resources_with_session(
+                session, Image, specification=specification
+            )
+            for resource in resources:
+                if resource.status != status:
+                    resource.status = status
+                    return_list.append(resource)
+            session.commit()
+        return return_list

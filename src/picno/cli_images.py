@@ -2,8 +2,9 @@
 
 from enum import Enum
 
-from typer import Context, Option, Typer
+from typer import Argument, Context, Option, Typer
 
+from picno.model import ResourceStatus
 from picno.specs_images import ImageFilter
 
 from .cli_context import get_initialized_project
@@ -41,8 +42,13 @@ def ls(
     ),
     ipath_name_contains: list[str] | None = Option(
         default=None,
-        help='Filter on a text in the path name (case insensitive) '
-        '<repeatable>',
+        help='Filter on a text in the path name (case insensitive)<repeatable>',
+    ),
+    has_location: bool | None = Option(
+        default=None, help='Filter on images with a location'
+    ),
+    status: ResourceStatus | None = Option(
+        default=None, help='Filter on images with a specific status'
     ),
 ) -> None:
     """List the images in the database."""
@@ -55,6 +61,8 @@ def ls(
         iname_contains=iname_contains,
         path_name_contains=path_name_contains,
         ipath_name_contains=ipath_name_contains,
+        has_location=has_location,
+        status=status,
     )
 
     # Retrieve the images
@@ -66,6 +74,10 @@ def ls(
                 images,
                 columns=[
                     TableColumn('ID', lambda image: image.id),
+                    TableColumn(
+                        'Status',
+                        lambda image: str(image.status.value).capitalize(),
+                    ),
                     TableColumn(
                         'Physical path', lambda image: image.physical_path
                     ),
@@ -94,3 +106,52 @@ def ls(
                 )
     else:
         console.print('[yellow]No images match the filter[/yellow]')
+
+
+@images.command(name='set-status', help='Set the status for images')
+def set_status(
+    ctx: Context,
+    new_status: ResourceStatus = Argument(help='The status to set'),
+    name: str | None = Option(default=None, help='Filter on a specific name'),
+    iname: str | None = Option(
+        default=None, help='Filter on a specific name (case insensitive)'
+    ),
+    name_contains: list[str] | None = Option(
+        default=None, help='Filter on a text in the name <repeatable>'
+    ),
+    iname_contains: list[str] | None = Option(
+        default=None,
+        help='Filter on a text in the name (case insensitive) <repeatable>',
+    ),
+    path_name_contains: list[str] | None = Option(
+        default=None, help='Filter on a text in the path name <repeatable>'
+    ),
+    ipath_name_contains: list[str] | None = Option(
+        default=None,
+        help='Filter on a text in the path name (case insensitive)<repeatable>',
+    ),
+    has_location: bool | None = Option(
+        default=None, help='Filter on images with a location'
+    ),
+    status: ResourceStatus | None = Option(
+        default=None, help='Filter on images with a specific status'
+    ),
+) -> None:
+    """List the images in the database."""
+    (_, _, db, console) = get_initialized_project(ctx)
+
+    filter = ImageFilter(
+        name=name,
+        iname=iname,
+        name_contains=name_contains,
+        iname_contains=iname_contains,
+        path_name_contains=path_name_contains,
+        ipath_name_contains=ipath_name_contains,
+        has_location=has_location,
+        status=status,
+    )
+    images = db.set_image_status(
+        status=new_status,
+        specification=filter.get_specifications(),
+    )
+    console.print(f'Updated {len(images)} images')

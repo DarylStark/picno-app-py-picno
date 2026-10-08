@@ -6,9 +6,8 @@ from datetime import date
 from enum import Enum
 from pathlib import Path
 
-from picno.specs_images import ImageSpecification
-
-from .model import Image, Label, Person
+from .model import Image, Label, Person, ResourceStatus
+from .specs_images import ImageSpecification
 from .specs_labels import LabelSpecification
 from .specs_persons import PersonSpecification
 
@@ -160,3 +159,11 @@ class Database(ABC):
         self, specification: ImageSpecification | None = None
     ) -> list[Image]:
         """Method to retrieve (a subset of) the labels in the database."""
+
+    @abstractmethod
+    def set_image_status(
+        self,
+        status: ResourceStatus,
+        specification: ImageSpecification | None = None,
+    ) -> list[Image]:
+        """Method to set the status of specific images."""

@@ -403,6 +403,17 @@ class DatabaseSql(Database):
             raise LabelDoesNotExistError(f'Label "{name}" does not exist')
         return label
 
+    def _get_image_from_title_with_session(
+        self, session: Session, title: str
+    ) -> Image:
+        """Retrieves a image or throws an error."""
+        image = self._get_resource_from_field_with_session(
+            session, Image, 'title', title
+        )
+        if image is None:
+            raise ImageDoesNotExistError(f'Image "{title}" does not exist')
+        return image
+
     @override
     def close(self) -> None:
         """Close the database."""
@@ -1040,3 +1051,21 @@ class DatabaseSql(Database):
             session.commit()
 
         return return_list
+
+    @override
+    def rename_image(self, image_title: str, new_title: str) -> Image:
+        """Rename a image."""
+        with Session(self._engine) as session:
+            image = self._get_image_from_title_with_session(
+                session, image_title
+            )
+            image.title = new_title
+            session.add(image)
+            try:
+                session.commit()
+                session.refresh(image)
+            except IntegrityError as exc:
+                raise ImageAlreadyExistsError(
+                    f'A image named "{new_title}" already exists.'
+                ) from exc
+            return image

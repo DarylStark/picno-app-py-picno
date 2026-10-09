@@ -409,3 +409,15 @@ def unfavourite(
         specification=filter.get_specifications(),
     )
     console.print(f'Removed the favourite flag for {len(images)} images')
+
+
+@images.command(name='mv', help='Rename a image')
+def mv(
+    ctx: Context,
+    old_title: str = Argument(help='Current title of the image'),
+    new_title: str = Argument(help='New title of the image'),
+) -> None:
+    """Rename a image."""
+    (_, _, db, console) = get_initialized_project(ctx)
+    db.rename_image(old_title, new_title)
+    console.print(f'Renamed image "{old_title}" to "{new_title}"')

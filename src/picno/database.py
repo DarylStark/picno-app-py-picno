@@ -211,3 +211,7 @@ class Database(ABC):
         specification: ImageSpecification | None = None,
     ) -> list[Image]:
         """Set the favourite flag for specific images."""
+
+    @abstractmethod
+    def rename_image(self, image_title: str, new_title: str) -> Image:
+        """Rename a image."""

@@ -161,6 +161,9 @@ def set_status(
     favourite: bool | None = Option(
         default=None, help='Filter on images with that are favourite'
     ),
+    label: list[str] | None = Option(
+        default=None, help='Filter on a specific label <repeatable>'
+    ),
 ) -> None:
     """List the images in the database."""
     (_, _, db, console) = get_initialized_project(ctx)
@@ -175,6 +178,7 @@ def set_status(
         has_location=has_location,
         status=status,
         favourite=favourite,
+        label=label,
     )
     images = db.set_image_status(
         status=new_status,
@@ -186,7 +190,7 @@ def set_status(
 @images.command(name='label', help='Label specific images')
 def label(
     ctx: Context,
-    label: str = Argument(help='The name of the label to add'),
+    label_name: str = Argument(help='The name of the label to add'),
     name: str | None = Option(default=None, help='Filter on a specific name'),
     iname: str | None = Option(
         default=None, help='Filter on a specific name (case insensitive)'
@@ -214,6 +218,9 @@ def label(
     favourite: bool | None = Option(
         default=None, help='Filter on images with that are favourite'
     ),
+    label: list[str] | None = Option(
+        default=None, help='Filter on a specific label <repeatable>'
+    ),
 ) -> None:
     """Add a label to a person."""
     (_, _, db, console) = get_initialized_project(ctx)
@@ -227,18 +234,19 @@ def label(
         has_location=has_location,
         status=status,
         favourite=favourite,
+        label=label,
     )
 
     images = db.add_label_to_images(
-        label, specification=filter.get_specifications()
+        label_name, specification=filter.get_specifications()
     )
-    console.print(f'Added label "{label}" to {len(images)} images')
+    console.print(f'Added label "{label_name}" to {len(images)} images')
 
 
 @images.command(name='unlabel', help='Unlabel specific images')
 def unlabel(
     ctx: Context,
-    label: str = Argument(help='The name of the label to remove'),
+    label_name: str = Argument(help='The name of the label to remove'),
     name: str | None = Option(default=None, help='Filter on a specific name'),
     iname: str | None = Option(
         default=None, help='Filter on a specific name (case insensitive)'
@@ -266,6 +274,9 @@ def unlabel(
     favourite: bool | None = Option(
         default=None, help='Filter on images with that are favourite'
     ),
+    label: list[str] | None = Option(
+        default=None, help='Filter on a specific label <repeatable>'
+    ),
 ) -> None:
     """Add a label to a person."""
     (_, _, db, console) = get_initialized_project(ctx)
@@ -279,12 +290,13 @@ def unlabel(
         has_location=has_location,
         status=status,
         favourite=favourite,
+        label=label,
     )
 
     images = db.remove_label_from_images(
-        label, specification=filter.get_specifications()
+        label_name, specification=filter.get_specifications()
     )
-    console.print(f'Removed label "{label}" from {len(images)} images')
+    console.print(f'Removed label "{label_name}" from {len(images)} images')
 
 
 @images.command(name='favourite', help='Favourite specific images')
@@ -317,6 +329,9 @@ def favourite(
     favourite: bool | None = Option(
         default=None, help='Filter on images with that are favourite'
     ),
+    label: list[str] | None = Option(
+        default=None, help='Filter on a specific label <repeatable>'
+    ),
 ) -> None:
     """List the images in the database."""
     (_, _, db, console) = get_initialized_project(ctx)
@@ -331,6 +346,7 @@ def favourite(
         has_location=has_location,
         status=status,
         favourite=favourite,
+        label=label,
     )
     images = db.set_favourite_for_images(
         favourite=True,
@@ -369,6 +385,9 @@ def unfavourite(
     favourite: bool | None = Option(
         default=None, help='Filter on images with that are favourite'
     ),
+    label: list[str] | None = Option(
+        default=None, help='Filter on a specific label <repeatable>'
+    ),
 ) -> None:
     """List the images in the database."""
     (_, _, db, console) = get_initialized_project(ctx)
@@ -383,6 +402,7 @@ def unfavourite(
         has_location=has_location,
         status=status,
         favourite=favourite,
+        label=label,
     )
     images = db.set_favourite_for_images(
         favourite=False,

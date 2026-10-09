@@ -278,7 +278,7 @@ def unlabel(
         default=None, help='Filter on a specific label <repeatable>'
     ),
 ) -> None:
-    """Add a label to a person."""
+    """Remove a label from a person."""
     (_, _, db, console) = get_initialized_project(ctx)
     filter = ImageFilter(
         name=name,

@@ -154,6 +154,9 @@ def set_status(
     status: ResourceStatus | None = Option(
         default=None, help='Filter on images with a specific status'
     ),
+    favourite: bool | None = Option(
+        default=None, help='Filter on images with that are favourite'
+    ),
 ) -> None:
     """List the images in the database."""
     (_, _, db, console) = get_initialized_project(ctx)
@@ -167,6 +170,7 @@ def set_status(
         ipath_name_contains=ipath_name_contains,
         has_location=has_location,
         status=status,
+        favourite=favourite,
     )
     images = db.set_image_status(
         status=new_status,
@@ -226,6 +230,9 @@ def favourite(
     status: ResourceStatus | None = Option(
         default=None, help='Filter on images with a specific status'
     ),
+    favourite: bool | None = Option(
+        default=None, help='Filter on images with that are favourite'
+    ),
 ) -> None:
     """List the images in the database."""
     (_, _, db, console) = get_initialized_project(ctx)
@@ -239,6 +246,7 @@ def favourite(
         ipath_name_contains=ipath_name_contains,
         has_location=has_location,
         status=status,
+        favourite=favourite,
     )
     images = db.set_favourite_for_images(
         favourite=True,
@@ -274,6 +282,9 @@ def unfavourite(
     status: ResourceStatus | None = Option(
         default=None, help='Filter on images with a specific status'
     ),
+    favourite: bool | None = Option(
+        default=None, help='Filter on images with that are favourite'
+    ),
 ) -> None:
     """List the images in the database."""
     (_, _, db, console) = get_initialized_project(ctx)
@@ -287,6 +298,7 @@ def unfavourite(
         ipath_name_contains=ipath_name_contains,
         has_location=has_location,
         status=status,
+        favourite=favourite,
     )
     images = db.set_favourite_for_images(
         favourite=False,

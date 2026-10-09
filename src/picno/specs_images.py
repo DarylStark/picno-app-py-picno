@@ -3,11 +3,11 @@
 from dataclasses import dataclass
 from typing import override
 
-from sqlalchemy import ColumnElement
-from sqlmodel import col
+from sqlalchemy import ColumnElement, and_
+from sqlmodel import col, exists, select
 
 from .filter import Filter
-from .model import Image, ResourceStatus
+from .model import Image, ImageLabelLink, Label, ResourceStatus
 from .specs import (
     AllSpecification,
     FieldIsSpecification,
@@ -88,6 +88,29 @@ class IsFavouriteImageSpec(ParentSpecification[Image]):
         )
 
 
+class HasLabelImageSpec(ImageSpecification):
+    """Filter on images with a specific image."""
+
+    def __init__(self, label_name: str) -> None:
+        """Set the label name to search for."""
+        self._label_name = label_name
+
+    @override
+    def as_sql(self) -> ColumnElement[bool]:
+        """Create the SQL commands for this object."""
+        return exists(
+            select(1)
+            .select_from(ImageLabelLink)
+            .join(Label, col(Label.id) == ImageLabelLink.label_id)
+            .where(
+                and_(
+                    col(ImageLabelLink.image_id) == Image.id,
+                    col(Label.name) == self._label_name,
+                )
+            )
+        )
+
+
 @dataclass(frozen=True)
 class ImageFilter(Filter[ImageSpecification]):
     """Class for Image Filter builder."""
@@ -101,6 +124,7 @@ class ImageFilter(Filter[ImageSpecification]):
     has_location: bool | None = None
     status: ResourceStatus | None = None
     favourite: bool | None = None
+    label: list[str] | None = None
 
     def get_specifications(self) -> ImageSpecification | None:
         """Builder for Image Specifications."""
@@ -144,5 +168,11 @@ class ImageFilter(Filter[ImageSpecification]):
 
         if self.favourite is not None:
             specs.append(IsFavouriteImageSpec(self.favourite))
+
+        if self.label is not None:
+            all_spec = AllSpecification[Image]()
+            for label in self.label:
+                all_spec.append(HasLabelImageSpec(label))
+            specs.append(all_spec)
 
         return specs if specs else None

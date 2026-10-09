@@ -54,6 +54,9 @@ def ls(
     favourite: bool | None = Option(
         default=None, help='Filter on images with that are favourite'
     ),
+    label: list[str] | None = Option(
+        default=None, help='Filter on a specific label <repeatable>'
+    ),
 ) -> None:
     """List the images in the database."""
     (_, _, db, console) = get_initialized_project(ctx)
@@ -68,6 +71,7 @@ def ls(
         has_location=has_location,
         status=status,
         favourite=favourite,
+        label=label,
     )
 
     # Retrieve the images
@@ -179,28 +183,108 @@ def set_status(
     console.print(f'Updated {len(images)} images')
 
 
-@images.command(name='add-label', help='Add a label to a image')
-def add_label(
+@images.command(name='label', help='Label specific images')
+def label(
     ctx: Context,
-    name: str = Argument(help='The name of the image to add the label too'),
     label: str = Argument(help='The name of the label to add'),
+    name: str | None = Option(default=None, help='Filter on a specific name'),
+    iname: str | None = Option(
+        default=None, help='Filter on a specific name (case insensitive)'
+    ),
+    name_contains: list[str] | None = Option(
+        default=None, help='Filter on a text in the name <repeatable>'
+    ),
+    iname_contains: list[str] | None = Option(
+        default=None,
+        help='Filter on a text in the name (case insensitive) <repeatable>',
+    ),
+    path_name_contains: list[str] | None = Option(
+        default=None, help='Filter on a text in the path name <repeatable>'
+    ),
+    ipath_name_contains: list[str] | None = Option(
+        default=None,
+        help='Filter on a text in the path name (case insensitive)<repeatable>',
+    ),
+    has_location: bool | None = Option(
+        default=None, help='Filter on images with a location'
+    ),
+    status: ResourceStatus | None = Option(
+        default=None, help='Filter on images with a specific status'
+    ),
+    favourite: bool | None = Option(
+        default=None, help='Filter on images with that are favourite'
+    ),
 ) -> None:
     """Add a label to a person."""
     (_, _, db, console) = get_initialized_project(ctx)
-    db.add_label_to_image(name, label)
-    console.print(f'Added label "{label}" to "{name}"')
+    filter = ImageFilter(
+        name=name,
+        iname=iname,
+        name_contains=name_contains,
+        iname_contains=iname_contains,
+        path_name_contains=path_name_contains,
+        ipath_name_contains=ipath_name_contains,
+        has_location=has_location,
+        status=status,
+        favourite=favourite,
+    )
+
+    images = db.add_label_to_images(
+        label, specification=filter.get_specifications()
+    )
+    console.print(f'Added label "{label}" to {len(images)} images')
 
 
-@images.command(name='remove-label', help='Remoev a label from a image')
-def remove_label(
+@images.command(name='unlabel', help='Unlabel specific images')
+def unlabel(
     ctx: Context,
-    name: str = Argument(help='The name of the image to remove the label from'),
     label: str = Argument(help='The name of the label to remove'),
+    name: str | None = Option(default=None, help='Filter on a specific name'),
+    iname: str | None = Option(
+        default=None, help='Filter on a specific name (case insensitive)'
+    ),
+    name_contains: list[str] | None = Option(
+        default=None, help='Filter on a text in the name <repeatable>'
+    ),
+    iname_contains: list[str] | None = Option(
+        default=None,
+        help='Filter on a text in the name (case insensitive) <repeatable>',
+    ),
+    path_name_contains: list[str] | None = Option(
+        default=None, help='Filter on a text in the path name <repeatable>'
+    ),
+    ipath_name_contains: list[str] | None = Option(
+        default=None,
+        help='Filter on a text in the path name (case insensitive)<repeatable>',
+    ),
+    has_location: bool | None = Option(
+        default=None, help='Filter on images with a location'
+    ),
+    status: ResourceStatus | None = Option(
+        default=None, help='Filter on images with a specific status'
+    ),
+    favourite: bool | None = Option(
+        default=None, help='Filter on images with that are favourite'
+    ),
 ) -> None:
-    """Remove a label from a person."""
+    """Add a label to a person."""
     (_, _, db, console) = get_initialized_project(ctx)
-    db.remove_label_from_image(name, label)
-    console.print(f'Removed label "{label}" from "{name}"')
+    filter = ImageFilter(
+        name=name,
+        iname=iname,
+        name_contains=name_contains,
+        iname_contains=iname_contains,
+        path_name_contains=path_name_contains,
+        ipath_name_contains=ipath_name_contains,
+        has_location=has_location,
+        status=status,
+        favourite=favourite,
+    )
+
+    images = db.remove_label_from_images(
+        label, specification=filter.get_specifications()
+    )
+    console.print(f'Removed label "{label}" from {len(images)} images')
 
 
 @images.command(name='favourite', help='Favourite specific images')

@@ -176,8 +176,20 @@ class Database(ABC):
         """Method to add a label to a image (on names)."""
 
     @abstractmethod
+    def add_label_to_images(
+        self, label: str, specification: ImageSpecification | None = None
+    ) -> list[Image]:
+        """Method to add a label to a images."""
+
+    @abstractmethod
     def remove_label_from_image(self, image: str, label: str) -> None:
         """Remove a label from a image."""
+
+    @abstractmethod
+    def remove_label_from_images(
+        self, label: str, specification: ImageSpecification | None = None
+    ) -> list[Image]:
+        """Method to remove a label from images."""
 
     @abstractmethod
     def set_favourite_for_images(

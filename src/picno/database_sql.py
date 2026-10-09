@@ -35,8 +35,8 @@ from .model import (
     PersonLabelLink,
     ResourceStatus,
 )
-from .specs import Specification
-from .specs_images import ImageSpecification
+from .specs import AndSpecification, NotSpecification, Specification
+from .specs_images import HasLabelImageSpec, ImageSpecification
 from .specs_persons import PersonSpecification
 
 T = TypeVar('T')
@@ -813,6 +813,70 @@ class DatabaseSql(Database):
                 ) from exc
 
     @override
+    def add_label_to_images(
+        self, label: str, specification: ImageSpecification | None = None
+    ) -> list[Image]:
+        """Method to add a label to a images."""
+        return_list: list[Image] = []
+        with Session(self._engine) as session:
+            label_obj = self._get_resource_from_field(
+                Label,
+                'name',
+                label,
+                session=session,
+            )
+
+            if label_obj is None:
+                raise LabelDoesNotExistError(f'Label "{label}" does not exist')
+
+            not_labelled_spec = NotSpecification(
+                spec=HasLabelImageSpec(label_name=label)
+            )
+            if specification:
+                specification = AndSpecification(
+                    spec_a=specification, spec_b=not_labelled_spec
+                )
+            else:
+                specification = not_labelled_spec
+
+            images = self._get_resources(
+                Image,
+                specification=specification,
+                session=session,
+                options=self._convert_options_to_sql_options(
+                    [RetrieveOption.LOAD_IMAGE_LABELS]
+                ),
+            )
+
+            for image in images:
+                if label_obj.group:
+                    group = label_obj.group
+                    same_group_labels = [
+                        group_label
+                        for group_label in image.labels
+                        if group_label.group == group
+                    ]
+                    if len(same_group_labels) > 0:
+                        for group_label in same_group_labels:
+                            statement = delete(ImageLabelLink).where(
+                                and_(
+                                    ImageLabelLink.image_id == image.id,
+                                    ImageLabelLink.label_id == group_label.id,
+                                )
+                            )
+                            session.exec(statement)
+
+                self._create_resource(
+                    ImageLabelLink(image_id=image.id, label_id=label_obj.id),
+                    session=session,
+                )
+                return_list.append(image)
+
+            session.commit()
+
+        return return_list
+
+    @override
     def remove_label_from_image(self, image: str, label: str) -> None:
         """Remove a label from a image."""
         with Session(self._engine) as session:
@@ -842,6 +906,54 @@ class DatabaseSql(Database):
 
             session.exec(statement)
             session.commit()
+
+    @override
+    def remove_label_from_images(
+        self, label: str, specification: ImageSpecification | None = None
+    ) -> list[Image]:
+        """Method to remove a label from images."""
+        return_list: list[Image] = []
+        with Session(self._engine) as session:
+            label_obj = self._get_resource_from_field(
+                Label,
+                'name',
+                label,
+                session=session,
+            )
+
+            if label_obj is None:
+                raise LabelDoesNotExistError(f'Label "{label}" does not exist')
+
+            labelled_spec = HasLabelImageSpec(label_name=label)
+            if specification:
+                specification = AndSpecification(
+                    spec_a=specification, spec_b=labelled_spec
+                )
+            else:
+                specification = labelled_spec
+
+            images = self._get_resources(
+                Image,
+                specification=specification,
+                session=session,
+                options=self._convert_options_to_sql_options(
+                    [RetrieveOption.LOAD_IMAGE_LABELS]
+                ),
+            )
+
+            for image in images:
+                statement = delete(ImageLabelLink).where(
+                    and_(
+                        ImageLabelLink.image_id == image.id,
+                        ImageLabelLink.label_id == label_obj.id,
+                    )
+                )
+                session.exec(statement)
+                return_list.append(image)
+
+            session.commit()
+
+        return return_list
 
     @override
     def set_favourite_for_images(

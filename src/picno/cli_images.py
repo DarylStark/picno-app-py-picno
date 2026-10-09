@@ -222,7 +222,7 @@ def label(
         default=None, help='Filter on a specific label <repeatable>'
     ),
 ) -> None:
-    """Add a label to a person."""
+    """Add a label to images."""
     (_, _, db, console) = get_initialized_project(ctx)
     filter = ImageFilter(
         name=name,

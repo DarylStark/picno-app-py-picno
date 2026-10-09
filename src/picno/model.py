@@ -200,10 +200,23 @@ class VideoExifData(BaseExifData):
     """Base model for Exif Data for videos."""
 
 
-class Image(ImageExifData, Dimensions, FileResource, TableResource, table=True):
-    """Model for a image file."""
+class MediaResource(BaseModel):
+    """Base class for media items."""
 
     status: ResourceStatus = ResourceStatus.NEW
+    favourite: bool = False
+
+
+class Image(
+    ImageExifData,
+    Dimensions,
+    FileResource,
+    MediaResource,
+    TableResource,
+    table=True,
+):
+    """Model for a image file."""
+
     color_space: str | None = None
     has_alpha: bool = False
 

@@ -66,7 +66,11 @@ def filled_db(empty_db: DatabaseSql) -> DatabaseSql:
     empty_db.create_images_from_objects(
         [
             Image(physical_path='./image_001.jpg', title='image_001.jpg'),
-            Image(physical_path='./image_002.jpg', title='image_002.jpg'),
+            Image(
+                physical_path='./image_002.jpg',
+                title='image_002.jpg',
+                favourite=True,
+            ),
             Image(physical_path='./image_003.jpg', title='image_003.jpg'),
             Image(physical_path='./image_004.jpg', title='image_004.jpg'),
             Image(physical_path='./image_005.jpg', title='image_005.jpg'),

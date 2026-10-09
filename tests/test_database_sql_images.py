@@ -158,3 +158,41 @@ def test_database_sql_filled_db_remove_label_from_image_invalid_label(
     """
     with pytest.raises(LabelDoesNotExistError):
         filled_db.remove_label_from_image('image_001.jpg', 'test_label_999')
+
+
+def test_database_sql_filled_db_favourite_image(filled_db: DatabaseSql) -> None:
+    """Test with a filled database.
+
+    Test if we can favourite images.
+    """
+    set_favourite = filled_db.set_favourite_for_images(
+        True,
+        specification=NameIsImageSpec(name='image_001.jpg'),
+    )
+    assert len(set_favourite) == 1
+    images = filled_db.get_images(
+        specification=NameIsImageSpec(name='image_001.jpg')
+    )
+    assert len(images) == 1
+    assert images[0].favourite
+
+
+def test_database_sql_filled_db_unfavourite_image(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Test if we can unfavourite images.
+    """
+    set_favourite = filled_db.set_favourite_for_images(
+        False,
+        specification=NameIsImageSpec(name='image_002.jpg'),
+    )
+
+    assert len(set_favourite) == 1
+
+    images = filled_db.get_images(
+        specification=NameIsImageSpec(name='image_002.jpg')
+    )
+    assert len(images) == 1
+    assert not images[0].favourite

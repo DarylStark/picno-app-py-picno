@@ -178,3 +178,12 @@ class Database(ABC):
     @abstractmethod
     def remove_label_from_image(self, image: str, label: str) -> None:
         """Remove a label from a image."""
+
+    @abstractmethod
+    def set_favourite_for_images(
+        self,
+        favourite: bool,
+        *,
+        specification: ImageSpecification | None = None,
+    ) -> list[Image]:
+        """Set the favourite flag for specific images."""

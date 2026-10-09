@@ -842,3 +842,26 @@ class DatabaseSql(Database):
 
             session.exec(statement)
             session.commit()
+
+    @override
+    def set_favourite_for_images(
+        self,
+        favourite: bool,
+        *,
+        specification: ImageSpecification | None = None,
+    ) -> list[Image]:
+        """Set the favourite flag for specific images."""
+        return_list: list[Image] = []
+        with Session(self._engine) as session:
+            images = self._get_resources(
+                Image, specification=specification, session=session
+            )
+
+            for image in images:
+                if image.favourite != favourite:
+                    image.favourite = favourite
+                    return_list.append(image)
+
+            session.commit()
+
+        return return_list

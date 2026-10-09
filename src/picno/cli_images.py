@@ -51,6 +51,9 @@ def ls(
     status: ResourceStatus | None = Option(
         default=None, help='Filter on images with a specific status'
     ),
+    favourite: bool | None = Option(
+        default=None, help='Filter on images with that are favourite'
+    ),
 ) -> None:
     """List the images in the database."""
     (_, _, db, console) = get_initialized_project(ctx)
@@ -64,6 +67,7 @@ def ls(
         ipath_name_contains=ipath_name_contains,
         has_location=has_location,
         status=status,
+        favourite=favourite,
     )
 
     # Retrieve the images
@@ -80,6 +84,10 @@ def ls(
                     TableColumn(
                         'Status',
                         lambda image: str(image.status.value).capitalize(),
+                    ),
+                    TableColumn(
+                        'Favourite',
+                        lambda image: str(image.favourite),
                     ),
                     TableColumn(
                         'Physical path', lambda image: image.physical_path
@@ -189,3 +197,99 @@ def remove_label(
     (_, _, db, console) = get_initialized_project(ctx)
     db.remove_label_from_image(name, label)
     console.print(f'Removed label "{label}" from "{name}"')
+
+
+@images.command(name='favourite', help='Favourite specific images')
+def favourite(
+    ctx: Context,
+    name: str | None = Option(default=None, help='Filter on a specific name'),
+    iname: str | None = Option(
+        default=None, help='Filter on a specific name (case insensitive)'
+    ),
+    name_contains: list[str] | None = Option(
+        default=None, help='Filter on a text in the name <repeatable>'
+    ),
+    iname_contains: list[str] | None = Option(
+        default=None,
+        help='Filter on a text in the name (case insensitive) <repeatable>',
+    ),
+    path_name_contains: list[str] | None = Option(
+        default=None, help='Filter on a text in the path name <repeatable>'
+    ),
+    ipath_name_contains: list[str] | None = Option(
+        default=None,
+        help='Filter on a text in the path name (case insensitive)<repeatable>',
+    ),
+    has_location: bool | None = Option(
+        default=None, help='Filter on images with a location'
+    ),
+    status: ResourceStatus | None = Option(
+        default=None, help='Filter on images with a specific status'
+    ),
+) -> None:
+    """List the images in the database."""
+    (_, _, db, console) = get_initialized_project(ctx)
+
+    filter = ImageFilter(
+        name=name,
+        iname=iname,
+        name_contains=name_contains,
+        iname_contains=iname_contains,
+        path_name_contains=path_name_contains,
+        ipath_name_contains=ipath_name_contains,
+        has_location=has_location,
+        status=status,
+    )
+    images = db.set_favourite_for_images(
+        favourite=True,
+        specification=filter.get_specifications(),
+    )
+    console.print(f'Set {len(images)} images as favourite')
+
+
+@images.command(name='unfavourite', help='Unfavourite specific images')
+def unfavourite(
+    ctx: Context,
+    name: str | None = Option(default=None, help='Filter on a specific name'),
+    iname: str | None = Option(
+        default=None, help='Filter on a specific name (case insensitive)'
+    ),
+    name_contains: list[str] | None = Option(
+        default=None, help='Filter on a text in the name <repeatable>'
+    ),
+    iname_contains: list[str] | None = Option(
+        default=None,
+        help='Filter on a text in the name (case insensitive) <repeatable>',
+    ),
+    path_name_contains: list[str] | None = Option(
+        default=None, help='Filter on a text in the path name <repeatable>'
+    ),
+    ipath_name_contains: list[str] | None = Option(
+        default=None,
+        help='Filter on a text in the path name (case insensitive)<repeatable>',
+    ),
+    has_location: bool | None = Option(
+        default=None, help='Filter on images with a location'
+    ),
+    status: ResourceStatus | None = Option(
+        default=None, help='Filter on images with a specific status'
+    ),
+) -> None:
+    """List the images in the database."""
+    (_, _, db, console) = get_initialized_project(ctx)
+
+    filter = ImageFilter(
+        name=name,
+        iname=iname,
+        name_contains=name_contains,
+        iname_contains=iname_contains,
+        path_name_contains=path_name_contains,
+        ipath_name_contains=ipath_name_contains,
+        has_location=has_location,
+        status=status,
+    )
+    images = db.set_favourite_for_images(
+        favourite=False,
+        specification=filter.get_specifications(),
+    )
+    console.print(f'Removed the favourite flag for {len(images)} images')

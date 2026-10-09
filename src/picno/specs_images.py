@@ -78,6 +78,16 @@ class StatusIsImageSpec(ParentSpecification[Image]):
         )
 
 
+class IsFavouriteImageSpec(ParentSpecification[Image]):
+    """Specification for when the favourite should be the same."""
+
+    def __init__(self, favourite: bool) -> None:
+        """Set the given values."""
+        super().__init__(
+            FieldIsSpecification(Image, 'favourite', favourite, False)
+        )
+
+
 @dataclass(frozen=True)
 class ImageFilter(Filter[ImageSpecification]):
     """Class for Image Filter builder."""
@@ -90,6 +100,7 @@ class ImageFilter(Filter[ImageSpecification]):
     ipath_name_contains: list[str] | None = None
     has_location: bool | None = None
     status: ResourceStatus | None = None
+    favourite: bool | None = None
 
     def get_specifications(self) -> ImageSpecification | None:
         """Builder for Image Specifications."""
@@ -130,5 +141,8 @@ class ImageFilter(Filter[ImageSpecification]):
 
         if self.status:
             specs.append(StatusIsImageSpec(self.status))
+
+        if self.favourite is not None:
+            specs.append(IsFavouriteImageSpec(self.favourite))
 
         return specs if specs else None

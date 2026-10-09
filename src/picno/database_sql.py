@@ -686,6 +686,7 @@ class DatabaseSql(Database):
             ),
         )
 
+    @override
     def remove_label_from_person(self, person: str, label: str) -> None:
         """Remove a label from a person."""
         with Session(self._engine) as session:
@@ -713,6 +714,22 @@ class DatabaseSql(Database):
 
             session.exec(statement)
             session.commit()
+
+    @override
+    def remove_label_from_persons(
+        self, label: str, specification: PersonSpecification | None = None
+    ) -> list[Person]:
+        """Method to remove a label from persons."""
+        return self._remove_label_from_resource(
+            Person,
+            PersonLabelLink,
+            'person_id',
+            label,
+            specification=self._create_composite_specification(
+                HasLabelPersonSpec(label_name=label),
+                specification,
+            ),
+        )
 
     @override
     def create_image_from_object(self, image: Image) -> Image:
@@ -945,12 +962,17 @@ class DatabaseSql(Database):
             session.exec(statement)
             session.commit()
 
-    @override
-    def remove_label_from_images(
-        self, label: str, specification: ImageSpecification | None = None
-    ) -> list[Image]:
+    def _remove_label_from_resource(
+        self,
+        resource_type: type[TableResourceType],
+        link_table: type[LabelLinkTableType],
+        resource_field: str,
+        label: str,
+        *,
+        specification: Specification[TableResourceType] | None = None,
+    ) -> list[TableResourceType]:
         """Method to remove a label from images."""
-        return_list: list[Image] = []
+        return_list: list[TableResourceType] = []
         with Session(self._engine) as session:
             label_obj = self._get_resource_from_field(
                 Label,
@@ -962,36 +984,39 @@ class DatabaseSql(Database):
             if label_obj is None:
                 raise LabelDoesNotExistError(f'Label "{label}" does not exist')
 
-            labelled_spec = HasLabelImageSpec(label_name=label)
-            if specification:
-                specification = AndSpecification(
-                    spec_a=specification, spec_b=labelled_spec
-                )
-            else:
-                specification = labelled_spec
-
-            images = self._get_resources(
-                Image,
-                specification=specification,
-                session=session,
-                options=self._convert_options_to_sql_options(
-                    [RetrieveOption.LOAD_IMAGE_LABELS]
-                ),
+            resources = self._get_resources(
+                resource_type, specification=specification, session=session
             )
 
-            for image in images:
-                statement = delete(ImageLabelLink).where(
+            for resource in resources:
+                statement = delete(link_table).where(
                     and_(
-                        ImageLabelLink.image_id == image.id,
-                        ImageLabelLink.label_id == label_obj.id,
+                        getattr(link_table, resource_field) == resource.id,
+                        link_table.label_id == label_obj.id,
                     )
                 )
                 session.exec(statement)
-                return_list.append(image)
+                return_list.append(resource)
 
             session.commit()
 
         return return_list
+
+    @override
+    def remove_label_from_images(
+        self, label: str, specification: ImageSpecification | None = None
+    ) -> list[Image]:
+        """Method to remove a label from images."""
+        return self._remove_label_from_resource(
+            Image,
+            ImageLabelLink,
+            'image_id',
+            label,
+            specification=self._create_composite_specification(
+                HasLabelImageSpec(label_name=label),
+                specification,
+            ),
+        )
 
     @override
     def set_favourite_for_images(

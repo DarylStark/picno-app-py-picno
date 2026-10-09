@@ -148,6 +148,12 @@ class Database(ABC):
         """Remove a label from a person."""
 
     @abstractmethod
+    def remove_label_from_persons(
+        self, label: str, specification: PersonSpecification | None = None
+    ) -> list[Person]:
+        """Method to remove a label from persons."""
+
+    @abstractmethod
     def create_image_from_object(self, image: Image) -> Image:
         """Create image from a Image object."""
 

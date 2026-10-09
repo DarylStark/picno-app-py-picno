@@ -123,27 +123,63 @@ def rm(
     console.print(f'Deleted person "{name}"')
 
 
-@persons.command(name='add-label', help='Add a label to a person')
-def add_label(
+@persons.command(name='label', help='Label specific persons')
+def label(
     ctx: Context,
-    name: str = Argument(help='The name of the person to add the label too'),
-    label: str = Argument(help='The name of the label to add'),
-) -> None:
-    """Add a label to a person."""
-    (_, _, db, console) = get_initialized_project(ctx)
-    db.add_label_to_person(name, label)
-    console.print(f'Added label "{label}" to "{name}"')
-
-
-@persons.command(name='remove-label', help='Remove a label from a person')
-def remove_label(
-    ctx: Context,
-    name: str = Argument(
-        help='The name of the person to remove the label from'
+    label_name: str = Argument(help='The name of the label to add'),
+    name: str | None = Option(default=None, help='Filter on a specific name'),
+    iname: str | None = Option(
+        default=None, help='Filter on a specific name (case insensitive)'
     ),
-    label: str = Argument(help='The name of the label to remove'),
+    name_contains: list[str] | None = Option(
+        default=None, help='Filter on a text in the name <repeatable>'
+    ),
+    iname_contains: list[str] | None = Option(
+        default=None,
+        help='Filter on a text in the name (case insensitive) <repeatable>',
+    ),
 ) -> None:
-    """Add a label to a person."""
+    """Remove a label from persons."""
     (_, _, db, console) = get_initialized_project(ctx)
-    db.remove_label_from_person(name, label)
-    console.print(f'Removed label "{label}" from "{name}"')
+    filter = PersonFilter(
+        name=name,
+        iname=iname,
+        name_contains=name_contains,
+        iname_contains=iname_contains,
+    )
+
+    persons = db.add_label_to_persons(
+        label_name, specification=filter.get_specifications()
+    )
+    console.print(f'Added label "{label_name}" to {len(persons)} persons')
+
+
+@persons.command(name='unlabel', help='Unlabel specific persons')
+def unlabel(
+    ctx: Context,
+    label_name: str = Argument(help='The name of the label to remove'),
+    name: str | None = Option(default=None, help='Filter on a specific name'),
+    iname: str | None = Option(
+        default=None, help='Filter on a specific name (case insensitive)'
+    ),
+    name_contains: list[str] | None = Option(
+        default=None, help='Filter on a text in the name <repeatable>'
+    ),
+    iname_contains: list[str] | None = Option(
+        default=None,
+        help='Filter on a text in the name (case insensitive) <repeatable>',
+    ),
+) -> None:
+    """Add a label to persons."""
+    (_, _, db, console) = get_initialized_project(ctx)
+    filter = PersonFilter(
+        name=name,
+        iname=iname,
+        name_contains=name_contains,
+        iname_contains=iname_contains,
+    )
+
+    persons = db.remove_label_from_persons(
+        label_name, specification=filter.get_specifications()
+    )
+    console.print(f'Removed label "{label_name}" from {len(persons)} persons')

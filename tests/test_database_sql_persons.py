@@ -624,3 +624,39 @@ def test_database_sql_filled_db_add_label_to_persons_regroup(
         options=[RetrieveOption.LOAD_PERSON_LABELS],
     )
     assert len(persons[0].labels) == 4
+
+
+#####
+
+
+def test_database_sql_filled_db_remove_label_from_persons(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Check if we can remove labels from persons.
+    """
+    persons = filled_db.remove_label_from_persons('test_label_1')
+    assert len(persons) == 1
+
+
+def test_database_sql_filled_db_remove_label_from_persons_non_label(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Check if we can remove labels from persons.
+    """
+    persons = filled_db.remove_label_from_persons('test_label_5')
+    assert len(persons) == 0
+
+
+def test_database_sql_filled_db_remove_label_from_persons_not_existing_label(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Check if we can remove labels from persons.
+    """
+    with pytest.raises(LabelDoesNotExistError):
+        filled_db.remove_label_from_persons('test_label_999')

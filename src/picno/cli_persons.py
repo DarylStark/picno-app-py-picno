@@ -26,6 +26,9 @@ def ls(
         default=None,
         help='Filter on a text in the name (case insensitive) <repeatable>',
     ),
+    label: list[str] | None = Option(
+        default=None, help='Filter on a specific label <repeatable>'
+    ),
 ) -> None:
     """List the persons in the database."""
     (_, _, db, console) = get_initialized_project(ctx)
@@ -35,6 +38,7 @@ def ls(
         iname=iname,
         name_contains=name_contains,
         iname_contains=iname_contains,
+        label=label,
     )
 
     # Retrieve the persons
@@ -138,6 +142,9 @@ def label(
         default=None,
         help='Filter on a text in the name (case insensitive) <repeatable>',
     ),
+    label: list[str] | None = Option(
+        default=None, help='Filter on a specific label <repeatable>'
+    ),
 ) -> None:
     """Remove a label from persons."""
     (_, _, db, console) = get_initialized_project(ctx)
@@ -146,6 +153,7 @@ def label(
         iname=iname,
         name_contains=name_contains,
         iname_contains=iname_contains,
+        label=label,
     )
 
     persons = db.add_label_to_persons(
@@ -169,6 +177,9 @@ def unlabel(
         default=None,
         help='Filter on a text in the name (case insensitive) <repeatable>',
     ),
+    label: list[str] | None = Option(
+        default=None, help='Filter on a specific label <repeatable>'
+    ),
 ) -> None:
     """Add a label to persons."""
     (_, _, db, console) = get_initialized_project(ctx)
@@ -177,6 +188,7 @@ def unlabel(
         iname=iname,
         name_contains=name_contains,
         iname_contains=iname_contains,
+        label=label,
     )
 
     persons = db.remove_label_from_persons(

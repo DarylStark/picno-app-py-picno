@@ -71,6 +71,7 @@ class PersonFilter(Filter[PersonSpecification]):
     iname: str | None = None
     name_contains: list[str] | None = None
     iname_contains: list[str] | None = None
+    label: list[str] | None = None
 
     def get_specifications(self) -> PersonSpecification | None:
         """Builder for Person Specifications."""
@@ -95,5 +96,11 @@ class PersonFilter(Filter[PersonSpecification]):
             specs.append(
                 NameContainsPersonSpec(text=value, case_insensitive=True)
             )
+
+        if self.label is not None:
+            all_spec = AllSpecification[Person]()
+            for label in self.label:
+                all_spec.append(HasLabelPersonSpec(label))
+            specs.append(all_spec)
 
         return specs if specs else None

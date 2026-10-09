@@ -1,5 +1,6 @@
 """Module with the project manager."""
 
+from collections.abc import Callable
 from datetime import UTC, datetime
 from fractions import Fraction
 from pathlib import Path
@@ -8,12 +9,14 @@ from PIL import ExifTags
 from PIL import Image as PilImage
 from PIL.TiffImagePlugin import IFDRational
 
-from picno.exceptions import FileNotInDataDirectoryError, ImageFileNotFoundError
-
-from .database import Database
+from .database import Database, RetrieveOption
 from .database_sql import DatabaseSql
+from .exceptions import FileNotInDataDirectoryError, ImageFileNotFoundError
+from .executor import Executor
+from .executor_run_command_list import create_run_command_list
 from .model import Image
 from .project import Project
+from .specs_images import ImageSpecification
 
 
 def _to_float(value: Fraction | tuple | IFDRational | None) -> float | None:
@@ -181,3 +184,31 @@ class ProjectManager:
         return self._database.create_images_from_objects(
             self._get_new_files_in_data_directory()
         )
+
+    def exec_for_images(
+        self,
+        executor: str,
+        *,
+        options: dict[str, str] | None = None,
+        specification: ImageSpecification | None = None,
+    ) -> None:
+        """Run a executor for images."""
+        images = self._database.get_images(
+            specification=specification,
+            options=[RetrieveOption.LOAD_IMAGE_LABELS],
+        )
+
+        executors: dict[
+            str, Callable[[Path, dict[str, str] | None], Executor]
+        ] = {'run_cmd_list': create_run_command_list}
+
+        exec_type = executors.get(executor)
+        if not exec_type:
+            raise ValueError('Unknown executor')
+            return
+
+        exec = exec_type(self._structure.data_folder, options)
+        exec.start()
+        for image in images:
+            exec.process_image(image)
+        exec.done()

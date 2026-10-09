@@ -1,5 +1,6 @@
 """Module with the `pico images` options."""
 
+import re
 from enum import Enum
 
 from typer import Argument, Context, Option, Typer
@@ -421,3 +422,74 @@ def mv(
     (_, _, db, console) = get_initialized_project(ctx)
     db.rename_image(old_title, new_title)
     console.print(f'Renamed image "{old_title}" to "{new_title}"')
+
+
+@images.command(name='exec', help='Execute a command for specific images')
+def exec(
+    ctx: Context,
+    executor: str = Argument(help='The executor to run'),
+    options: list[str] | None = Option(
+        default=None, help='Give options for the executor'
+    ),
+    name: str | None = Option(default=None, help='Filter on a specific name'),
+    iname: str | None = Option(
+        default=None, help='Filter on a specific name (case insensitive)'
+    ),
+    name_contains: list[str] | None = Option(
+        default=None, help='Filter on a text in the name <repeatable>'
+    ),
+    iname_contains: list[str] | None = Option(
+        default=None,
+        help='Filter on a text in the name (case insensitive) <repeatable>',
+    ),
+    path_name_contains: list[str] | None = Option(
+        default=None, help='Filter on a text in the path name <repeatable>'
+    ),
+    ipath_name_contains: list[str] | None = Option(
+        default=None,
+        help='Filter on a text in the path name (case insensitive)<repeatable>',
+    ),
+    has_location: bool | None = Option(
+        default=None, help='Filter on images with a location'
+    ),
+    status: ResourceStatus | None = Option(
+        default=None, help='Filter on images with a specific status'
+    ),
+    favourite: bool | None = Option(
+        default=None, help='Filter on images with that are favourite'
+    ),
+    label: list[str] | None = Option(
+        default=None, help='Filter on a specific label <repeatable>'
+    ),
+) -> None:
+    """Execute a specific command for specific images."""
+    (_, pm, _, console) = get_initialized_project(ctx)
+
+    # Parse the options
+    option_dict: dict[str, str] | None = None
+    if options:
+        option_dict = {}
+        for option in options:
+            if not re.match(r'^[a-zA-Z0-9_]+=[a-zA-Z0-9_-]+$', option):
+                raise ValueError(
+                    'Option should follow the pattern option=value'
+                )
+            option_dict[option.split('=')[0]] = option.split('=')[1]
+
+    filter = ImageFilter(
+        name=name,
+        iname=iname,
+        name_contains=name_contains,
+        iname_contains=iname_contains,
+        path_name_contains=path_name_contains,
+        ipath_name_contains=ipath_name_contains,
+        has_location=has_location,
+        status=status,
+        favourite=favourite,
+        label=label,
+    )
+    pm.exec_for_images(
+        executor=executor,
+        specification=filter.get_specifications(),
+        options=option_dict,
+    )

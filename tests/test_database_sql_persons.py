@@ -13,7 +13,7 @@ from picno.exceptions import (
     PersonDoesNotExistError,
     PersonLabelLinkAlreadyExistsError,
 )
-from picno.specs_persons import NameContainsPersonSpec
+from picno.specs_persons import NameContainsPersonSpec, NameIsPersonSpec
 
 
 def test_database_sql_empty_db_empty_person_list(empty_db: DatabaseSql) -> None:
@@ -537,3 +537,90 @@ def test_database_sql_filled_db_rename_person_already_existing(
     """
     with pytest.raises(PersonAlreadyExistsError):
         _ = filled_db.rename_person('Example Person 1', 'Example Person 2')
+
+
+def test_database_sql_filled_db_add_label_to_persons(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Check if we can add labels to persons.
+    """
+    persons = filled_db.add_label_to_persons(
+        'test_label_5', specification=NameIsPersonSpec(name='Example Person 1')
+    )
+    assert len(persons) == 1
+    persons = filled_db.get_persons(
+        specification=NameIsPersonSpec(name='Example Person 1'),
+        options=[RetrieveOption.LOAD_PERSON_LABELS],
+    )
+    assert len(persons[0].labels) == 1
+
+
+def test_database_sql_filled_db_add_label_to_all_persons(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Check if we can add labels to persons.
+    """
+    persons = filled_db.add_label_to_persons('test_label_5')
+    assert len(persons) == 5
+
+
+def test_database_sql_filled_db_add_label_to_persons_wrong_label(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Check if we can add labels to persons.
+    """
+    with pytest.raises(LabelDoesNotExistError):
+        filled_db.add_label_to_persons('test_label_999')
+
+
+def test_database_sql_filled_db_add_label_to_all_persons_double(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Check if we can add labels to persons.
+    """
+    persons = filled_db.add_label_to_persons(
+        'test_label_2', NameIsPersonSpec(name='Example Person 2')
+    )
+    assert len(persons) == 0
+
+
+def test_database_sql_filled_db_add_label_to_persons_group(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Check if we can add labels to persons.
+    """
+    filled_db.add_label_to_persons(
+        'group3:label1', specification=NameIsPersonSpec(name='Example Person 2')
+    )
+    persons = filled_db.get_persons(
+        specification=NameIsPersonSpec(name='Example Person 2'),
+        options=[RetrieveOption.LOAD_PERSON_LABELS],
+    )
+    assert len(persons[0].labels) == 5
+
+
+def test_database_sql_filled_db_add_label_to_persons_regroup(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Check if we can add labels to persons.
+    """
+    filled_db.add_label_to_persons(
+        'group1:label1', specification=NameIsPersonSpec(name='Example Person 2')
+    )
+    persons = filled_db.get_persons(
+        specification=NameIsPersonSpec(name='Example Person 2'),
+        options=[RetrieveOption.LOAD_PERSON_LABELS],
+    )
+    assert len(persons[0].labels) == 4

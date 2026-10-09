@@ -138,6 +138,12 @@ class Database(ABC):
         """Method to add a label to a person (on names)."""
 
     @abstractmethod
+    def add_label_to_persons(
+        self, label: str, specification: PersonSpecification | None = None
+    ) -> list[Person]:
+        """Method to add a label to a persons."""
+
+    @abstractmethod
     def remove_label_from_person(self, person: str, label: str) -> None:
         """Remove a label from a person."""
 

@@ -1,9 +1,13 @@
 """Module with the specifications for labels."""
 
 from dataclasses import dataclass
+from typing import override
+
+from sqlalchemy import ColumnElement
+from sqlmodel import and_, col, exists, select
 
 from .filter import Filter
-from .model import Person
+from .model import Label, Person, PersonLabelLink
 from .specs import (
     AllSpecification,
     ParentSpecification,
@@ -33,6 +37,29 @@ class NameContainsPersonSpec(ParentSpecification[Person]):
         """Set the given values."""
         super().__init__(
             StrContainsSpecification(Person, 'name', text, case_insensitive)
+        )
+
+
+class HasLabelPersonSpec(PersonSpecification):
+    """Filter on persons with a specific image."""
+
+    def __init__(self, label_name: str) -> None:
+        """Set the label name to search for."""
+        self._label_name = label_name
+
+    @override
+    def as_sql(self) -> ColumnElement[bool]:
+        """Create the SQL commands for this object."""
+        return exists(
+            select(1)
+            .select_from(PersonLabelLink)
+            .join(Label, col(Label.id) == PersonLabelLink.label_id)
+            .where(
+                and_(
+                    col(PersonLabelLink.person_id) == Person.id,
+                    col(Label.name) == self._label_name,
+                )
+            )
         )
 
 

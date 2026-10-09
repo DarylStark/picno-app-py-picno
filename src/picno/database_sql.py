@@ -31,15 +31,19 @@ from .model import (
     Image,
     ImageLabelLink,
     Label,
+    LabelLinkTable,
     Person,
     PersonLabelLink,
     ResourceStatus,
+    TableResource,
 )
 from .specs import AndSpecification, NotSpecification, Specification
 from .specs_images import HasLabelImageSpec, ImageSpecification
-from .specs_persons import PersonSpecification
+from .specs_persons import HasLabelPersonSpec, PersonSpecification
 
 T = TypeVar('T')
+LabelLinkTableType = TypeVar('LabelLinkTableType', bound=LabelLinkTable)
+TableResourceType = TypeVar('TableResourceType', bound=TableResource)
 
 
 class DatabaseSql(Database):
@@ -666,6 +670,22 @@ class DatabaseSql(Database):
                     f'Person "{person}" is already labelled with "{label}"'
                 ) from exc
 
+    @override
+    def add_label_to_persons(
+        self, label: str, specification: PersonSpecification | None = None
+    ) -> list[Person]:
+        """Method to add a label to a persons."""
+        return self._add_label_to_resource(
+            Person,
+            PersonLabelLink,
+            'person_id',
+            label,
+            specification=self._create_composite_specification(
+                NotSpecification(HasLabelPersonSpec(label_name=label)),
+                specification,
+            ),
+        )
+
     def remove_label_from_person(self, person: str, label: str) -> None:
         """Remove a label from a person."""
         with Session(self._engine) as session:
@@ -812,12 +832,16 @@ class DatabaseSql(Database):
                     f'Image "{image}" is already labelled with "{label}"'
                 ) from exc
 
-    @override
-    def add_label_to_images(
-        self, label: str, specification: ImageSpecification | None = None
-    ) -> list[Image]:
-        """Method to add a label to a images."""
-        return_list: list[Image] = []
+    def _add_label_to_resource(
+        self,
+        resource_type: type[TableResourceType],
+        link_table: type[LabelLinkTableType],
+        resource_field: str,
+        label: str,
+        *,
+        specification: Specification[TableResourceType] | None = None,
+    ) -> list[TableResourceType]:
+        return_list: list[TableResourceType] = []
         with Session(self._engine) as session:
             label_obj = self._get_resource_from_field(
                 Label,
@@ -829,52 +853,66 @@ class DatabaseSql(Database):
             if label_obj is None:
                 raise LabelDoesNotExistError(f'Label "{label}" does not exist')
 
-            not_labelled_spec = NotSpecification(
-                spec=HasLabelImageSpec(label_name=label)
-            )
-            if specification:
-                specification = AndSpecification(
-                    spec_a=specification, spec_b=not_labelled_spec
-                )
-            else:
-                specification = not_labelled_spec
-
-            images = self._get_resources(
-                Image,
-                specification=specification,
-                session=session,
-                options=self._convert_options_to_sql_options(
-                    [RetrieveOption.LOAD_IMAGE_LABELS]
-                ),
+            resources = self._get_resources(
+                resource_type, specification=specification, session=session
             )
 
-            for image in images:
+            for resource in resources:
                 if label_obj.group:
                     group = label_obj.group
                     same_group_labels = [
                         group_label
-                        for group_label in image.labels
+                        for group_label in getattr(resource, 'labels', [])
                         if group_label.group == group
                     ]
+
                     if len(same_group_labels) > 0:
                         for group_label in same_group_labels:
-                            statement = delete(ImageLabelLink).where(
+                            statement = delete(link_table).where(
                                 and_(
-                                    ImageLabelLink.image_id == image.id,
-                                    ImageLabelLink.label_id == group_label.id,
+                                    getattr(link_table, resource_field)
+                                    == resource.id,
+                                    link_table.label_id == group_label.id,
                                 )
                             )
                             session.exec(statement)
 
-                self._create_resource(
-                    ImageLabelLink(image_id=image.id, label_id=label_obj.id),
-                    session=session,
-                )
-                return_list.append(image)
+                link_table_args = {
+                    'label_id': label_obj.id,
+                    resource_field: getattr(resource, 'id', None),
+                }
+                link_resource = link_table(**link_table_args)
+                self._create_resource(link_resource, session=session)
+                return_list.append(resource)
 
             session.commit()
-
         return return_list
+
+    def _create_composite_specification[T](
+        self,
+        specification: Specification[T],
+        specifications: Specification[T] | None = None,
+    ) -> Specification[T]:
+        """Method to combine two specifications into one."""
+        if specifications:
+            return AndSpecification(spec_a=specification, spec_b=specifications)
+        return specification
+
+    @override
+    def add_label_to_images(
+        self, label: str, specification: ImageSpecification | None = None
+    ) -> list[Image]:
+        """Method to add a label to a images."""
+        return self._add_label_to_resource(
+            Image,
+            ImageLabelLink,
+            'image_id',
+            label,
+            specification=self._create_composite_specification(
+                NotSpecification(HasLabelImageSpec(label_name=label)),
+                specification,
+            ),
+        )
 
     @override
     def remove_label_from_image(self, image: str, label: str) -> None:

@@ -21,7 +21,18 @@ class TableResource(SQLModel):
     id: int | None = Field(default=None, primary_key=True)
 
 
-class PersonLabelLink(SQLModel, table=True):
+class LabelLinkTable(SQLModel):
+    """Base class for tables that link to labels."""
+
+    label_id: int | None = Field(
+        default=None,
+        foreign_key='label.id',
+        primary_key=True,
+        ondelete='CASCADE',
+    )
+
+
+class PersonLabelLink(LabelLinkTable, SQLModel, table=True):
     """Link model for Persons and Labels."""
 
     __tablename__ = 'person_label_link'
@@ -32,15 +43,9 @@ class PersonLabelLink(SQLModel, table=True):
         primary_key=True,
         ondelete='CASCADE',
     )
-    label_id: int | None = Field(
-        default=None,
-        foreign_key='label.id',
-        primary_key=True,
-        ondelete='CASCADE',
-    )
 
 
-class ImageLabelLink(SQLModel, table=True):
+class ImageLabelLink(LabelLinkTable, SQLModel, table=True):
     """Link model for Images and Labels."""
 
     __tablename__ = 'image_label_link'
@@ -48,12 +53,6 @@ class ImageLabelLink(SQLModel, table=True):
     image_id: int | None = Field(
         default=None,
         foreign_key='image.id',
-        primary_key=True,
-        ondelete='CASCADE',
-    )
-    label_id: int | None = Field(
-        default=None,
-        foreign_key='label.id',
         primary_key=True,
         ondelete='CASCADE',
     )

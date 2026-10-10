@@ -22,58 +22,64 @@ class OutputFormat(Enum):
     DETAILS = 'details'
 
 
-@images.command(name='ls', help='List images')
-def ls(
-    ctx: Context,
-    name: str | None = Option(default=None, help='Filter on a specific name'),
-    output_format: OutputFormat = Option(
-        default=OutputFormat.TABLE, help='The way to output data'
+filter_args = {
+    'name': Option(
+        default=None,
+        help='Filter on a specific name',
     ),
-    iname: str | None = Option(
-        default=None, help='Filter on a specific name (case insensitive)'
+    'iname': Option(
+        default=None,
+        help='Filter on a specific name (case insensitive)',
     ),
-    name_contains: list[str] | None = Option(
+    'name_contains': Option(
         default=None, help='Filter on a text in the name <repeatable>'
     ),
-    iname_contains: list[str] | None = Option(
+    'iname_contains': Option(
         default=None,
         help='Filter on a text in the name (case insensitive) <repeatable>',
     ),
-    path_name_contains: list[str] | None = Option(
+    'path_name_contains': Option(
         default=None, help='Filter on a text in the path name <repeatable>'
     ),
-    ipath_name_contains: list[str] | None = Option(
+    'ipath_name_contains': Option(
         default=None,
         help='Filter on a text in the path name (case insensitive)<repeatable>',
     ),
-    has_location: bool | None = Option(
+    'has_location': Option(
         default=None, help='Filter on images with a location'
     ),
-    status: ResourceStatus | None = Option(
+    'status': Option(
         default=None, help='Filter on images with a specific status'
     ),
-    favourite: bool | None = Option(
+    'favourite': Option(
         default=None, help='Filter on images with that are favourite'
     ),
-    label: list[str] | None = Option(
+    'label': Option(
         default=None, help='Filter on a specific label <repeatable>'
     ),
+}
+
+
+@images.command(name='ls', help='List images')
+def ls(
+    ctx: Context,
+    output_format: OutputFormat = Option(
+        default=OutputFormat.TABLE, help='The way to output data'
+    ),
+    name: str | None = filter_args['name'],
+    iname: str | None = filter_args['iname'],
+    name_contains: list[str] | None = filter_args['name_contains'],
+    iname_contains: list[str] | None = filter_args['iname_contains'],
+    path_name_contains: list[str] | None = filter_args['path_name_contains'],
+    ipath_name_contains: list[str] | None = filter_args['ipath_name_contains'],
+    has_location: bool | None = filter_args['has_location'],
+    status: ResourceStatus | None = filter_args['status'],
+    favourite: bool | None = filter_args['favourite'],
+    label: list[str] | None = filter_args['label'],
 ) -> None:
     """List the images in the database."""
     (_, _, db, console) = get_initialized_project(ctx)
-
-    filter = ImageFilter(
-        name=name,
-        iname=iname,
-        name_contains=name_contains,
-        iname_contains=iname_contains,
-        path_name_contains=path_name_contains,
-        ipath_name_contains=ipath_name_contains,
-        has_location=has_location,
-        status=status,
-        favourite=favourite,
-        label=label,
-    )
+    filter = ImageFilter.build_from_locals(locals())
 
     # Retrieve the images
     images = db.get_images(
@@ -146,52 +152,20 @@ def ls(
 def set_status(
     ctx: Context,
     new_status: ResourceStatus = Argument(help='The status to set'),
-    name: str | None = Option(default=None, help='Filter on a specific name'),
-    iname: str | None = Option(
-        default=None, help='Filter on a specific name (case insensitive)'
-    ),
-    name_contains: list[str] | None = Option(
-        default=None, help='Filter on a text in the name <repeatable>'
-    ),
-    iname_contains: list[str] | None = Option(
-        default=None,
-        help='Filter on a text in the name (case insensitive) <repeatable>',
-    ),
-    path_name_contains: list[str] | None = Option(
-        default=None, help='Filter on a text in the path name <repeatable>'
-    ),
-    ipath_name_contains: list[str] | None = Option(
-        default=None,
-        help='Filter on a text in the path name (case insensitive)<repeatable>',
-    ),
-    has_location: bool | None = Option(
-        default=None, help='Filter on images with a location'
-    ),
-    status: ResourceStatus | None = Option(
-        default=None, help='Filter on images with a specific status'
-    ),
-    favourite: bool | None = Option(
-        default=None, help='Filter on images with that are favourite'
-    ),
-    label: list[str] | None = Option(
-        default=None, help='Filter on a specific label <repeatable>'
-    ),
+    name: str | None = filter_args['name'],
+    iname: str | None = filter_args['iname'],
+    name_contains: list[str] | None = filter_args['name_contains'],
+    iname_contains: list[str] | None = filter_args['iname_contains'],
+    path_name_contains: list[str] | None = filter_args['path_name_contains'],
+    ipath_name_contains: list[str] | None = filter_args['ipath_name_contains'],
+    has_location: bool | None = filter_args['has_location'],
+    status: ResourceStatus | None = filter_args['status'],
+    favourite: bool | None = filter_args['favourite'],
+    label: list[str] | None = filter_args['label'],
 ) -> None:
     """List the images in the database."""
     (_, _, db, console) = get_initialized_project(ctx)
-
-    filter = ImageFilter(
-        name=name,
-        iname=iname,
-        name_contains=name_contains,
-        iname_contains=iname_contains,
-        path_name_contains=path_name_contains,
-        ipath_name_contains=ipath_name_contains,
-        has_location=has_location,
-        status=status,
-        favourite=favourite,
-        label=label,
-    )
+    filter = ImageFilter.build_from_locals(locals())
     images = db.set_image_status(
         status=new_status,
         specification=filter.get_specifications(),
@@ -203,52 +177,20 @@ def set_status(
 def label(
     ctx: Context,
     label_name: str = Argument(help='The name of the label to add'),
-    name: str | None = Option(default=None, help='Filter on a specific name'),
-    iname: str | None = Option(
-        default=None, help='Filter on a specific name (case insensitive)'
-    ),
-    name_contains: list[str] | None = Option(
-        default=None, help='Filter on a text in the name <repeatable>'
-    ),
-    iname_contains: list[str] | None = Option(
-        default=None,
-        help='Filter on a text in the name (case insensitive) <repeatable>',
-    ),
-    path_name_contains: list[str] | None = Option(
-        default=None, help='Filter on a text in the path name <repeatable>'
-    ),
-    ipath_name_contains: list[str] | None = Option(
-        default=None,
-        help='Filter on a text in the path name (case insensitive)<repeatable>',
-    ),
-    has_location: bool | None = Option(
-        default=None, help='Filter on images with a location'
-    ),
-    status: ResourceStatus | None = Option(
-        default=None, help='Filter on images with a specific status'
-    ),
-    favourite: bool | None = Option(
-        default=None, help='Filter on images with that are favourite'
-    ),
-    label: list[str] | None = Option(
-        default=None, help='Filter on a specific label <repeatable>'
-    ),
+    name: str | None = filter_args['name'],
+    iname: str | None = filter_args['iname'],
+    name_contains: list[str] | None = filter_args['name_contains'],
+    iname_contains: list[str] | None = filter_args['iname_contains'],
+    path_name_contains: list[str] | None = filter_args['path_name_contains'],
+    ipath_name_contains: list[str] | None = filter_args['ipath_name_contains'],
+    has_location: bool | None = filter_args['has_location'],
+    status: ResourceStatus | None = filter_args['status'],
+    favourite: bool | None = filter_args['favourite'],
+    label: list[str] | None = filter_args['label'],
 ) -> None:
     """Add a label to images."""
     (_, _, db, console) = get_initialized_project(ctx)
-    filter = ImageFilter(
-        name=name,
-        iname=iname,
-        name_contains=name_contains,
-        iname_contains=iname_contains,
-        path_name_contains=path_name_contains,
-        ipath_name_contains=ipath_name_contains,
-        has_location=has_location,
-        status=status,
-        favourite=favourite,
-        label=label,
-    )
-
+    filter = ImageFilter.build_from_locals(locals())
     images = db.add_label_to_images(
         label_name, specification=filter.get_specifications()
     )
@@ -259,52 +201,20 @@ def label(
 def unlabel(
     ctx: Context,
     label_name: str = Argument(help='The name of the label to remove'),
-    name: str | None = Option(default=None, help='Filter on a specific name'),
-    iname: str | None = Option(
-        default=None, help='Filter on a specific name (case insensitive)'
-    ),
-    name_contains: list[str] | None = Option(
-        default=None, help='Filter on a text in the name <repeatable>'
-    ),
-    iname_contains: list[str] | None = Option(
-        default=None,
-        help='Filter on a text in the name (case insensitive) <repeatable>',
-    ),
-    path_name_contains: list[str] | None = Option(
-        default=None, help='Filter on a text in the path name <repeatable>'
-    ),
-    ipath_name_contains: list[str] | None = Option(
-        default=None,
-        help='Filter on a text in the path name (case insensitive)<repeatable>',
-    ),
-    has_location: bool | None = Option(
-        default=None, help='Filter on images with a location'
-    ),
-    status: ResourceStatus | None = Option(
-        default=None, help='Filter on images with a specific status'
-    ),
-    favourite: bool | None = Option(
-        default=None, help='Filter on images with that are favourite'
-    ),
-    label: list[str] | None = Option(
-        default=None, help='Filter on a specific label <repeatable>'
-    ),
+    name: str | None = filter_args['name'],
+    iname: str | None = filter_args['iname'],
+    name_contains: list[str] | None = filter_args['name_contains'],
+    iname_contains: list[str] | None = filter_args['iname_contains'],
+    path_name_contains: list[str] | None = filter_args['path_name_contains'],
+    ipath_name_contains: list[str] | None = filter_args['ipath_name_contains'],
+    has_location: bool | None = filter_args['has_location'],
+    status: ResourceStatus | None = filter_args['status'],
+    favourite: bool | None = filter_args['favourite'],
+    label: list[str] | None = filter_args['label'],
 ) -> None:
     """Remove a label from images."""
     (_, _, db, console) = get_initialized_project(ctx)
-    filter = ImageFilter(
-        name=name,
-        iname=iname,
-        name_contains=name_contains,
-        iname_contains=iname_contains,
-        path_name_contains=path_name_contains,
-        ipath_name_contains=ipath_name_contains,
-        has_location=has_location,
-        status=status,
-        favourite=favourite,
-        label=label,
-    )
-
+    filter = ImageFilter.build_from_locals(locals())
     images = db.remove_label_from_images(
         label_name, specification=filter.get_specifications()
     )
@@ -314,52 +224,20 @@ def unlabel(
 @images.command(name='favourite', help='Favourite specific images')
 def favourite(
     ctx: Context,
-    name: str | None = Option(default=None, help='Filter on a specific name'),
-    iname: str | None = Option(
-        default=None, help='Filter on a specific name (case insensitive)'
-    ),
-    name_contains: list[str] | None = Option(
-        default=None, help='Filter on a text in the name <repeatable>'
-    ),
-    iname_contains: list[str] | None = Option(
-        default=None,
-        help='Filter on a text in the name (case insensitive) <repeatable>',
-    ),
-    path_name_contains: list[str] | None = Option(
-        default=None, help='Filter on a text in the path name <repeatable>'
-    ),
-    ipath_name_contains: list[str] | None = Option(
-        default=None,
-        help='Filter on a text in the path name (case insensitive)<repeatable>',
-    ),
-    has_location: bool | None = Option(
-        default=None, help='Filter on images with a location'
-    ),
-    status: ResourceStatus | None = Option(
-        default=None, help='Filter on images with a specific status'
-    ),
-    favourite: bool | None = Option(
-        default=None, help='Filter on images with that are favourite'
-    ),
-    label: list[str] | None = Option(
-        default=None, help='Filter on a specific label <repeatable>'
-    ),
+    name: str | None = filter_args['name'],
+    iname: str | None = filter_args['iname'],
+    name_contains: list[str] | None = filter_args['name_contains'],
+    iname_contains: list[str] | None = filter_args['iname_contains'],
+    path_name_contains: list[str] | None = filter_args['path_name_contains'],
+    ipath_name_contains: list[str] | None = filter_args['ipath_name_contains'],
+    has_location: bool | None = filter_args['has_location'],
+    status: ResourceStatus | None = filter_args['status'],
+    favourite: bool | None = filter_args['favourite'],
+    label: list[str] | None = filter_args['label'],
 ) -> None:
     """List the images in the database."""
     (_, _, db, console) = get_initialized_project(ctx)
-
-    filter = ImageFilter(
-        name=name,
-        iname=iname,
-        name_contains=name_contains,
-        iname_contains=iname_contains,
-        path_name_contains=path_name_contains,
-        ipath_name_contains=ipath_name_contains,
-        has_location=has_location,
-        status=status,
-        favourite=favourite,
-        label=label,
-    )
+    filter = ImageFilter.build_from_locals(locals())
     images = db.set_favourite_for_images(
         favourite=True,
         specification=filter.get_specifications(),
@@ -370,52 +248,20 @@ def favourite(
 @images.command(name='unfavourite', help='Unfavourite specific images')
 def unfavourite(
     ctx: Context,
-    name: str | None = Option(default=None, help='Filter on a specific name'),
-    iname: str | None = Option(
-        default=None, help='Filter on a specific name (case insensitive)'
-    ),
-    name_contains: list[str] | None = Option(
-        default=None, help='Filter on a text in the name <repeatable>'
-    ),
-    iname_contains: list[str] | None = Option(
-        default=None,
-        help='Filter on a text in the name (case insensitive) <repeatable>',
-    ),
-    path_name_contains: list[str] | None = Option(
-        default=None, help='Filter on a text in the path name <repeatable>'
-    ),
-    ipath_name_contains: list[str] | None = Option(
-        default=None,
-        help='Filter on a text in the path name (case insensitive)<repeatable>',
-    ),
-    has_location: bool | None = Option(
-        default=None, help='Filter on images with a location'
-    ),
-    status: ResourceStatus | None = Option(
-        default=None, help='Filter on images with a specific status'
-    ),
-    favourite: bool | None = Option(
-        default=None, help='Filter on images with that are favourite'
-    ),
-    label: list[str] | None = Option(
-        default=None, help='Filter on a specific label <repeatable>'
-    ),
+    name: str | None = filter_args['name'],
+    iname: str | None = filter_args['iname'],
+    name_contains: list[str] | None = filter_args['name_contains'],
+    iname_contains: list[str] | None = filter_args['iname_contains'],
+    path_name_contains: list[str] | None = filter_args['path_name_contains'],
+    ipath_name_contains: list[str] | None = filter_args['ipath_name_contains'],
+    has_location: bool | None = filter_args['has_location'],
+    status: ResourceStatus | None = filter_args['status'],
+    favourite: bool | None = filter_args['favourite'],
+    label: list[str] | None = filter_args['label'],
 ) -> None:
     """List the images in the database."""
     (_, _, db, console) = get_initialized_project(ctx)
-
-    filter = ImageFilter(
-        name=name,
-        iname=iname,
-        name_contains=name_contains,
-        iname_contains=iname_contains,
-        path_name_contains=path_name_contains,
-        ipath_name_contains=ipath_name_contains,
-        has_location=has_location,
-        status=status,
-        favourite=favourite,
-        label=label,
-    )
+    filter = ImageFilter.build_from_locals(locals())
     images = db.set_favourite_for_images(
         favourite=False,
         specification=filter.get_specifications(),
@@ -442,36 +288,16 @@ def exec(
     options: list[str] | None = Option(
         default=None, help='Give options for the executor'
     ),
-    name: str | None = Option(default=None, help='Filter on a specific name'),
-    iname: str | None = Option(
-        default=None, help='Filter on a specific name (case insensitive)'
-    ),
-    name_contains: list[str] | None = Option(
-        default=None, help='Filter on a text in the name <repeatable>'
-    ),
-    iname_contains: list[str] | None = Option(
-        default=None,
-        help='Filter on a text in the name (case insensitive) <repeatable>',
-    ),
-    path_name_contains: list[str] | None = Option(
-        default=None, help='Filter on a text in the path name <repeatable>'
-    ),
-    ipath_name_contains: list[str] | None = Option(
-        default=None,
-        help='Filter on a text in the path name (case insensitive)<repeatable>',
-    ),
-    has_location: bool | None = Option(
-        default=None, help='Filter on images with a location'
-    ),
-    status: ResourceStatus | None = Option(
-        default=None, help='Filter on images with a specific status'
-    ),
-    favourite: bool | None = Option(
-        default=None, help='Filter on images with that are favourite'
-    ),
-    label: list[str] | None = Option(
-        default=None, help='Filter on a specific label <repeatable>'
-    ),
+    name: str | None = filter_args['name'],
+    iname: str | None = filter_args['iname'],
+    name_contains: list[str] | None = filter_args['name_contains'],
+    iname_contains: list[str] | None = filter_args['iname_contains'],
+    path_name_contains: list[str] | None = filter_args['path_name_contains'],
+    ipath_name_contains: list[str] | None = filter_args['ipath_name_contains'],
+    has_location: bool | None = filter_args['has_location'],
+    status: ResourceStatus | None = filter_args['status'],
+    favourite: bool | None = filter_args['favourite'],
+    label: list[str] | None = filter_args['label'],
 ) -> None:
     """Execute a specific command for specific images."""
     (_, pm, _, console) = get_initialized_project(ctx)
@@ -487,18 +313,7 @@ def exec(
                 )
             option_dict[option.split('=')[0]] = option.split('=')[1]
 
-    filter = ImageFilter(
-        name=name,
-        iname=iname,
-        name_contains=name_contains,
-        iname_contains=iname_contains,
-        path_name_contains=path_name_contains,
-        ipath_name_contains=ipath_name_contains,
-        has_location=has_location,
-        status=status,
-        favourite=favourite,
-        label=label,
-    )
+    filter = ImageFilter.build_from_locals(locals())
     pm.exec_for_images(
         executor=executor,
         specification=filter.get_specifications(),
@@ -510,52 +325,20 @@ def exec(
 def tag_person(
     ctx: Context,
     person_name: str = Argument(help='The name of the person to tag'),
-    name: str | None = Option(default=None, help='Filter on a specific name'),
-    iname: str | None = Option(
-        default=None, help='Filter on a specific name (case insensitive)'
-    ),
-    name_contains: list[str] | None = Option(
-        default=None, help='Filter on a text in the name <repeatable>'
-    ),
-    iname_contains: list[str] | None = Option(
-        default=None,
-        help='Filter on a text in the name (case insensitive) <repeatable>',
-    ),
-    path_name_contains: list[str] | None = Option(
-        default=None, help='Filter on a text in the path name <repeatable>'
-    ),
-    ipath_name_contains: list[str] | None = Option(
-        default=None,
-        help='Filter on a text in the path name (case insensitive)<repeatable>',
-    ),
-    has_location: bool | None = Option(
-        default=None, help='Filter on images with a location'
-    ),
-    status: ResourceStatus | None = Option(
-        default=None, help='Filter on images with a specific status'
-    ),
-    favourite: bool | None = Option(
-        default=None, help='Filter on images with that are favourite'
-    ),
-    label: list[str] | None = Option(
-        default=None, help='Filter on a specific label <repeatable>'
-    ),
+    name: str | None = filter_args['name'],
+    iname: str | None = filter_args['iname'],
+    name_contains: list[str] | None = filter_args['name_contains'],
+    iname_contains: list[str] | None = filter_args['iname_contains'],
+    path_name_contains: list[str] | None = filter_args['path_name_contains'],
+    ipath_name_contains: list[str] | None = filter_args['ipath_name_contains'],
+    has_location: bool | None = filter_args['has_location'],
+    status: ResourceStatus | None = filter_args['status'],
+    favourite: bool | None = filter_args['favourite'],
+    label: list[str] | None = filter_args['label'],
 ) -> None:
     """Add a person to images."""
     (_, _, db, console) = get_initialized_project(ctx)
-    filter = ImageFilter(
-        name=name,
-        iname=iname,
-        name_contains=name_contains,
-        iname_contains=iname_contains,
-        path_name_contains=path_name_contains,
-        ipath_name_contains=ipath_name_contains,
-        has_location=has_location,
-        status=status,
-        favourite=favourite,
-        label=label,
-    )
-
+    filter = ImageFilter.build_from_locals(locals())
     images = db.add_person_to_images(
         person_name, specification=filter.get_specifications()
     )
@@ -566,52 +349,20 @@ def tag_person(
 def untag_person(
     ctx: Context,
     person_name: str = Argument(help='The name of the person to untag'),
-    name: str | None = Option(default=None, help='Filter on a specific name'),
-    iname: str | None = Option(
-        default=None, help='Filter on a specific name (case insensitive)'
-    ),
-    name_contains: list[str] | None = Option(
-        default=None, help='Filter on a text in the name <repeatable>'
-    ),
-    iname_contains: list[str] | None = Option(
-        default=None,
-        help='Filter on a text in the name (case insensitive) <repeatable>',
-    ),
-    path_name_contains: list[str] | None = Option(
-        default=None, help='Filter on a text in the path name <repeatable>'
-    ),
-    ipath_name_contains: list[str] | None = Option(
-        default=None,
-        help='Filter on a text in the path name (case insensitive)<repeatable>',
-    ),
-    has_location: bool | None = Option(
-        default=None, help='Filter on images with a location'
-    ),
-    status: ResourceStatus | None = Option(
-        default=None, help='Filter on images with a specific status'
-    ),
-    favourite: bool | None = Option(
-        default=None, help='Filter on images with that are favourite'
-    ),
-    label: list[str] | None = Option(
-        default=None, help='Filter on a specific label <repeatable>'
-    ),
+    name: str | None = filter_args['name'],
+    iname: str | None = filter_args['iname'],
+    name_contains: list[str] | None = filter_args['name_contains'],
+    iname_contains: list[str] | None = filter_args['iname_contains'],
+    path_name_contains: list[str] | None = filter_args['path_name_contains'],
+    ipath_name_contains: list[str] | None = filter_args['ipath_name_contains'],
+    has_location: bool | None = filter_args['has_location'],
+    status: ResourceStatus | None = filter_args['status'],
+    favourite: bool | None = filter_args['favourite'],
+    label: list[str] | None = filter_args['label'],
 ) -> None:
     """Remove a person from images."""
     (_, _, db, console) = get_initialized_project(ctx)
-    filter = ImageFilter(
-        name=name,
-        iname=iname,
-        name_contains=name_contains,
-        iname_contains=iname_contains,
-        path_name_contains=path_name_contains,
-        ipath_name_contains=ipath_name_contains,
-        has_location=has_location,
-        status=status,
-        favourite=favourite,
-        label=label,
-    )
-
+    filter = ImageFilter.build_from_locals(locals())
     images = db.remove_person_from_images(
         person_name, specification=filter.get_specifications()
     )

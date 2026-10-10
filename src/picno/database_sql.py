@@ -30,19 +30,26 @@ from .exceptions import (
 from .model import (
     Image,
     ImageLabelLink,
+    ImagePersonLink,
     Label,
     LabelLinkTable,
     Person,
     PersonLabelLink,
+    PersonLinkTable,
     ResourceStatus,
     TableResource,
 )
 from .specs import AndSpecification, NotSpecification, Specification
-from .specs_images import HasLabelImageSpec, ImageSpecification
+from .specs_images import (
+    HasLabelImageSpec,
+    HasPersonImageSpec,
+    ImageSpecification,
+)
 from .specs_persons import HasLabelPersonSpec, PersonSpecification
 
 T = TypeVar('T')
 LabelLinkTableType = TypeVar('LabelLinkTableType', bound=LabelLinkTable)
+PersonLinkTableType = TypeVar('PersonLinkTableType', bound=PersonLinkTable)
 TableResourceType = TypeVar('TableResourceType', bound=TableResource)
 TableResourceTypeA = TypeVar('TableResourceTypeA', bound=TableResource)
 
@@ -85,6 +92,10 @@ class DatabaseSql(Database):
         if RetrieveOption.LOAD_IMAGE_LABELS in options:
             retrieve_options.append(
                 selectinload(cast(InstrumentedAttribute, Image.labels))
+            )
+        if RetrieveOption.LOAD_IMAGE_PERSONS in options:
+            retrieve_options.append(
+                selectinload(cast(InstrumentedAttribute, Image.persons))
             )
         return retrieve_options
 
@@ -906,9 +917,11 @@ class DatabaseSql(Database):
                         resource, 'id', None
                     ),
                 }
+
                 link_resource = link_table(**link_table_args)
                 self._create_resource(link_resource, session=session)
                 return_list.append(resource)
+                session.refresh(resource)
 
             session.commit()
         return return_list
@@ -965,6 +978,31 @@ class DatabaseSql(Database):
                 f'Label "{label}" does not exist'
             ) from exc
 
+    def _add_person_to_resource(
+        self,
+        resource_type: type[TableResourceType],
+        link_table: type[PersonLinkTableType],
+        resource_field: str,
+        person: str,
+        *,
+        specification: Specification[TableResourceType] | None = None,
+    ) -> list[TableResourceType]:
+        try:
+            return self._connect_one_resource_to_many_resources(
+                Person,
+                'name',
+                person,
+                'person_id',
+                resource_type,
+                resource_field,
+                specification,
+                link_table,
+            )
+        except ResourceNotFoundError as exc:
+            raise PersonDoesNotExistError(
+                f'Person "{person}" does not exist'
+            ) from exc
+
     def _create_composite_specification[T](
         self,
         specification: Specification[T],
@@ -987,6 +1025,22 @@ class DatabaseSql(Database):
             label,
             specification=self._create_composite_specification(
                 NotSpecification(HasLabelImageSpec(label_name=label)),
+                specification,
+            ),
+        )
+
+    @override
+    def add_person_to_images(
+        self, person: str, specification: ImageSpecification | None = None
+    ) -> list[Image]:
+        """Method to add a person to a images."""
+        return self._add_person_to_resource(
+            Image,
+            ImagePersonLink,
+            'image_id',
+            person,
+            specification=self._create_composite_specification(
+                NotSpecification(HasPersonImageSpec(person_name=person)),
                 specification,
             ),
         )
@@ -1022,6 +1076,51 @@ class DatabaseSql(Database):
             session.exec(statement)
             session.commit()
 
+    def _disconnect_one_resource_from_many_resources(
+        self,
+        resource_type: type[TableResourceTypeA],
+        resource_search_field: str,
+        resource_search_value: str,
+        resource_field_in_link_table: str,
+        resources_type: type[TableResourceType],
+        resources_field_in_link_table: str,
+        resource_spec: Specification[TableResourceType] | None,
+        link_table: type[SQLModel],
+    ) -> list[TableResourceType]:
+        """Method to remove a resource from resources."""
+        return_list: list[TableResourceType] = []
+        with Session(self._engine) as session:
+            resource_a = self._get_resource_from_field(
+                resource_type,
+                resource_search_field,
+                resource_search_value,
+                session=session,
+            )
+
+            if resource_a is None:
+                raise ResourceNotFoundError('Resource does not exist')
+
+            resources = self._get_resources(
+                resources_type, specification=resource_spec, session=session
+            )
+
+            for resource in resources:
+                statement = delete(link_table).where(
+                    and_(
+                        getattr(link_table, resource_field_in_link_table)
+                        == resource_a.id,
+                        getattr(link_table, resources_field_in_link_table)
+                        == resource.id,
+                    )
+                )
+                session.refresh(resource)
+                session.exec(statement)
+                return_list.append(resource)
+
+            session.commit()
+
+        return return_list
+
     def _remove_label_from_resource(
         self,
         resource_type: type[TableResourceType],
@@ -1032,35 +1131,21 @@ class DatabaseSql(Database):
         specification: Specification[TableResourceType] | None = None,
     ) -> list[TableResourceType]:
         """Method to remove a label from images."""
-        return_list: list[TableResourceType] = []
-        with Session(self._engine) as session:
-            label_obj = self._get_resource_from_field(
+        try:
+            return self._disconnect_one_resource_from_many_resources(
                 Label,
                 'name',
                 label,
-                session=session,
+                'label_id',
+                resource_type,
+                resource_field,
+                specification,
+                link_table,
             )
-
-            if label_obj is None:
-                raise LabelDoesNotExistError(f'Label "{label}" does not exist')
-
-            resources = self._get_resources(
-                resource_type, specification=specification, session=session
-            )
-
-            for resource in resources:
-                statement = delete(link_table).where(
-                    and_(
-                        getattr(link_table, resource_field) == resource.id,
-                        link_table.label_id == label_obj.id,
-                    )
-                )
-                session.exec(statement)
-                return_list.append(resource)
-
-            session.commit()
-
-        return return_list
+        except ResourceNotFoundError as exc:
+            raise LabelDoesNotExistError(
+                f'Label "{label}" does not exist'
+            ) from exc
 
     @override
     def remove_label_from_images(
@@ -1074,6 +1159,48 @@ class DatabaseSql(Database):
             label,
             specification=self._create_composite_specification(
                 HasLabelImageSpec(label_name=label),
+                specification,
+            ),
+        )
+
+    def _remove_person_from_resource(
+        self,
+        resource_type: type[TableResourceType],
+        link_table: type[PersonLinkTableType],
+        resource_field: str,
+        person: str,
+        *,
+        specification: Specification[TableResourceType] | None = None,
+    ) -> list[TableResourceType]:
+        """Method to remove a person from resources."""
+        try:
+            return self._disconnect_one_resource_from_many_resources(
+                Person,
+                'name',
+                person,
+                'person_id',
+                resource_type,
+                resource_field,
+                specification,
+                link_table,
+            )
+        except ResourceNotFoundError as exc:
+            raise PersonDoesNotExistError(
+                f'Person "{person}" does not exist'
+            ) from exc
+
+    @override
+    def remove_person_from_images(
+        self, person: str, specification: ImageSpecification | None = None
+    ) -> list[Image]:
+        """Method to remove a person from images."""
+        return self._remove_person_from_resource(
+            Image,
+            ImagePersonLink,
+            'image_id',
+            person,
+            specification=self._create_composite_specification(
+                HasPersonImageSpec(person_name=person),
                 specification,
             ),
         )

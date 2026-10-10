@@ -8,6 +8,7 @@ import pytest
 
 from picno.database_sql import DatabaseSql
 from picno.model import Image
+from picno.specs_images import NameIsImageSpec
 
 
 @pytest.fixture
@@ -80,5 +81,10 @@ def filled_db(empty_db: DatabaseSql) -> DatabaseSql:
     # Add labels to images
     empty_db.add_label_to_image('image_001.jpg', 'test_label_1')
     empty_db.add_label_to_image('image_001.jpg', 'group1:label1')
+
+    # Add persons to images
+    empty_db.add_person_to_images(
+        'Example Person 3', NameIsImageSpec('image_001.jpg')
+    )
 
     return empty_db

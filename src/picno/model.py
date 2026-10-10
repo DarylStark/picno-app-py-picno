@@ -32,6 +32,17 @@ class LabelLinkTable(SQLModel):
     )
 
 
+class PersonLinkTable(SQLModel):
+    """Base class for tables that link to persons."""
+
+    person_id: int | None = Field(
+        default=None,
+        foreign_key='person.id',
+        primary_key=True,
+        ondelete='CASCADE',
+    )
+
+
 class PersonLabelLink(LabelLinkTable, SQLModel, table=True):
     """Link model for Persons and Labels."""
 
@@ -49,6 +60,19 @@ class ImageLabelLink(LabelLinkTable, SQLModel, table=True):
     """Link model for Images and Labels."""
 
     __tablename__ = 'image_label_link'
+
+    image_id: int | None = Field(
+        default=None,
+        foreign_key='image.id',
+        primary_key=True,
+        ondelete='CASCADE',
+    )
+
+
+class ImagePersonLink(PersonLinkTable, SQLModel, table=True):
+    """Link model for Images and Persons."""
+
+    __tablename__ = 'image_person_link'
 
     image_id: int | None = Field(
         default=None,
@@ -107,6 +131,11 @@ class Person(TableResource, table=True):
     labels: list[Label] = Relationship(
         back_populates='people',
         link_model=PersonLabelLink,
+    )
+
+    images: list[Image] = Relationship(
+        back_populates='persons',
+        link_model=ImagePersonLink,
     )
 
 
@@ -222,6 +251,11 @@ class Image(
     labels: list[Label] = Relationship(
         back_populates='images',
         link_model=ImageLabelLink,
+    )
+
+    persons: list[Person] = Relationship(
+        back_populates='images',
+        link_model=ImagePersonLink,
     )
 
 

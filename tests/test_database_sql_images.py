@@ -8,6 +8,7 @@ from picno.exceptions import (
     ImageDoesNotExistError,
     ImageLabelLinkAlreadyExistsError,
     LabelDoesNotExistError,
+    PersonDoesNotExistError,
 )
 from picno.specs_images import NameIsImageSpec
 
@@ -316,3 +317,89 @@ def test_database_sql_filled_db_remove_label_from_images_not_existing_label(
     """
     with pytest.raises(LabelDoesNotExistError):
         filled_db.remove_label_from_images('test_label_999')
+
+
+def test_database_sql_filled_db_add_person_to_images(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Check if we can add persons to images.
+    """
+    images = filled_db.add_person_to_images(
+        'Example Person 1', specification=NameIsImageSpec(name='image_001.jpg')
+    )
+    assert len(images) == 1
+    images = filled_db.get_images(
+        specification=NameIsImageSpec(name='image_001.jpg'),
+        options=[RetrieveOption.LOAD_IMAGE_PERSONS],
+    )
+    assert len(images[0].persons) == 2
+
+
+def test_database_sql_filled_db_add_person_to_all_images(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Check if we can add persons to images.
+    """
+    images = filled_db.add_person_to_images('Example Person 1')
+    assert len(images) == 5
+
+
+def test_database_sql_filled_db_add_person_to_images_wrong_person(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Check if we can add person to images.
+    """
+    with pytest.raises(PersonDoesNotExistError):
+        filled_db.add_person_to_images('Example Person 999')
+
+
+def test_database_sql_filled_db_add_person_to_all_images_double(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Check if we can add persons to images.
+    """
+    images = filled_db.add_person_to_images(
+        'Example Person 3', NameIsImageSpec(name='image_001.jpg')
+    )
+    assert len(images) == 0
+
+
+def test_database_sql_filled_db_remove_person_from_images(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Check if we can remove persons from images.
+    """
+    images = filled_db.remove_person_from_images('Example Person 3')
+    assert len(images) == 1
+
+
+def test_database_sql_filled_db_remove_persons_from_images_non_person(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Check if we can remove persons from images.
+    """
+    images = filled_db.remove_person_from_images('Example Person 5')
+    assert len(images) == 0
+
+
+def test_database_sql_filled_db_remove_label_from_images_not_existing_persons(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Check if we can add labels to images
+    """
+    with pytest.raises(PersonDoesNotExistError):
+        filled_db.remove_person_from_images('Example Person 999')

@@ -17,6 +17,7 @@ class RetrieveOption(Enum):
 
     LOAD_PERSON_LABELS = 1
     LOAD_IMAGE_LABELS = 2
+    LOAD_IMAGE_PERSONS = 3
 
 
 class Database(ABC):
@@ -194,6 +195,12 @@ class Database(ABC):
         """Method to add a label to a images."""
 
     @abstractmethod
+    def add_person_to_images(
+        self, person: str, specification: ImageSpecification | None = None
+    ) -> list[Image]:
+        """Method to add a person to a images."""
+
+    @abstractmethod
     def remove_label_from_image(self, image: str, label: str) -> None:
         """Remove a label from a image."""
 
@@ -202,6 +209,12 @@ class Database(ABC):
         self, label: str, specification: ImageSpecification | None = None
     ) -> list[Image]:
         """Method to remove a label from images."""
+
+    @abstractmethod
+    def remove_person_from_images(
+        self, person: str, specification: ImageSpecification | None = None
+    ) -> list[Image]:
+        """Method to remove a person from images."""
 
     @abstractmethod
     def set_favourite_for_images(

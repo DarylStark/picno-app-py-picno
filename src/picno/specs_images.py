@@ -7,7 +7,14 @@ from sqlalchemy import ColumnElement, and_
 from sqlmodel import col, exists, select
 
 from .filter import Filter
-from .model import Image, ImageLabelLink, Label, ResourceStatus
+from .model import (
+    Image,
+    ImageLabelLink,
+    ImagePersonLink,
+    Label,
+    Person,
+    ResourceStatus,
+)
 from .specs import (
     AllSpecification,
     FieldIsSpecification,
@@ -106,6 +113,29 @@ class HasLabelImageSpec(ImageSpecification):
                 and_(
                     col(ImageLabelLink.image_id) == Image.id,
                     col(Label.name) == self._label_name,
+                )
+            )
+        )
+
+
+class HasPersonImageSpec(ImageSpecification):
+    """Filter on images with a specific person."""
+
+    def __init__(self, person_name: str) -> None:
+        """Set the person name to search for."""
+        self._person_name = person_name
+
+    @override
+    def as_sql(self) -> ColumnElement[bool]:
+        """Create the SQL commands for this object."""
+        return exists(
+            select(1)
+            .select_from(ImagePersonLink)
+            .join(Label, col(Person.id) == ImagePersonLink.person_id)
+            .where(
+                and_(
+                    col(ImagePersonLink.image_id) == Image.id,
+                    col(Person.name) == self._person_name,
                 )
             )
         )

@@ -44,6 +44,7 @@ from .specs_persons import HasLabelPersonSpec, PersonSpecification
 T = TypeVar('T')
 LabelLinkTableType = TypeVar('LabelLinkTableType', bound=LabelLinkTable)
 TableResourceType = TypeVar('TableResourceType', bound=TableResource)
+TableResourceTypeA = TypeVar('TableResourceTypeA', bound=TableResource)
 
 
 class DatabaseSql(Database):
@@ -860,6 +861,58 @@ class DatabaseSql(Database):
                     f'Image "{image}" is already labelled with "{label}"'
                 ) from exc
 
+    def _connect_one_resource_to_many_resources(
+        self,
+        resource_type: type[TableResourceTypeA],
+        resource_search_field: str,
+        resource_search_value: str,
+        resource_field_in_link_table: str,
+        resources_type: type[TableResourceType],
+        resources_field_in_link_table: str,
+        resource_spec: Specification[TableResourceType] | None,
+        link_table: type[SQLModel],
+        *,
+        preprocessor: Callable[
+            [TableResourceTypeA, TableResourceType, Session], None
+        ]
+        | None = None,
+    ) -> list[TableResourceType]:
+        """Method to connect two resources together."""
+        return_list: list[TableResourceType] = []
+        with Session(self._engine) as session:
+            resource_a = self._get_resource_from_field(
+                resource_type,
+                resource_search_field,
+                resource_search_value,
+                session=session,
+            )
+
+            if resource_a is None:
+                raise ResourceNotFoundError('Resource does not exist')
+
+            resources = self._get_resources(
+                resources_type, specification=resource_spec, session=session
+            )
+
+            for resource in resources:
+                if preprocessor is not None:
+                    preprocessor(resource_a, resource, session)
+
+                link_table_args = {
+                    resource_field_in_link_table: getattr(
+                        resource_a, 'id', None
+                    ),
+                    resources_field_in_link_table: getattr(
+                        resource, 'id', None
+                    ),
+                }
+                link_resource = link_table(**link_table_args)
+                self._create_resource(link_resource, session=session)
+                return_list.append(resource)
+
+            session.commit()
+        return return_list
+
     def _add_label_to_resource(
         self,
         resource_type: type[TableResourceType],
@@ -869,52 +922,48 @@ class DatabaseSql(Database):
         *,
         specification: Specification[TableResourceType] | None = None,
     ) -> list[TableResourceType]:
-        return_list: list[TableResourceType] = []
-        with Session(self._engine) as session:
-            label_obj = self._get_resource_from_field(
+        def preprocess(
+            label_obj: Label, resource: TableResourceType, session: Session
+        ) -> None:
+            """Prepreocess the image by removing labels already in the group.
+
+            This is only needed when adding labels that are in a group, meaning
+            they are written as 'group:label'. There can only be one label in a
+            group per resource.
+            """
+            if not label_obj.group:
+                return
+
+            same_group_labels_ids = [
+                group_label.id
+                for group_label in getattr(resource, 'labels', [])
+                if group_label.group == label_obj.group
+            ]
+
+            statement = delete(link_table).where(
+                and_(
+                    getattr(link_table, resource_field) == resource.id,
+                    col(link_table.label_id).in_(same_group_labels_ids),
+                )
+            )
+            session.exec(statement)
+
+        try:
+            return self._connect_one_resource_to_many_resources(
                 Label,
                 'name',
                 label,
-                session=session,
+                'label_id',
+                resource_type,
+                resource_field,
+                specification,
+                link_table,
+                preprocessor=preprocess,
             )
-
-            if label_obj is None:
-                raise LabelDoesNotExistError(f'Label "{label}" does not exist')
-
-            resources = self._get_resources(
-                resource_type, specification=specification, session=session
-            )
-
-            for resource in resources:
-                if label_obj.group:
-                    group = label_obj.group
-                    same_group_labels = [
-                        group_label
-                        for group_label in getattr(resource, 'labels', [])
-                        if group_label.group == group
-                    ]
-
-                    if len(same_group_labels) > 0:
-                        for group_label in same_group_labels:
-                            statement = delete(link_table).where(
-                                and_(
-                                    getattr(link_table, resource_field)
-                                    == resource.id,
-                                    link_table.label_id == group_label.id,
-                                )
-                            )
-                            session.exec(statement)
-
-                link_table_args = {
-                    'label_id': label_obj.id,
-                    resource_field: getattr(resource, 'id', None),
-                }
-                link_resource = link_table(**link_table_args)
-                self._create_resource(link_resource, session=session)
-                return_list.append(resource)
-
-            session.commit()
-        return return_list
+        except ResourceNotFoundError as exc:
+            raise LabelDoesNotExistError(
+                f'Label "{label}" does not exist'
+            ) from exc
 
     def _create_composite_specification[T](
         self,

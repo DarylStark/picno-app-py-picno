@@ -5,6 +5,18 @@ class PicnoError(Exception):
     """Base class for exceptions."""
 
 
+class ProjectError(PicnoError):
+    """Errors for the project itself."""
+
+
+class ImageFileNotFoundError(ProjectError):
+    """Error for when a given image is not found."""
+
+
+class FileNotInDataDirectoryError(ProjectError):
+    """Error when a file is not in de data directory."""
+
+
 class CliError(PicnoError):
     """Base class for CLI errors."""
 
@@ -45,9 +57,25 @@ class PersonDoesNotExistError(DatabaseError):
     """Exception when a person doesn't exists that is searched for."""
 
 
+class PersonLabelLinkAlreadyExistsError(DatabaseError):
+    """Exception when a person is already linked to a label."""
+
+
 class LabelAlreadyExistsError(DatabaseError):
     """Exception when a Label is created that already exists."""
 
 
 class LabelDoesNotExistError(DatabaseError):
     """Exception when a label doesn't exists that is searched for."""
+
+
+class ImageAlreadyExistsError(DatabaseError):
+    """Exception when a Image is created that already exists."""
+
+
+class ImageDoesNotExistError(DatabaseError):
+    """Exception when a image doesn't exists that is searched for."""
+
+
+class ImageLabelLinkAlreadyExistsError(DatabaseError):
+    """Exception when a image is already linked to a label."""

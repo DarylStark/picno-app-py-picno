@@ -5,14 +5,15 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Run app",
+            "name": "Run app - unmanaged_project - media sync",
             "type": "debugpy",
             "request": "launch",
             "module": "picno",
             "args": [
-                "persons",
-                "ls"
+                "media",
+                "sync"
             ],
+            "cwd": "${workspaceFolder}/tests/unmanaged_project",
             "python": "${workspaceFolder}/.venv/bin/python",
             "console": "integratedTerminal"
         }

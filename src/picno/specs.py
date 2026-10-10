@@ -97,6 +97,31 @@ class ParentSpecification[T](Specification[T]):
         return self._parent_spec.as_sql()
 
 
+class FieldIsSpecification[T, T2](Specification[T]):
+    """Specification that checks if a specific field is equal."""
+
+    def __init__(
+        self,
+        model: type[T],
+        field_name: str,
+        expected_value: T2,
+        case_insensitive: bool = True,
+    ) -> None:
+        """Set the default values."""
+        self._model = model
+        self._field_name = field_name
+        self._expected_value = expected_value
+        self._case_insensitive = case_insensitive
+
+    @override
+    def as_sql(self) -> ColumnElement[bool]:
+        """Return the query for the specification."""
+        field = getattr(self._model, self._field_name)
+        if self._case_insensitive:
+            return col(field).ilike(self._expected_value)
+        return col(field) == self._expected_value
+
+
 class StrIsSpecification[T](Specification[T]):
     """Specification that checks if a specific string is equal."""
 

@@ -4,8 +4,15 @@ from datetime import date, datetime
 from enum import Enum
 from pathlib import Path
 
-from pydantic import BaseModel, computed_field
+from pydantic import BaseModel, computed_field, model_validator
 from sqlmodel import Field, Relationship, SQLModel
+
+
+class ResourceStatus(Enum):
+    """Enum for the status of a resource."""
+
+    NEW = 'new'
+    ARCHIVED = 'archived'
 
 
 class TableResource(SQLModel):
@@ -14,7 +21,29 @@ class TableResource(SQLModel):
     id: int | None = Field(default=None, primary_key=True)
 
 
-class PersonLabelLink(SQLModel, table=True):
+class LabelLinkTable(SQLModel):
+    """Base class for tables that link to labels."""
+
+    label_id: int | None = Field(
+        default=None,
+        foreign_key='label.id',
+        primary_key=True,
+        ondelete='CASCADE',
+    )
+
+
+class PersonLinkTable(SQLModel):
+    """Base class for tables that link to persons."""
+
+    person_id: int | None = Field(
+        default=None,
+        foreign_key='person.id',
+        primary_key=True,
+        ondelete='CASCADE',
+    )
+
+
+class PersonLabelLink(LabelLinkTable, SQLModel, table=True):
     """Link model for Persons and Labels."""
 
     __tablename__ = 'person_label_link'
@@ -25,9 +54,29 @@ class PersonLabelLink(SQLModel, table=True):
         primary_key=True,
         ondelete='CASCADE',
     )
-    label_id: int | None = Field(
+
+
+class ImageLabelLink(LabelLinkTable, SQLModel, table=True):
+    """Link model for Images and Labels."""
+
+    __tablename__ = 'image_label_link'
+
+    image_id: int | None = Field(
         default=None,
-        foreign_key='label.id',
+        foreign_key='image.id',
+        primary_key=True,
+        ondelete='CASCADE',
+    )
+
+
+class ImagePersonLink(PersonLinkTable, SQLModel, table=True):
+    """Link model for Images and Persons."""
+
+    __tablename__ = 'image_person_link'
+
+    image_id: int | None = Field(
+        default=None,
+        foreign_key='image.id',
         primary_key=True,
         ondelete='CASCADE',
     )
@@ -45,6 +94,11 @@ class Label(TableResource, table=True):
     people: list[Person] = Relationship(
         back_populates='labels',
         link_model=PersonLabelLink,
+    )
+
+    images: list[Image] = Relationship(
+        back_populates='labels',
+        link_model=ImageLabelLink,
     )
 
     @computed_field
@@ -79,6 +133,11 @@ class Person(TableResource, table=True):
         link_model=PersonLabelLink,
     )
 
+    images: list[Image] = Relationship(
+        back_populates='persons',
+        link_model=ImagePersonLink,
+    )
+
 
 class Scene(TableResource):
     """Model for a scene in a video."""
@@ -88,7 +147,7 @@ class Scene(TableResource):
     end: float
 
 
-class FileResource(TableResource):
+class FileResource(SQLModel):
     """Base class for resources for files.
 
     Contains all the fields and methods for file-based resources. These types of
@@ -96,36 +155,36 @@ class FileResource(TableResource):
     be used as title.
     """
 
-    physical_file: Path
-    title: str | None = None
+    physical_path: str
+    title: str | None = Field(default=None, unique=True)
 
-    @computed_field
-    @property
-    def resource_title(self) -> str:
-        """Property for the title of the object.
-
-        If no title is set, the filename will be returned.
-        """
+    @model_validator(mode='after')
+    def set_title_from_path(self) -> FileResource:
+        """Automatically fill the title."""
         if not self.title:
-            return self.physical_file.name
-        return self.title
+            self.title = Path(self.physical_path).name
+        return self
 
-    @computed_field
     @property
-    def exists(self) -> bool:
-        """Property to determine if a file (still) exists."""
-        return self.physical_file.is_file()
+    def physical_file(self) -> Path:
+        """Get the `Path` object for the file."""
+        return Path(self.physical_path)
+
+    @physical_file.setter
+    def physical_file(self, value: Path) -> None:
+        """Setter for the phycal file."""
+        self.physical_path = str(value)
 
 
-class Dimensions(BaseModel):
+class Dimensions(SQLModel):
     """Model for dimensions.
 
     Can be used for images and videofiles to specify how big the frames for the
     video are or how big the image is.
     """
 
-    width: int
-    height: int
+    width: int = 0
+    height: int = 0
 
     @computed_field
     @property
@@ -138,12 +197,6 @@ class Dimensions(BaseModel):
     def megapixels(self) -> float:
         """Returns the amount of megapixels for the dimensions."""
         return (self.width * self.height) / 1_000_000
-
-
-class MediaBase(FileResource):
-    """Base model for media."""
-
-    dimensions: Dimensions
 
 
 class BaseExifData(BaseModel):
@@ -166,7 +219,7 @@ class ImageExifData(BaseExifData):
     lens_model: str | None = None
     focal_length: float | None = None
     f_number: float | None = None
-    exposure_time: str | None = None
+    exposure_time: float | None = None
     iso: int | None = None
     orientation: int | None = 1
 
@@ -175,12 +228,35 @@ class VideoExifData(BaseExifData):
     """Base model for Exif Data for videos."""
 
 
-class Image(MediaBase):
+class MediaResource(BaseModel):
+    """Base class for media items."""
+
+    status: ResourceStatus = ResourceStatus.NEW
+    favourite: bool = False
+
+
+class Image(
+    ImageExifData,
+    Dimensions,
+    FileResource,
+    MediaResource,
+    TableResource,
+    table=True,
+):
     """Model for a image file."""
 
     color_space: str | None = None
     has_alpha: bool = False
-    exif: ImageExifData = Field(default_factory=ImageExifData)
+
+    labels: list[Label] = Relationship(
+        back_populates='images',
+        link_model=ImageLabelLink,
+    )
+
+    persons: list[Person] = Relationship(
+        back_populates='images',
+        link_model=ImagePersonLink,
+    )
 
 
 class VideoQuality(Enum):
@@ -192,7 +268,7 @@ class VideoQuality(Enum):
     VERY_HIGH = 'very_high'
 
 
-class Video(MediaBase):
+class Video(VideoExifData, Dimensions, FileResource, TableResource, table=True):
     """Model for a video file."""
 
     duration: float
@@ -203,8 +279,6 @@ class Video(MediaBase):
     has_audio: bool = False
     audio_channels: int | None = None
     container_format: str | None = None
-    scenens: list[Scene] = Field(default_factory=list)
-    exif: VideoExifData = Field(default_factory=VideoExifData)
 
     @computed_field
     @property
@@ -219,18 +293,16 @@ class Video(MediaBase):
         """
         if not self.bitrate_in_bps or not self.fps:
             return None
-        return self.bitrate_in_bps / (
-            self.dimensions.width * self.dimensions.height * self.fps
-        )
+        return self.bitrate_in_bps / (self.width * self.height * self.fps)
 
     @computed_field
     @property
     def quality(self) -> VideoQuality | None:
-        """Returns the perspective quality for the video."""
+        """Returns the video quality based on pixel density."""
         pdd = self.pixel_density
-        if not pdd:
+        if pdd is None:
             return None
-        if pdd < 0.5:
+        if pdd < 0.05:
             return VideoQuality.LOW
         elif pdd < 0.10:
             return VideoQuality.AVERAGE

@@ -1,10 +1,8 @@
 """Tests for the model."""
 
-from pathlib import Path
-
 from pytest import approx
 
-from picno.model import Dimensions, FileResource, Label, Video, VideoQuality
+from picno.model import Dimensions, Label, Video, VideoQuality
 
 
 def test_label_no_group() -> None:
@@ -19,63 +17,6 @@ def test_label_with_group() -> None:
     label = Label(name='group:test_label')
     assert label.group == 'group'
     assert label.label_name == 'test_label'
-
-
-def test_file_resource_title_no_title() -> None:
-    """Test the `title` method of the `FileResource` model.
-
-    Checks if the filename is returned when no real title is set.
-    """
-    resource = FileResource(
-        id=1, physical_file='/home/user/Pictures/IMG_100_01.jpg'
-    )
-    assert resource.resource_title == 'IMG_100_01.jpg'
-
-
-def test_file_resource_title_with_title() -> None:
-    """Test the `title` method of the `FileResource` model.
-
-    Checks if the real title is set when a title is set, and not the filename.
-    """
-    resource = FileResource(
-        id=1,
-        title='Test image',
-        physical_file='/home/user/Pictures/IMG_100_01.jpg',
-    )
-    assert resource.resource_title == 'Test image'
-
-
-def test_file_resource_exists_no_file() -> None:
-    """Test the `exists` method of the `FileResource` model.
-
-    Tests if the `exists` method returns `False` when the file doesn't exist.
-    """
-    resource = FileResource(
-        id=1, physical_file='/home/user/Pictures/IMG_100_01.jpg'
-    )
-    assert resource.exists is False
-
-
-def test_file_resource_exists_pointing_to_directory() -> None:
-    """Test the `exists` method of the `FileResource` model.
-
-    Tests if the `exists` method returns `False` when the given filename is
-    actually a directory.
-    """
-    resource = FileResource(id=1, physical_file=Path(__file__).parent)
-    assert resource.exists is False
-
-
-def test_file_resource_exists_existing_file() -> None:
-    """Test the `exists` method of the `FileResource` model.
-
-    Tests if the `exists` method returns `True` when the file does exist.
-    """
-    resource = FileResource(
-        id=1,
-        physical_file=__file__,
-    )
-    assert resource.exists
 
 
 def test_dimensions_aspect_ratio() -> None:
@@ -103,8 +44,9 @@ def test_video_pixel_density_no_bitrate() -> None:
     """
     video = Video(
         id=1,
-        physical_file=__file__,
-        dimensions=Dimensions(width=1920, height=1080),
+        physical_path=__file__,
+        width=1920,
+        height=1080,
         duration=10,
         fps=30,
     )
@@ -118,8 +60,9 @@ def test_video_pixel_density_no_fps() -> None:
     """
     video = Video(
         id=1,
-        physical_file=__file__,
-        dimensions=Dimensions(width=1920, height=1080),
+        physical_path=__file__,
+        width=1920,
+        height=1080,
         duration=10,
         bitrate_in_bps=8_000_000,
     )
@@ -133,8 +76,9 @@ def test_video_pixel_density_bitrate_and_fps() -> None:
     """
     video = Video(
         id=1,
-        physical_file=__file__,
-        dimensions=Dimensions(width=1920, height=1080),
+        physical_path=__file__,
+        width=1920,
+        height=1080,
         duration=10,
         fps=30,
         bitrate_in_bps=8_000_000,
@@ -149,8 +93,9 @@ def test_video_quality_no_bitrate() -> None:
     """
     video = Video(
         id=1,
-        physical_file=__file__,
-        dimensions=Dimensions(width=1920, height=1080),
+        physical_path=__file__,
+        width=1920,
+        height=1080,
         duration=10,
         fps=30,
     )
@@ -164,25 +109,78 @@ def test_video_quality_no_fps() -> None:
     """
     video = Video(
         id=1,
-        physical_file=__file__,
-        dimensions=Dimensions(width=1920, height=1080),
+        physical_path=__file__,
+        width=1920,
+        height=1080,
         duration=10,
         bitrate_in_bps=8_000_000,
     )
     assert video.quality is None
 
 
-def test_video_quality_bitrate_and_fps() -> None:
+def test_video_quality_bitrate_and_fps_low() -> None:
     """Test the `quality` method of the `Video` model.
 
     Test that it gives the correct value when a bitrate and fps is given.
     """
     video = Video(
         id=1,
-        physical_file=__file__,
-        dimensions=Dimensions(width=1920, height=1080),
+        physical_path=__file__,
+        width=1920,
+        height=1080,
+        duration=10,
+        fps=30,
+        bitrate_in_bps=3_000_000,
+    )
+    assert video.quality is VideoQuality.LOW
+
+
+def test_video_quality_bitrate_and_fps_average() -> None:
+    """Test the `quality` method of the `Video` model.
+
+    Test that it gives the correct value when a bitrate and fps is given.
+    """
+    video = Video(
+        id=1,
+        physical_path=__file__,
+        width=1920,
+        height=1080,
+        duration=10,
+        fps=30,
+        bitrate_in_bps=4_000_000,
+    )
+    assert video.quality is VideoQuality.AVERAGE
+
+
+def test_video_quality_bitrate_and_fps_high() -> None:
+    """Test the `quality` method of the `Video` model.
+
+    Test that it gives the correct value when a bitrate and fps is given.
+    """
+    video = Video(
+        id=1,
+        physical_path=__file__,
+        width=1920,
+        height=1080,
         duration=10,
         fps=30,
         bitrate_in_bps=8_000_000,
     )
-    assert video.quality is VideoQuality.LOW
+    assert video.quality is VideoQuality.HIGH
+
+
+def test_video_quality_bitrate_and_fps_very_high() -> None:
+    """Test the `quality` method of the `Video` model.
+
+    Test that it gives the correct value when a bitrate and fps is given.
+    """
+    video = Video(
+        id=1,
+        physical_path=__file__,
+        width=1920,
+        height=1080,
+        duration=10,
+        fps=30,
+        bitrate_in_bps=15_000_000,
+    )
+    assert video.quality is VideoQuality.VERY_HIGH

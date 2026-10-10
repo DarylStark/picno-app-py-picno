@@ -7,6 +7,8 @@ from pathlib import Path
 import pytest
 
 from picno.database_sql import DatabaseSql
+from picno.model import Image
+from picno.specs_images import NameIsImageSpec
 
 
 @pytest.fixture
@@ -60,5 +62,29 @@ def filled_db(empty_db: DatabaseSql) -> DatabaseSql:
     empty_db.add_label_to_person('Example Person 2', 'test_label_2')
     empty_db.add_label_to_person('Example Person 2', 'group1:label2')
     empty_db.add_label_to_person('Example Person 2', 'group2:label1')
+
+    # Add images
+    empty_db.create_images_from_objects(
+        [
+            Image(physical_path='./image_001.jpg', title='image_001.jpg'),
+            Image(
+                physical_path='./image_002.jpg',
+                title='image_002.jpg',
+                favourite=True,
+            ),
+            Image(physical_path='./image_003.jpg', title='image_003.jpg'),
+            Image(physical_path='./image_004.jpg', title='image_004.jpg'),
+            Image(physical_path='./image_005.jpg', title='image_005.jpg'),
+        ]
+    )
+
+    # Add labels to images
+    empty_db.add_label_to_image('image_001.jpg', 'test_label_1')
+    empty_db.add_label_to_image('image_001.jpg', 'group1:label1')
+
+    # Add persons to images
+    empty_db.add_person_to_images(
+        'Example Person 3', NameIsImageSpec('image_001.jpg')
+    )
 
     return empty_db

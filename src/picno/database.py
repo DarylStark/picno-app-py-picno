@@ -4,8 +4,10 @@ from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from datetime import date
 from enum import Enum
+from pathlib import Path
 
-from .model import Label, Person
+from .model import Image, Label, Person, ResourceStatus
+from .specs_images import ImageSpecification
 from .specs_labels import LabelSpecification
 from .specs_persons import PersonSpecification
 
@@ -13,7 +15,9 @@ from .specs_persons import PersonSpecification
 class RetrieveOption(Enum):
     """Options for retrieving resources."""
 
-    LOAD_LABELS = 1
+    LOAD_PERSON_LABELS = 1
+    LOAD_IMAGE_LABELS = 2
+    LOAD_IMAGE_PERSONS = 3
 
 
 class Database(ABC):
@@ -135,5 +139,92 @@ class Database(ABC):
         """Method to add a label to a person (on names)."""
 
     @abstractmethod
+    def add_label_to_persons(
+        self, label: str, specification: PersonSpecification | None = None
+    ) -> list[Person]:
+        """Method to add a label to a persons."""
+
+    @abstractmethod
     def remove_label_from_person(self, person: str, label: str) -> None:
         """Remove a label from a person."""
+
+    @abstractmethod
+    def remove_label_from_persons(
+        self, label: str, specification: PersonSpecification | None = None
+    ) -> list[Person]:
+        """Method to remove a label from persons."""
+
+    @abstractmethod
+    def create_image_from_object(self, image: Image) -> Image:
+        """Create image from a Image object."""
+
+    @abstractmethod
+    def create_images_from_objects(
+        self, images: Sequence[Image]
+    ) -> list[Image]:
+        """Create multiple images from mulitple image objects."""
+
+    @abstractmethod
+    def get_image_on_path(self, path: Path) -> Image | None:
+        """Get a image from it's relative path."""
+
+    @abstractmethod
+    def get_images(
+        self,
+        specification: ImageSpecification | None = None,
+        options: Sequence[RetrieveOption] | None = None,
+    ) -> list[Image]:
+        """Method to retrieve (a subset of) the labels in the database."""
+
+    @abstractmethod
+    def set_image_status(
+        self,
+        status: ResourceStatus,
+        specification: ImageSpecification | None = None,
+    ) -> list[Image]:
+        """Method to set the status of specific images."""
+
+    @abstractmethod
+    def add_label_to_image(self, image: str, label: str) -> None:
+        """Method to add a label to a image (on names)."""
+
+    @abstractmethod
+    def add_label_to_images(
+        self, label: str, specification: ImageSpecification | None = None
+    ) -> list[Image]:
+        """Method to add a label to a images."""
+
+    @abstractmethod
+    def add_person_to_images(
+        self, person: str, specification: ImageSpecification | None = None
+    ) -> list[Image]:
+        """Method to add a person to a images."""
+
+    @abstractmethod
+    def remove_label_from_image(self, image: str, label: str) -> None:
+        """Remove a label from a image."""
+
+    @abstractmethod
+    def remove_label_from_images(
+        self, label: str, specification: ImageSpecification | None = None
+    ) -> list[Image]:
+        """Method to remove a label from images."""
+
+    @abstractmethod
+    def remove_person_from_images(
+        self, person: str, specification: ImageSpecification | None = None
+    ) -> list[Image]:
+        """Method to remove a person from images."""
+
+    @abstractmethod
+    def set_favourite_for_images(
+        self,
+        favourite: bool,
+        *,
+        specification: ImageSpecification | None = None,
+    ) -> list[Image]:
+        """Set the favourite flag for specific images."""
+
+    @abstractmethod
+    def rename_image(self, image_title: str, new_title: str) -> Image:
+        """Rename a image."""

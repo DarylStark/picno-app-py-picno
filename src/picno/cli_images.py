@@ -77,7 +77,11 @@ def ls(
 
     # Retrieve the images
     images = db.get_images(
-        filter.get_specifications(), options=[RetrieveOption.LOAD_IMAGE_LABELS]
+        filter.get_specifications(),
+        options=[
+            RetrieveOption.LOAD_IMAGE_LABELS,
+            RetrieveOption.LOAD_IMAGE_PERSONS,
+        ],
     )
     if images:
         if output_format == OutputFormat.TABLE:
@@ -116,6 +120,13 @@ def ls(
                         'Labels',
                         lambda image: (
                             ', '.join([label.name for label in image.labels])
+                            or ''
+                        ),
+                    ),
+                    TableColumn(
+                        'Persons',
+                        lambda image: (
+                            ', '.join([person.name for person in image.persons])
                             or ''
                         ),
                     ),
@@ -493,3 +504,115 @@ def exec(
         specification=filter.get_specifications(),
         options=option_dict,
     )
+
+
+@images.command(name='tag-person', help='Tag a person for specific labels')
+def tag_person(
+    ctx: Context,
+    person_name: str = Argument(help='The name of the person to tag'),
+    name: str | None = Option(default=None, help='Filter on a specific name'),
+    iname: str | None = Option(
+        default=None, help='Filter on a specific name (case insensitive)'
+    ),
+    name_contains: list[str] | None = Option(
+        default=None, help='Filter on a text in the name <repeatable>'
+    ),
+    iname_contains: list[str] | None = Option(
+        default=None,
+        help='Filter on a text in the name (case insensitive) <repeatable>',
+    ),
+    path_name_contains: list[str] | None = Option(
+        default=None, help='Filter on a text in the path name <repeatable>'
+    ),
+    ipath_name_contains: list[str] | None = Option(
+        default=None,
+        help='Filter on a text in the path name (case insensitive)<repeatable>',
+    ),
+    has_location: bool | None = Option(
+        default=None, help='Filter on images with a location'
+    ),
+    status: ResourceStatus | None = Option(
+        default=None, help='Filter on images with a specific status'
+    ),
+    favourite: bool | None = Option(
+        default=None, help='Filter on images with that are favourite'
+    ),
+    label: list[str] | None = Option(
+        default=None, help='Filter on a specific label <repeatable>'
+    ),
+) -> None:
+    """Add a person to images."""
+    (_, _, db, console) = get_initialized_project(ctx)
+    filter = ImageFilter(
+        name=name,
+        iname=iname,
+        name_contains=name_contains,
+        iname_contains=iname_contains,
+        path_name_contains=path_name_contains,
+        ipath_name_contains=ipath_name_contains,
+        has_location=has_location,
+        status=status,
+        favourite=favourite,
+        label=label,
+    )
+
+    images = db.add_person_to_images(
+        person_name, specification=filter.get_specifications()
+    )
+    console.print(f'Added person "{person_name}" to {len(images)} images')
+
+
+@images.command(name='untag-person', help='Untag a person from specific images')
+def untag_person(
+    ctx: Context,
+    person_name: str = Argument(help='The name of the person to untag'),
+    name: str | None = Option(default=None, help='Filter on a specific name'),
+    iname: str | None = Option(
+        default=None, help='Filter on a specific name (case insensitive)'
+    ),
+    name_contains: list[str] | None = Option(
+        default=None, help='Filter on a text in the name <repeatable>'
+    ),
+    iname_contains: list[str] | None = Option(
+        default=None,
+        help='Filter on a text in the name (case insensitive) <repeatable>',
+    ),
+    path_name_contains: list[str] | None = Option(
+        default=None, help='Filter on a text in the path name <repeatable>'
+    ),
+    ipath_name_contains: list[str] | None = Option(
+        default=None,
+        help='Filter on a text in the path name (case insensitive)<repeatable>',
+    ),
+    has_location: bool | None = Option(
+        default=None, help='Filter on images with a location'
+    ),
+    status: ResourceStatus | None = Option(
+        default=None, help='Filter on images with a specific status'
+    ),
+    favourite: bool | None = Option(
+        default=None, help='Filter on images with that are favourite'
+    ),
+    label: list[str] | None = Option(
+        default=None, help='Filter on a specific label <repeatable>'
+    ),
+) -> None:
+    """Remove a person from images."""
+    (_, _, db, console) = get_initialized_project(ctx)
+    filter = ImageFilter(
+        name=name,
+        iname=iname,
+        name_contains=name_contains,
+        iname_contains=iname_contains,
+        path_name_contains=path_name_contains,
+        ipath_name_contains=ipath_name_contains,
+        has_location=has_location,
+        status=status,
+        favourite=favourite,
+        label=label,
+    )
+
+    images = db.remove_person_from_images(
+        person_name, specification=filter.get_specifications()
+    )
+    console.print(f'Removed person "{person_name}" from {len(images)} images')

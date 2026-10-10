@@ -131,7 +131,7 @@ class HasPersonImageSpec(ImageSpecification):
         return exists(
             select(1)
             .select_from(ImagePersonLink)
-            .join(Label, col(Person.id) == ImagePersonLink.person_id)
+            .join(Person, col(Person.id) == ImagePersonLink.person_id)
             .where(
                 and_(
                     col(ImagePersonLink.image_id) == Image.id,

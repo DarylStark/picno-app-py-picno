@@ -121,10 +121,13 @@ class Database(ABC):
         """Rename a person."""
 
     @abstractmethod
-    def set_birthdate_for_person(
-        self, person_name: str, new_birthdate: date | None = None
-    ) -> Person:
-        """Set the birthday for a person."""
+    def set_birthdate_for_persons(
+        self,
+        new_birthdate: date | None = None,
+        *,
+        specification: PersonSpecification | None = None,
+    ) -> list[Person]:
+        """Set the birthdate for persons."""
 
     @abstractmethod
     def delete_person(self, id: int) -> bool:

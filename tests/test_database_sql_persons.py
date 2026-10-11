@@ -266,12 +266,13 @@ def test_database_sql_filled_db_set_birthday_for_person(
 
     Check if we can set the birthday for a person.
     """
-    person = filled_db.set_birthdate_for_person(
-        'Example Person 1', date(year=1986, month=10, day=26)
+    persons = filled_db.set_birthdate_for_persons(
+        date(year=1986, month=10, day=26),
+        specification=NameIsPersonSpec('Example Person 1'),
     )
-    assert person is not None
-    assert person.id == 1
-    assert person.birthdate == date(year=1986, month=10, day=26)
+    assert len(persons) == 1
+    for person in persons:
+        assert person.birthdate == date(year=1986, month=10, day=26)
 
     updated_person = filled_db.get_person(id=1)
     assert updated_person is not None
@@ -286,26 +287,17 @@ def test_database_sql_filled_db_set_birthday_for_person_clear(
 
     Check if we can clear the birthday for a person.
     """
-    person = filled_db.set_birthdate_for_person('Example Person 5', None)
-    assert person is not None
-    assert person.id == 5
-    assert person.birthdate is None
+    persons = filled_db.set_birthdate_for_persons(
+        None, specification=NameIsPersonSpec('Example Person 5')
+    )
+    assert len(persons) == 1
+    for person in persons:
+        assert person.birthdate is None
 
     updated_person = filled_db.get_person(id=5)
     assert updated_person is not None
     assert updated_person.id == 5
     assert updated_person.birthdate is None
-
-
-def test_database_sql_filled_db_set_birthday_for_person_unknown_user(
-    filled_db: DatabaseSql,
-) -> None:
-    """Test with a filled database.
-
-    Check if we get an error when giving a unknown user.
-    """
-    with pytest.raises(PersonDoesNotExistError):
-        _ = filled_db.set_birthdate_for_person('Example Person 999', None)
 
 
 def test_database_sql_filled_db_delete_one_person_valid_id(

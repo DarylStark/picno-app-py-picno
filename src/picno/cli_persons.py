@@ -108,13 +108,21 @@ def mv(
 @persons.command(name='set-birthdate', help='Set the birthdate for a person')
 def set_birthdate(
     ctx: Context,
-    name: str = Argument(help='Name of the person to set the birthdate for'),
     birthdate: str = Argument(help='Birthdate for the person (YYYY-MM-DD)'),
+    name: str | None = filter_args['name'],
+    iname: str | None = filter_args['iname'],
+    name_contains: list[str] | None = filter_args['name_contains'],
+    iname_contains: list[str] | None = filter_args['iname_contains'],
+    label: list[str] | None = filter_args['label'],
 ) -> None:
     """Set the birthdate for a person."""
     (_, _, db, console) = get_initialized_project(ctx)
-    db.set_birthdate_for_person(name, date_string_to_date(birthdate))
-    console.print(f'Set birthdate for "{name}" to "{birthdate}"')
+    filter = PersonFilter.build_from_locals(locals())
+    persons = db.set_birthdate_for_persons(
+        date_string_to_date(birthdate),
+        specification=filter.get_specifications(),
+    )
+    console.print(f'Set birthdate for {len(persons)} persons')
 
 
 @persons.command(
@@ -122,12 +130,19 @@ def set_birthdate(
 )
 def delete_birthdate(
     ctx: Context,
-    name: str = Argument(help='Name of the person to delete the birthdate for'),
+    name: str | None = filter_args['name'],
+    iname: str | None = filter_args['iname'],
+    name_contains: list[str] | None = filter_args['name_contains'],
+    iname_contains: list[str] | None = filter_args['iname_contains'],
+    label: list[str] | None = filter_args['label'],
 ) -> None:
     """Delete the birthdate for a person."""
     (_, _, db, console) = get_initialized_project(ctx)
-    db.set_birthdate_for_person(name, None)
-    console.print(f'Deleted birthdate for "{name}"')
+    filter = PersonFilter.build_from_locals(locals())
+    persons = db.set_birthdate_for_persons(
+        None, specification=filter.get_specifications()
+    )
+    console.print(f'Deleted birthdate for {len(persons)} persons')
 
 
 @persons.command(name='rm', help='Delete a person')

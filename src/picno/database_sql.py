@@ -651,19 +651,29 @@ class DatabaseSql(Database):
             return person
 
     @override
-    def set_birthdate_for_person(
-        self, person_name: str, new_birthdate: date | None = None
-    ) -> Person:
-        """Set the birthday for a person."""
+    def set_birthdate_for_persons(
+        self,
+        new_birthdate: date | None = None,
+        *,
+        specification: PersonSpecification | None = None,
+    ) -> list[Person]:
+        """Set the birthday for persons."""
+        return_list: list[Person] = []
         with Session(self._engine) as session:
-            person = self._get_person_from_name_with_session(
-                session, person_name
+            persons = self._get_resources_with_session(
+                session, Person, specification=specification
             )
-            person.birthdate = new_birthdate
-            session.add(person)
+            for person in persons:
+                if person.birthdate != new_birthdate:
+                    person.birthdate = new_birthdate
+                    session.add(person)
+                    return_list.append(person)
+
             session.commit()
-            session.refresh(person)
-            return person
+
+            for person in return_list:
+                session.refresh(person)
+        return return_list
 
     @override
     def delete_person(self, id: int) -> bool:

@@ -80,15 +80,17 @@ def ls(
 @persons.command(name='add', help='Create a person')
 def add(
     ctx: Context,
-    name: str = Argument(help='The name of the person to create'),
+    name: list[str] = Argument(help='The name of the person to create'),
     birthdate: str | None = Option(
         default=None, help='The birthdate of the person to create (YYYY-MM-DD)'
     ),
 ) -> None:
     """Add a person."""
     (_, _, db, console) = get_initialized_project(ctx)
-    db.create_person(name=name, birthdate=date_string_to_date(birthdate))
-    console.print(f'Created person "{name}"')
+    persons = db.create_persons(
+        names=name, birthdate=date_string_to_date(birthdate)
+    )
+    console.print(f'Created {len(persons)} persons')
 
 
 @persons.command(name='mv', help='Rename a person')

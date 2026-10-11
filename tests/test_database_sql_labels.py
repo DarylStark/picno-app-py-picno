@@ -33,7 +33,21 @@ def test_database_sql_empty_db_empty_create_label(
     assert label.name == 'cat'
 
 
-def test_database_sql_filled_db_add_label_that_already_exists(
+def test_database_sql_empty_db_empty_create_labels(
+    empty_db: DatabaseSql,
+) -> None:
+    """Test with a empty database.
+
+    Check if we can add labels and get the created label.
+    """
+    labels = empty_db.create_labels(['cat', 'dog', 'mouse'])
+
+    assert len(labels) == 3
+    for label in labels:
+        assert label.id is not None
+
+
+def test_database_sql_filled_db_create_label_that_already_exists(
     filled_db: DatabaseSql,
 ) -> None:
     """Test with a filled database.
@@ -42,6 +56,17 @@ def test_database_sql_filled_db_add_label_that_already_exists(
     """
     with pytest.raises(LabelAlreadyExistsError):
         filled_db.create_label('test_label_1')
+
+
+def test_database_sql_filled_db_create_labels_that_already_exists(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Check if we get an error when creating a label taht already exists.
+    """
+    with pytest.raises(LabelAlreadyExistsError):
+        filled_db.create_labels(['test_label_1', 'test_label_999'])
 
 
 def test_database_sql_filled_db_get_one_label_valid_id(

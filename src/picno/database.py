@@ -32,6 +32,10 @@ class Database(ABC):
         """Method to add a label to the database."""
 
     @abstractmethod
+    def create_labels(self, names: list[str]) -> list[Label]:
+        """Method to add multiple labels to the database."""
+
+    @abstractmethod
     def get_label(self, id: int) -> Label | None:
         """Method to retrieve one label."""
 
@@ -76,6 +80,12 @@ class Database(ABC):
     @abstractmethod
     def create_person(self, name: str, birthdate: date | None = None) -> Person:
         """Method to add a person to the database."""
+
+    @abstractmethod
+    def create_persons(
+        self, names: list[str], birthdate: date | None = None
+    ) -> list[Person]:
+        """Method to add multiple persons to the database."""
 
     @abstractmethod
     def get_person(

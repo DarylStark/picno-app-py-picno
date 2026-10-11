@@ -77,12 +77,13 @@ def ls(
 
 @labels.command(name='add', help='Create a label')
 def add(
-    ctx: Context, name: str = Argument(help='The name of the label to create')
+    ctx: Context,
+    name: list[str] = Argument(help='The name of the label to create'),
 ) -> None:
     """Add a label."""
     (_, _, db, console) = get_initialized_project(ctx)
-    db.create_label(name=name)
-    console.print(f'Created label "{name}"')
+    labels = db.create_labels(names=name)
+    console.print(f'Created {len(labels)} labels')
 
 
 @labels.command(name='mv', help='Rename a label')

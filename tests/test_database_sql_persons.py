@@ -39,6 +39,20 @@ def test_database_sql_empty_db_empty_create_person(
     assert person.name == 'Example Person'
 
 
+def test_database_sql_empty_db_empty_create_persons(
+    empty_db: DatabaseSql,
+) -> None:
+    """Test with a empty database.
+
+    Check if we can add persons and get the created person.
+    """
+    persons = empty_db.create_persons(['Example Person', 'Example Person2'])
+
+    assert len(persons) == 2
+    for person in persons:
+        assert person.id is not None
+
+
 def test_database_sql_empty_db_empty_create_person_with_birthdate(
     empty_db: DatabaseSql,
 ) -> None:
@@ -53,7 +67,23 @@ def test_database_sql_empty_db_empty_create_person_with_birthdate(
     assert person.birthdate == date(1986, 10, 26)
 
 
-def test_database_sql_filled_db_add_person_that_already_exists(
+def test_database_sql_empty_db_empty_create_persons_with_birthdate(
+    empty_db: DatabaseSql,
+) -> None:
+    """Test with a empty database.
+
+    Check if we can add persons and get the created person.
+    """
+    persons = empty_db.create_persons(
+        ['Example Person 1', 'Example Person 2'], date(1986, 10, 26)
+    )
+
+    assert len(persons) == 2
+    for person in persons:
+        assert person.birthdate == date(1986, 10, 26)
+
+
+def test_database_sql_filled_db_create_person_that_already_exists(
     filled_db: DatabaseSql,
 ) -> None:
     """Test with a filled database.
@@ -62,6 +92,17 @@ def test_database_sql_filled_db_add_person_that_already_exists(
     """
     with pytest.raises(PersonAlreadyExistsError):
         filled_db.create_person('Example Person 1')
+
+
+def test_database_sql_filled_db_create_persons_that_already_exists(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Check if we get an error when creating a person that already exists.
+    """
+    with pytest.raises(PersonAlreadyExistsError):
+        filled_db.create_persons(['Example Person 1', 'Example Person 999'])
 
 
 def test_database_sql_filled_db_get_one_person_valid_id(

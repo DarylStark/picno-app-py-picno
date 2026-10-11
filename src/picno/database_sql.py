@@ -130,6 +130,33 @@ class DatabaseSql(Database):
         session.add(obj)
         return obj
 
+    def _create_resources(
+        self, objs: list[T], *, session: Session | None = None
+    ) -> list[T]:
+        """Method to create many resourcess in the database."""
+        if session is None:
+            with Session(self._engine) as created_session:
+                objs = self._create_resources_with_session(
+                    created_session, objs
+                )
+                try:
+                    created_session.commit()
+                except IntegrityError as exc:
+                    created_session.rollback()
+                    raise ResourceAlreadyExistsError from exc
+                for obj in objs:
+                    created_session.refresh(obj)
+                return objs
+        return self._create_resources_with_session(session, objs)
+
+    def _create_resources_with_session(
+        self, session: Session, objs: list[T]
+    ) -> list[T]:
+        """Method to create many resourcess in the database."""
+        for obj in objs:
+            session.add(obj)
+        return objs
+
     def _get_resource(
         self,
         model: type[T],
@@ -443,6 +470,15 @@ class DatabaseSql(Database):
             ) from exc
 
     @override
+    def create_labels(self, names: list[str]) -> list[Label]:
+        """Method to add multiple labels to the database."""
+        objs: list[Label] = [Label(name=name) for name in names]
+        try:
+            return self._create_resources(objs)
+        except ResourceAlreadyExistsError as exc:
+            raise LabelAlreadyExistsError('Douplicate labels added') from exc
+
+    @override
     def get_label(self, id: int) -> Label | None:
         """Method to retrieve one label."""
         return self._get_resource(Label, id)
@@ -532,6 +568,19 @@ class DatabaseSql(Database):
             ) from exc
 
     @override
+    def create_persons(
+        self, names: list[str], birthdate: date | None = None
+    ) -> list[Person]:
+        """Method to add multiple persons to the database."""
+        objs: list[Person] = [
+            Person(name=name, birthdate=birthdate) for name in names
+        ]
+        try:
+            return self._create_resources(objs)
+        except ResourceAlreadyExistsError as exc:
+            raise PersonAlreadyExistsError('Douplicate persons added') from exc
+
+    @override
     def get_person(
         self, id: int, options: Sequence[RetrieveOption] | None = None
     ) -> Person | None:
@@ -602,19 +651,29 @@ class DatabaseSql(Database):
             return person
 
     @override
-    def set_birthdate_for_person(
-        self, person_name: str, new_birthdate: date | None = None
-    ) -> Person:
-        """Set the birthday for a person."""
+    def set_birthdate_for_persons(
+        self,
+        new_birthdate: date | None = None,
+        *,
+        specification: PersonSpecification | None = None,
+    ) -> list[Person]:
+        """Set the birthday for persons."""
+        return_list: list[Person] = []
         with Session(self._engine) as session:
-            person = self._get_person_from_name_with_session(
-                session, person_name
+            persons = self._get_resources_with_session(
+                session, Person, specification=specification
             )
-            person.birthdate = new_birthdate
-            session.add(person)
+            for person in persons:
+                if person.birthdate != new_birthdate:
+                    person.birthdate = new_birthdate
+                    session.add(person)
+                    return_list.append(person)
+
             session.commit()
-            session.refresh(person)
-            return person
+
+            for person in return_list:
+                session.refresh(person)
+        return return_list
 
     @override
     def delete_person(self, id: int) -> bool:

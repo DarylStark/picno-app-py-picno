@@ -11,35 +11,47 @@ from .specs_persons import PersonFilter
 
 persons = Typer(name='persons', help='Person management')
 
+filter_args = {
+    'name': Option(
+        default=None,
+        help='Filter on a specific name',
+        rich_help_panel='Filtering',
+    ),
+    'iname': Option(
+        default=None,
+        help='Filter on a specific name (case insensitive)',
+        rich_help_panel='Filtering',
+    ),
+    'name_contains': Option(
+        default=None,
+        help='Filter on a text in the name <repeatable>',
+        rich_help_panel='Filtering',
+    ),
+    'iname_contains': Option(
+        default=None,
+        help='Filter on a text in the name (case insensitive) <repeatable>',
+        rich_help_panel='Filtering',
+    ),
+    'label': Option(
+        default=None,
+        help='Filter on a specific label <repeatable>',
+        rich_help_panel='Filtering',
+    ),
+}
+
 
 @persons.command(name='ls', help='List persons')
 def ls(
     ctx: Context,
-    name: str | None = Option(default=None, help='Filter on a specific name'),
-    iname: str | None = Option(
-        default=None, help='Filter on a specific name (case insensitive)'
-    ),
-    name_contains: list[str] | None = Option(
-        default=None, help='Filter on a text in the name <repeatable>'
-    ),
-    iname_contains: list[str] | None = Option(
-        default=None,
-        help='Filter on a text in the name (case insensitive) <repeatable>',
-    ),
-    label: list[str] | None = Option(
-        default=None, help='Filter on a specific label <repeatable>'
-    ),
+    name: str | None = filter_args['name'],
+    iname: str | None = filter_args['iname'],
+    name_contains: list[str] | None = filter_args['name_contains'],
+    iname_contains: list[str] | None = filter_args['iname_contains'],
+    label: list[str] | None = filter_args['label'],
 ) -> None:
     """List the persons in the database."""
     (_, _, db, console) = get_initialized_project(ctx)
-
-    filter = PersonFilter(
-        name=name,
-        iname=iname,
-        name_contains=name_contains,
-        iname_contains=iname_contains,
-        label=label,
-    )
+    filter = PersonFilter.build_from_locals(locals())
 
     # Retrieve the persons
     persons = db.get_persons(
@@ -68,15 +80,17 @@ def ls(
 @persons.command(name='add', help='Create a person')
 def add(
     ctx: Context,
-    name: str = Argument(help='The name of the person to create'),
+    name: list[str] = Argument(help='The name of the person to create'),
     birthdate: str | None = Option(
         default=None, help='The birthdate of the person to create (YYYY-MM-DD)'
     ),
 ) -> None:
     """Add a person."""
     (_, _, db, console) = get_initialized_project(ctx)
-    db.create_person(name=name, birthdate=date_string_to_date(birthdate))
-    console.print(f'Created person "{name}"')
+    persons = db.create_persons(
+        names=name, birthdate=date_string_to_date(birthdate)
+    )
+    console.print(f'Created {len(persons)} persons')
 
 
 @persons.command(name='mv', help='Rename a person')
@@ -94,13 +108,21 @@ def mv(
 @persons.command(name='set-birthdate', help='Set the birthdate for a person')
 def set_birthdate(
     ctx: Context,
-    name: str = Argument(help='Name of the person to set the birthdate for'),
     birthdate: str = Argument(help='Birthdate for the person (YYYY-MM-DD)'),
+    name: str | None = filter_args['name'],
+    iname: str | None = filter_args['iname'],
+    name_contains: list[str] | None = filter_args['name_contains'],
+    iname_contains: list[str] | None = filter_args['iname_contains'],
+    label: list[str] | None = filter_args['label'],
 ) -> None:
     """Set the birthdate for a person."""
     (_, _, db, console) = get_initialized_project(ctx)
-    db.set_birthdate_for_person(name, date_string_to_date(birthdate))
-    console.print(f'Set birthdate for "{name}" to "{birthdate}"')
+    filter = PersonFilter.build_from_locals(locals())
+    persons = db.set_birthdate_for_persons(
+        date_string_to_date(birthdate),
+        specification=filter.get_specifications(),
+    )
+    console.print(f'Set birthdate for {len(persons)} persons')
 
 
 @persons.command(
@@ -108,53 +130,50 @@ def set_birthdate(
 )
 def delete_birthdate(
     ctx: Context,
-    name: str = Argument(help='Name of the person to delete the birthdate for'),
+    name: str | None = filter_args['name'],
+    iname: str | None = filter_args['iname'],
+    name_contains: list[str] | None = filter_args['name_contains'],
+    iname_contains: list[str] | None = filter_args['iname_contains'],
+    label: list[str] | None = filter_args['label'],
 ) -> None:
     """Delete the birthdate for a person."""
     (_, _, db, console) = get_initialized_project(ctx)
-    db.set_birthdate_for_person(name, None)
-    console.print(f'Deleted birthdate for "{name}"')
+    filter = PersonFilter.build_from_locals(locals())
+    persons = db.set_birthdate_for_persons(
+        None, specification=filter.get_specifications()
+    )
+    console.print(f'Deleted birthdate for {len(persons)} persons')
 
 
 @persons.command(name='rm', help='Delete a person')
 def rm(
     ctx: Context,
-    name: str = Argument(help='The name of the person to delete'),
+    name: str | None = filter_args['name'],
+    iname: str | None = filter_args['iname'],
+    name_contains: list[str] | None = filter_args['name_contains'],
+    iname_contains: list[str] | None = filter_args['iname_contains'],
+    label: list[str] | None = filter_args['label'],
 ) -> None:
     """Delete a person."""
     (_, _, db, console) = get_initialized_project(ctx)
-    db.delete_person_by_name(name)
-    console.print(f'Deleted person "{name}"')
+    filter = PersonFilter.build_from_locals(locals())
+    persons = db.delete_persons(filter.get_specifications())
+    console.print(f'Deleted {persons} persons')
 
 
 @persons.command(name='label', help='Label specific persons')
 def label(
     ctx: Context,
     label_name: str = Argument(help='The name of the label to add'),
-    name: str | None = Option(default=None, help='Filter on a specific name'),
-    iname: str | None = Option(
-        default=None, help='Filter on a specific name (case insensitive)'
-    ),
-    name_contains: list[str] | None = Option(
-        default=None, help='Filter on a text in the name <repeatable>'
-    ),
-    iname_contains: list[str] | None = Option(
-        default=None,
-        help='Filter on a text in the name (case insensitive) <repeatable>',
-    ),
-    label: list[str] | None = Option(
-        default=None, help='Filter on a specific label <repeatable>'
-    ),
+    name: str | None = filter_args['name'],
+    iname: str | None = filter_args['iname'],
+    name_contains: list[str] | None = filter_args['name_contains'],
+    iname_contains: list[str] | None = filter_args['iname_contains'],
+    label: list[str] | None = filter_args['label'],
 ) -> None:
     """Remove a label from persons."""
     (_, _, db, console) = get_initialized_project(ctx)
-    filter = PersonFilter(
-        name=name,
-        iname=iname,
-        name_contains=name_contains,
-        iname_contains=iname_contains,
-        label=label,
-    )
+    filter = PersonFilter.build_from_locals(locals())
 
     persons = db.add_label_to_persons(
         label_name, specification=filter.get_specifications()
@@ -166,30 +185,15 @@ def label(
 def unlabel(
     ctx: Context,
     label_name: str = Argument(help='The name of the label to remove'),
-    name: str | None = Option(default=None, help='Filter on a specific name'),
-    iname: str | None = Option(
-        default=None, help='Filter on a specific name (case insensitive)'
-    ),
-    name_contains: list[str] | None = Option(
-        default=None, help='Filter on a text in the name <repeatable>'
-    ),
-    iname_contains: list[str] | None = Option(
-        default=None,
-        help='Filter on a text in the name (case insensitive) <repeatable>',
-    ),
-    label: list[str] | None = Option(
-        default=None, help='Filter on a specific label <repeatable>'
-    ),
+    name: str | None = filter_args['name'],
+    iname: str | None = filter_args['iname'],
+    name_contains: list[str] | None = filter_args['name_contains'],
+    iname_contains: list[str] | None = filter_args['iname_contains'],
+    label: list[str] | None = filter_args['label'],
 ) -> None:
     """Add a label to persons."""
     (_, _, db, console) = get_initialized_project(ctx)
-    filter = PersonFilter(
-        name=name,
-        iname=iname,
-        name_contains=name_contains,
-        iname_contains=iname_contains,
-        label=label,
-    )
+    filter = PersonFilter.build_from_locals(locals())
 
     persons = db.remove_label_from_persons(
         label_name, specification=filter.get_specifications()

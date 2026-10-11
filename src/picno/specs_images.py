@@ -141,6 +141,9 @@ class HasPersonImageSpec(ImageSpecification):
         )
 
 
+dict_items = type({}.items())
+
+
 @dataclass(frozen=True)
 class ImageFilter(Filter[ImageSpecification]):
     """Class for Image Filter builder."""

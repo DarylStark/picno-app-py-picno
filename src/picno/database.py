@@ -32,6 +32,10 @@ class Database(ABC):
         """Method to add a label to the database."""
 
     @abstractmethod
+    def create_labels(self, names: list[str]) -> list[Label]:
+        """Method to add multiple labels to the database."""
+
+    @abstractmethod
     def get_label(self, id: int) -> Label | None:
         """Method to retrieve one label."""
 
@@ -78,6 +82,12 @@ class Database(ABC):
         """Method to add a person to the database."""
 
     @abstractmethod
+    def create_persons(
+        self, names: list[str], birthdate: date | None = None
+    ) -> list[Person]:
+        """Method to add multiple persons to the database."""
+
+    @abstractmethod
     def get_person(
         self, id: int, options: Sequence[RetrieveOption] | None = None
     ) -> Person | None:
@@ -111,10 +121,13 @@ class Database(ABC):
         """Rename a person."""
 
     @abstractmethod
-    def set_birthdate_for_person(
-        self, person_name: str, new_birthdate: date | None = None
-    ) -> Person:
-        """Set the birthday for a person."""
+    def set_birthdate_for_persons(
+        self,
+        new_birthdate: date | None = None,
+        *,
+        specification: PersonSpecification | None = None,
+    ) -> list[Person]:
+        """Set the birthdate for persons."""
 
     @abstractmethod
     def delete_person(self, id: int) -> bool:

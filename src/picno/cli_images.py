@@ -26,36 +26,52 @@ filter_args = {
     'name': Option(
         default=None,
         help='Filter on a specific name',
+        rich_help_panel='Filtering',
     ),
     'iname': Option(
         default=None,
         help='Filter on a specific name (case insensitive)',
+        rich_help_panel='Filtering',
     ),
     'name_contains': Option(
-        default=None, help='Filter on a text in the name <repeatable>'
+        default=None,
+        help='Filter on a text in the name <repeatable>',
+        rich_help_panel='Filtering',
     ),
     'iname_contains': Option(
         default=None,
         help='Filter on a text in the name (case insensitive) <repeatable>',
+        rich_help_panel='Filtering',
     ),
     'path_name_contains': Option(
-        default=None, help='Filter on a text in the path name <repeatable>'
+        default=None,
+        help='Filter on a text in the path name <repeatable>',
+        rich_help_panel='Filtering',
     ),
     'ipath_name_contains': Option(
         default=None,
         help='Filter on a text in the path name (case insensitive)<repeatable>',
+        rich_help_panel='Filtering',
     ),
     'has_location': Option(
-        default=None, help='Filter on images with a location'
+        default=None,
+        help='Filter on images with a location',
+        rich_help_panel='Filtering',
     ),
     'status': Option(
-        default=None, help='Filter on images with a specific status'
+        default=None,
+        help='Filter on images with a specific status',
+        rich_help_panel='Filtering',
     ),
     'favourite': Option(
-        default=None, help='Filter on images with that are favourite'
+        default=None,
+        help='Filter on images with that are favourite',
+        rich_help_panel='Filtering',
     ),
     'label': Option(
-        default=None, help='Filter on a specific label <repeatable>'
+        default=None,
+        help='Filter on a specific label <repeatable>',
+        rich_help_panel='Filtering',
     ),
 }
 

@@ -354,10 +354,10 @@ def test_database_sql_filled_db_delete_many_persons_no_spec(
 
     Check if we can delete all persons by not giving a spec.
     """
-    deleted = filled_db.delete_labels()
-    assert deleted == 20
+    deleted = filled_db.delete_persons()
+    assert deleted == 5
 
-    persons = filled_db.get_labels()
+    persons = filled_db.get_persons()
     assert len(persons) == 0
 
 

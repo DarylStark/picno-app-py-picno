@@ -133,12 +133,17 @@ def delete_birthdate(
 @persons.command(name='rm', help='Delete a person')
 def rm(
     ctx: Context,
-    name: str = Argument(help='The name of the person to delete'),
+    name: str | None = filter_args['name'],
+    iname: str | None = filter_args['iname'],
+    name_contains: list[str] | None = filter_args['name_contains'],
+    iname_contains: list[str] | None = filter_args['iname_contains'],
+    label: list[str] | None = filter_args['label'],
 ) -> None:
     """Delete a person."""
     (_, _, db, console) = get_initialized_project(ctx)
-    db.delete_person_by_name(name)
-    console.print(f'Deleted person "{name}"')
+    filter = PersonFilter.build_from_locals(locals())
+    persons = db.delete_persons(filter.get_specifications())
+    console.print(f'Deleted {persons} persons')
 
 
 @persons.command(name='label', help='Label specific persons')

@@ -101,9 +101,15 @@ def mv(
 @labels.command(name='rm', help='Delete a label')
 def rm(
     ctx: Context,
-    name: str = Argument(help='The name of the label to delete'),
+    name: str | None = filter_args['name'],
+    iname: str | None = filter_args['iname'],
+    group_name: str | None = filter_args['group_name'],
+    igroup_name: str | None = filter_args['igroup_name'],
+    name_contains: list[str] | None = filter_args['name_contains'],
+    iname_contains: list[str] | None = filter_args['iname_contains'],
 ) -> None:
     """Delete a label."""
     (_, _, db, console) = get_initialized_project(ctx)
-    db.delete_label_by_name(name)
-    console.print(f'Deleted label "{name}"')
+    filter = LabelFilter.build_from_locals(locals())
+    labels = db.delete_labels(filter.get_specifications())
+    console.print(f'Deleted {labels} labels')

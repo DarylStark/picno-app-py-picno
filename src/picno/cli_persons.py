@@ -11,35 +11,47 @@ from .specs_persons import PersonFilter
 
 persons = Typer(name='persons', help='Person management')
 
+filter_args = {
+    'name': Option(
+        default=None,
+        help='Filter on a specific name',
+        rich_help_panel='Filtering',
+    ),
+    'iname': Option(
+        default=None,
+        help='Filter on a specific name (case insensitive)',
+        rich_help_panel='Filtering',
+    ),
+    'name_contains': Option(
+        default=None,
+        help='Filter on a text in the name <repeatable>',
+        rich_help_panel='Filtering',
+    ),
+    'iname_contains': Option(
+        default=None,
+        help='Filter on a text in the name (case insensitive) <repeatable>',
+        rich_help_panel='Filtering',
+    ),
+    'label': Option(
+        default=None,
+        help='Filter on a specific label <repeatable>',
+        rich_help_panel='Filtering',
+    ),
+}
+
 
 @persons.command(name='ls', help='List persons')
 def ls(
     ctx: Context,
-    name: str | None = Option(default=None, help='Filter on a specific name'),
-    iname: str | None = Option(
-        default=None, help='Filter on a specific name (case insensitive)'
-    ),
-    name_contains: list[str] | None = Option(
-        default=None, help='Filter on a text in the name <repeatable>'
-    ),
-    iname_contains: list[str] | None = Option(
-        default=None,
-        help='Filter on a text in the name (case insensitive) <repeatable>',
-    ),
-    label: list[str] | None = Option(
-        default=None, help='Filter on a specific label <repeatable>'
-    ),
+    name: str | None = filter_args['name'],
+    iname: str | None = filter_args['iname'],
+    name_contains: list[str] | None = filter_args['name_contains'],
+    iname_contains: list[str] | None = filter_args['iname_contains'],
+    label: list[str] | None = filter_args['label'],
 ) -> None:
     """List the persons in the database."""
     (_, _, db, console) = get_initialized_project(ctx)
-
-    filter = PersonFilter(
-        name=name,
-        iname=iname,
-        name_contains=name_contains,
-        iname_contains=iname_contains,
-        label=label,
-    )
+    filter = PersonFilter.build_from_locals(locals())
 
     # Retrieve the persons
     persons = db.get_persons(
@@ -131,30 +143,15 @@ def rm(
 def label(
     ctx: Context,
     label_name: str = Argument(help='The name of the label to add'),
-    name: str | None = Option(default=None, help='Filter on a specific name'),
-    iname: str | None = Option(
-        default=None, help='Filter on a specific name (case insensitive)'
-    ),
-    name_contains: list[str] | None = Option(
-        default=None, help='Filter on a text in the name <repeatable>'
-    ),
-    iname_contains: list[str] | None = Option(
-        default=None,
-        help='Filter on a text in the name (case insensitive) <repeatable>',
-    ),
-    label: list[str] | None = Option(
-        default=None, help='Filter on a specific label <repeatable>'
-    ),
+    name: str | None = filter_args['name'],
+    iname: str | None = filter_args['iname'],
+    name_contains: list[str] | None = filter_args['name_contains'],
+    iname_contains: list[str] | None = filter_args['iname_contains'],
+    label: list[str] | None = filter_args['label'],
 ) -> None:
     """Remove a label from persons."""
     (_, _, db, console) = get_initialized_project(ctx)
-    filter = PersonFilter(
-        name=name,
-        iname=iname,
-        name_contains=name_contains,
-        iname_contains=iname_contains,
-        label=label,
-    )
+    filter = PersonFilter.build_from_locals(locals())
 
     persons = db.add_label_to_persons(
         label_name, specification=filter.get_specifications()
@@ -166,30 +163,15 @@ def label(
 def unlabel(
     ctx: Context,
     label_name: str = Argument(help='The name of the label to remove'),
-    name: str | None = Option(default=None, help='Filter on a specific name'),
-    iname: str | None = Option(
-        default=None, help='Filter on a specific name (case insensitive)'
-    ),
-    name_contains: list[str] | None = Option(
-        default=None, help='Filter on a text in the name <repeatable>'
-    ),
-    iname_contains: list[str] | None = Option(
-        default=None,
-        help='Filter on a text in the name (case insensitive) <repeatable>',
-    ),
-    label: list[str] | None = Option(
-        default=None, help='Filter on a specific label <repeatable>'
-    ),
+    name: str | None = filter_args['name'],
+    iname: str | None = filter_args['iname'],
+    name_contains: list[str] | None = filter_args['name_contains'],
+    iname_contains: list[str] | None = filter_args['iname_contains'],
+    label: list[str] | None = filter_args['label'],
 ) -> None:
     """Add a label to persons."""
     (_, _, db, console) = get_initialized_project(ctx)
-    filter = PersonFilter(
-        name=name,
-        iname=iname,
-        name_contains=name_contains,
-        iname_contains=iname_contains,
-        label=label,
-    )
+    filter = PersonFilter.build_from_locals(locals())
 
     persons = db.remove_label_from_persons(
         label_name, specification=filter.get_specifications()

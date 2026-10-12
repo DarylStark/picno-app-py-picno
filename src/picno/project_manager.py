@@ -18,6 +18,12 @@ from .model import Image
 from .project import Project
 from .specs_images import ImageSpecification
 
+ProgressCallbackStartScanning = Callable[[], None]
+ProgressCallbackDoneScanning = Callable[[list[Path]], None]
+ProgressCallbackProcessingImage = Callable[[int, int], None]
+ProgressCallbackSyncAddingStarting = Callable[[list[Image]], None]
+ProgressCallbackSyncAddingDone = Callable[[list[Image]], None]
+
 
 def _to_float(value: Fraction | tuple | IFDRational | None) -> float | None:
     if value is None:
@@ -120,20 +126,40 @@ class ProjectManager:
 
         return image_obj
 
-    def scan_directory(self, directory: Path) -> list[Path]:
+    def scan_directory(
+        self,
+        directory: Path,
+        *,
+        callback_scanning_starting: ProgressCallbackStartScanning | None = None,
+        callback_scanning_done: ProgressCallbackDoneScanning | None = None,
+    ) -> list[Path]:
         """Scan the data directory for the project.
 
         Returns a list of images and videos in the directory.
         """
+        if callback_scanning_starting:
+            callback_scanning_starting()
+
         found_files: list[Path] = []
         for file_path in directory.rglob('*'):
-            if file_path.is_file() and file_path.suffix.lower() in {
-                '.jpg',
-                '.jpeg',
-                '.png',
-                '.webp',
-            }:
+            if (
+                file_path.is_file()
+                and file_path.suffix.lower()
+                in {
+                    '.jpg',
+                    '.jpeg',
+                    '.png',
+                    '.webp',
+                }
+                and not any(
+                    file_path.is_relative_to(ignore_path)
+                    for ignore_path in self._structure.sync_ignore
+                )
+            ):
                 found_files.append(file_path)
+
+        if callback_scanning_done:
+            callback_scanning_done(found_files)
 
         return found_files
 
@@ -156,34 +182,62 @@ class ProjectManager:
             is None
         )
 
-    def _get_new_files_in_data_directory(self) -> list[Image]:
+    def _get_new_files_in_data_directory(
+        self,
+        *,
+        callback_scanning_starting: ProgressCallbackStartScanning | None = None,
+        callback_scanning_done: ProgressCallbackDoneScanning | None = None,
+        callback_processing_image: ProgressCallbackProcessingImage
+        | None = None,
+    ) -> list[Image]:
         """Sync the media directory.
 
         Returns a list of new media items.
         """
         new_data: list[Image] = []
-        all_media = self.scan_directory(self._structure.data_folder)
-        for media in all_media:
-            if any(
-                media.is_relative_to(ignore_path)
-                for ignore_path in self._structure.sync_ignore
-            ):
-                continue
+        all_media = self.scan_directory(
+            self._structure.data_folder,
+            callback_scanning_done=callback_scanning_done,
+            callback_scanning_starting=callback_scanning_starting,
+        )
 
+        if callback_processing_image:
+            callback_processing_image(len(all_media), 0)
+        for idx, media in enumerate(all_media):
             if self._is_new_image(media):
                 image_obj = self.get_image_object_from_file(media)
                 image_obj.physical_file = self._get_relative_path(media)
                 new_data.append(image_obj)
+            if callback_processing_image:
+                callback_processing_image(len(all_media), idx + 1)
         return new_data
 
-    def sync_data_directory(self) -> list[Image]:
+    def sync_data_directory(
+        self,
+        callback_scanning_starting: ProgressCallbackStartScanning | None = None,
+        callback_scanning_done: ProgressCallbackDoneScanning | None = None,
+        callback_processing_image: ProgressCallbackProcessingImage
+        | None = None,
+        callback_sync_adding_starting: ProgressCallbackSyncAddingStarting
+        | None = None,
+        callback_sync_adding_done: ProgressCallbackSyncAddingDone | None = None,
+    ) -> None:
         """Sync the media directory.
 
         Returns a list of new media items.
         """
-        return self._database.create_images_from_objects(
-            self._get_new_files_in_data_directory()
+        files = self._get_new_files_in_data_directory(
+            callback_scanning_done=callback_scanning_done,
+            callback_scanning_starting=callback_scanning_starting,
+            callback_processing_image=callback_processing_image,
         )
+
+        if callback_sync_adding_starting:
+            callback_sync_adding_starting(files)
+        objects = self._database.create_images_from_objects(files)
+
+        if callback_sync_adding_done:
+            callback_sync_adding_done(objects)
 
     def exec_for_images(
         self,

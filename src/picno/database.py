@@ -16,6 +16,7 @@ T = TypeVar('T')
 
 SelectCallbackLabels = Callable[[Sequence[Label]], bool]
 SelectCallbackPersons = Callable[[Sequence[Person]], bool]
+SelectCallbackImages = Callable[[Sequence[Image]], bool]
 
 
 class RetrieveOption(Enum):
@@ -163,7 +164,10 @@ class Database(ABC):
 
     @abstractmethod
     def add_label_to_persons(
-        self, label: str, specification: PersonSpecification | None = None
+        self,
+        label: str,
+        specification: PersonSpecification | None = None,
+        select_callback: SelectCallbackPersons | None = None,
     ) -> list[Person]:
         """Method to add a label to a persons."""
 
@@ -173,7 +177,10 @@ class Database(ABC):
 
     @abstractmethod
     def remove_label_from_persons(
-        self, label: str, specification: PersonSpecification | None = None
+        self,
+        label: str,
+        specification: PersonSpecification | None = None,
+        select_callback: SelectCallbackPersons | None = None,
     ) -> list[Person]:
         """Method to remove a label from persons."""
 
@@ -213,7 +220,10 @@ class Database(ABC):
 
     @abstractmethod
     def add_label_to_images(
-        self, label: str, specification: ImageSpecification | None = None
+        self,
+        label: str,
+        specification: ImageSpecification | None = None,
+        select_callback: SelectCallbackImages | None = None,
     ) -> list[Image]:
         """Method to add a label to a images."""
 
@@ -229,7 +239,10 @@ class Database(ABC):
 
     @abstractmethod
     def remove_label_from_images(
-        self, label: str, specification: ImageSpecification | None = None
+        self,
+        label: str,
+        specification: ImageSpecification | None = None,
+        select_callback: SelectCallbackImages | None = None,
     ) -> list[Image]:
         """Method to remove a label from images."""
 

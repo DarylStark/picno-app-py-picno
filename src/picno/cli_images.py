@@ -5,7 +5,11 @@ from enum import Enum
 
 from typer import Argument, Context, Option, Typer
 
-from picno.cli_helpers import with_filtering
+from picno.cli_helpers import (
+    create_label_confirm_callback,
+    create_unlabel_confirm_callback,
+    with_filtering,
+)
 from picno.database import RetrieveOption
 from picno.model import ResourceStatus
 from picno.specs_images import ImageFilter
@@ -124,11 +128,15 @@ def label(
     _filter: ImageFilter,
     ctx: Context,
     label_name: str = Argument(help='The name of the label to add'),
+    force: bool = Option(default=False, help="Don't ask for confirmation"),
 ) -> None:
     """Add a label to images."""
     (_, _, db, console) = get_initialized_project(ctx)
+    select_callback = create_label_confirm_callback(force, console, 'title')
     images = db.add_label_to_images(
-        label_name, specification=_filter.get_specifications()
+        label_name,
+        specification=_filter.get_specifications(),
+        select_callback=select_callback,
     )
     console.print(f'Added label "{label_name}" to {len(images)} images')
 
@@ -139,11 +147,15 @@ def unlabel(
     _filter: ImageFilter,
     ctx: Context,
     label_name: str = Argument(help='The name of the label to remove'),
+    force: bool = Option(default=False, help="Don't ask for confirmation"),
 ) -> None:
     """Remove a label from images."""
     (_, _, db, console) = get_initialized_project(ctx)
+    select_callback = create_unlabel_confirm_callback(force, console, 'title')
     images = db.remove_label_from_images(
-        label_name, specification=_filter.get_specifications()
+        label_name,
+        specification=_filter.get_specifications(),
+        select_callback=select_callback,
     )
     console.print(f'Removed label "{label_name}" from {len(images)} images')
 

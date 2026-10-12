@@ -22,6 +22,8 @@ class Noun(Enum):
 
     DELETING = 'Deleting'
     UPDATING = 'Updating'
+    LABELLING = 'Labelling'
+    UNLABELLING = 'Unlabelling'
 
 
 def date_string_to_date(date_str: str | None) -> date | None:
@@ -184,4 +186,26 @@ def create_delete_confirm_callback[T](
     """Create a confirm callback for deleting items."""
     return create_confirm_callback(
         force, console, Noun.DELETING, resource_name_attr
+    )
+
+
+def create_label_confirm_callback[T](
+    force: bool,
+    console: Console,
+    resource_name_attr: str,
+) -> Callable[[Sequence[T]], bool] | None:
+    """Create a confirm callback for deleting items."""
+    return create_confirm_callback(
+        force, console, Noun.LABELLING, resource_name_attr
+    )
+
+
+def create_unlabel_confirm_callback[T](
+    force: bool,
+    console: Console,
+    resource_name_attr: str,
+) -> Callable[[Sequence[T]], bool] | None:
+    """Create a confirm callback for deleting items."""
+    return create_confirm_callback(
+        force, console, Noun.UNLABELLING, resource_name_attr
     )

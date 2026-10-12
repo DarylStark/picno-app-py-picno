@@ -18,6 +18,7 @@ from .database import (
     Database,
     LabelSpecification,
     RetrieveOption,
+    SelectCallbackImages,
     SelectCallbackLabels,
     SelectCallbackPersons,
 )
@@ -799,7 +800,10 @@ class DatabaseSql(Database):
 
     @override
     def add_label_to_persons(
-        self, label: str, specification: PersonSpecification | None = None
+        self,
+        label: str,
+        specification: PersonSpecification | None = None,
+        select_callback: SelectCallbackPersons | None = None,
     ) -> list[Person]:
         """Method to add a label to a persons."""
         return self._add_label_to_resource(
@@ -811,6 +815,7 @@ class DatabaseSql(Database):
                 NotSpecification(HasLabelPersonSpec(label_name=label)),
                 specification,
             ),
+            select_callback=select_callback,
         )
 
     @override
@@ -844,7 +849,10 @@ class DatabaseSql(Database):
 
     @override
     def remove_label_from_persons(
-        self, label: str, specification: PersonSpecification | None = None
+        self,
+        label: str,
+        specification: PersonSpecification | None = None,
+        select_callback: SelectCallbackPersons | None = None,
     ) -> list[Person]:
         """Method to remove a label from persons."""
         return self._remove_label_from_resource(
@@ -856,6 +864,7 @@ class DatabaseSql(Database):
                 HasLabelPersonSpec(label_name=label),
                 specification,
             ),
+            select_callback=select_callback,
         )
 
     @override
@@ -991,6 +1000,8 @@ class DatabaseSql(Database):
             [TableResourceTypeA, TableResourceType, Session], None
         ]
         | None = None,
+        select_callback: Callable[[Sequence[TableResourceType]], bool]
+        | None = None,
     ) -> list[TableResourceType]:
         """Method to connect two resources together."""
         return_list: list[TableResourceType] = []
@@ -1008,6 +1019,9 @@ class DatabaseSql(Database):
             resources = self._get_resources(
                 resources_type, specification=resource_spec, session=session
             )
+
+            if select_callback and not select_callback(resources):
+                return []
 
             for resource in resources:
                 if preprocessor is not None:
@@ -1038,6 +1052,8 @@ class DatabaseSql(Database):
         label: str,
         *,
         specification: Specification[TableResourceType] | None = None,
+        select_callback: Callable[[Sequence[TableResourceType]], bool]
+        | None = None,
     ) -> list[TableResourceType]:
         def preprocess(
             label_obj: Label, resource: TableResourceType, session: Session
@@ -1076,6 +1092,7 @@ class DatabaseSql(Database):
                 specification,
                 link_table,
                 preprocessor=preprocess,
+                select_callback=select_callback,
             )
         except ResourceNotFoundError as exc:
             raise LabelDoesNotExistError(
@@ -1119,7 +1136,10 @@ class DatabaseSql(Database):
 
     @override
     def add_label_to_images(
-        self, label: str, specification: ImageSpecification | None = None
+        self,
+        label: str,
+        specification: ImageSpecification | None = None,
+        select_callback: SelectCallbackImages | None = None,
     ) -> list[Image]:
         """Method to add a label to a images."""
         return self._add_label_to_resource(
@@ -1131,6 +1151,7 @@ class DatabaseSql(Database):
                 NotSpecification(HasLabelImageSpec(label_name=label)),
                 specification,
             ),
+            select_callback=select_callback,
         )
 
     @override
@@ -1190,6 +1211,9 @@ class DatabaseSql(Database):
         resources_field_in_link_table: str,
         resource_spec: Specification[TableResourceType] | None,
         link_table: type[SQLModel],
+        *,
+        select_callback: Callable[[Sequence[TableResourceType]], bool]
+        | None = None,
     ) -> list[TableResourceType]:
         """Method to remove a resource from resources."""
         return_list: list[TableResourceType] = []
@@ -1207,6 +1231,9 @@ class DatabaseSql(Database):
             resources = self._get_resources(
                 resources_type, specification=resource_spec, session=session
             )
+
+            if select_callback and not select_callback(resources):
+                return []
 
             for resource in resources:
                 statement = delete(link_table).where(
@@ -1233,6 +1260,8 @@ class DatabaseSql(Database):
         label: str,
         *,
         specification: Specification[TableResourceType] | None = None,
+        select_callback: Callable[[Sequence[TableResourceType]], bool]
+        | None = None,
     ) -> list[TableResourceType]:
         """Method to remove a label from images."""
         try:
@@ -1245,6 +1274,7 @@ class DatabaseSql(Database):
                 resource_field,
                 specification,
                 link_table,
+                select_callback=select_callback,
             )
         except ResourceNotFoundError as exc:
             raise LabelDoesNotExistError(
@@ -1253,7 +1283,10 @@ class DatabaseSql(Database):
 
     @override
     def remove_label_from_images(
-        self, label: str, specification: ImageSpecification | None = None
+        self,
+        label: str,
+        specification: ImageSpecification | None = None,
+        select_callback: SelectCallbackImages | None = None,
     ) -> list[Image]:
         """Method to remove a label from images."""
         return self._remove_label_from_resource(
@@ -1265,6 +1298,7 @@ class DatabaseSql(Database):
                 HasLabelImageSpec(label_name=label),
                 specification,
             ),
+            select_callback=select_callback,
         )
 
     def _remove_person_from_resource(

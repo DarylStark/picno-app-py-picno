@@ -6,6 +6,8 @@ from .cli_context import get_initialized_project
 from .cli_format import TableColumn, print_table
 from .cli_helpers import (
     create_delete_confirm_callback,
+    create_label_confirm_callback,
+    create_unlabel_confirm_callback,
     date_string_to_date,
     with_filtering,
 )
@@ -131,11 +133,15 @@ def label(
     _filter: PersonFilter,
     ctx: Context,
     label_name: str = Argument(help='The name of the label to add'),
+    force: bool = Option(default=False, help="Don't ask for confirmation"),
 ) -> None:
     """Remove a label from persons."""
     (_, _, db, console) = get_initialized_project(ctx)
+    select_callback = create_label_confirm_callback(force, console, 'name')
     persons = db.add_label_to_persons(
-        label_name, specification=_filter.get_specifications()
+        label_name,
+        specification=_filter.get_specifications(),
+        select_callback=select_callback,
     )
     console.print(f'Added label "{label_name}" to {len(persons)} persons')
 
@@ -146,10 +152,14 @@ def unlabel(
     _filter: PersonFilter,
     ctx: Context,
     label_name: str = Argument(help='The name of the label to remove'),
+    force: bool = Option(default=False, help="Don't ask for confirmation"),
 ) -> None:
     """Add a label to persons."""
     (_, _, db, console) = get_initialized_project(ctx)
+    select_callback = create_unlabel_confirm_callback(force, console, 'name')
     persons = db.remove_label_from_persons(
-        label_name, specification=_filter.get_specifications()
+        label_name,
+        specification=_filter.get_specifications(),
+        select_callback=select_callback,
     )
     console.print(f'Removed label "{label_name}" from {len(persons)} persons')

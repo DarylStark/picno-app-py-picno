@@ -1,5 +1,9 @@
 """Module with the `pico persons` options."""
 
+import inspect
+from collections.abc import Callable
+from typing import Any
+
 from typer import Argument, Context, Option, Typer
 
 from picno.cli_helpers import date_string_to_date
@@ -11,51 +15,102 @@ from .specs_persons import PersonFilter
 
 persons = Typer(name='persons', help='Person management')
 
-filter_args = {
-    'name': Option(
-        default=None,
-        help='Filter on a specific name',
-        rich_help_panel='Filtering',
-    ),
-    'iname': Option(
-        default=None,
-        help='Filter on a specific name (case insensitive)',
-        rich_help_panel='Filtering',
-    ),
-    'name_contains': Option(
-        default=None,
-        help='Filter on a text in the name <repeatable>',
-        rich_help_panel='Filtering',
-    ),
-    'iname_contains': Option(
-        default=None,
-        help='Filter on a text in the name (case insensitive) <repeatable>',
-        rich_help_panel='Filtering',
-    ),
-    'label': Option(
-        default=None,
-        help='Filter on a specific label <repeatable>',
-        rich_help_panel='Filtering',
-    ),
-}
+
+def with_person_filters(func: Callable) -> Callable:
+    """Decorator to add filters to CLI commands."""
+    sig = inspect.signature(func)
+    params = list(sig.parameters.values())
+
+    shared = [
+        inspect.Parameter(
+            'name',
+            kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
+            annotation=str | None,
+            default=Option(
+                default=None,
+                help='Filter on specific name',
+                rich_help_panel='Filtering',
+            ),
+        ),
+        inspect.Parameter(
+            'iname',
+            kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
+            annotation=str | None,
+            default=Option(
+                default=None,
+                help='Filter on a specific name (case insensitive)',
+                rich_help_panel='Filtering',
+            ),
+        ),
+        inspect.Parameter(
+            'name_contains',
+            kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
+            annotation=str | None,
+            default=Option(
+                default=None,
+                help='Filter on a text in the name <repeatable>',
+                rich_help_panel='Filtering',
+            ),
+        ),
+        inspect.Parameter(
+            'iname_contains',
+            kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
+            annotation=str | None,
+            default=Option(
+                default=None,
+                help=(
+                    'Filter on a text in the name (case insensitive) '
+                    '<repeatable>'
+                ),
+                rich_help_panel='Filtering',
+            ),
+        ),
+        inspect.Parameter(
+            'label',
+            kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
+            annotation=list[str] | None,
+            default=Option(
+                default=None,
+                help='Filter on a specific label <repeatable>',
+                rich_help_panel='Filtering',
+            ),
+        ),
+    ]
+
+    def inner(*args: list[Any], **kwargs: dict[str, Any]) -> None:
+        shared_kwargs = {
+            shared_kwarg.name: kwargs[shared_kwarg.name]
+            for shared_kwarg in shared
+        }
+        filter = PersonFilter.build_from_locals(shared_kwargs)
+        kwargs = {
+            kwarg[0]: kwarg[1]
+            for kwarg in kwargs.items()
+            if kwarg[0] not in shared_kwargs
+        }
+        return func(filter, *args, **kwargs)
+
+    # Remove filter from params
+    params = [param for param in params if param.name != '_filter']
+
+    # Create the new function signature
+    inner.__signature__ = inspect.Signature(params + shared)  # ty: ignore[unresolved-attribute]
+    return inner
 
 
 @persons.command(name='ls', help='List persons')
+@with_person_filters
 def ls(
+    _filter: PersonFilter,
     ctx: Context,
-    name: str | None = filter_args['name'],
-    iname: str | None = filter_args['iname'],
-    name_contains: list[str] | None = filter_args['name_contains'],
-    iname_contains: list[str] | None = filter_args['iname_contains'],
-    label: list[str] | None = filter_args['label'],
 ) -> None:
     """List the persons in the database."""
     (_, _, db, console) = get_initialized_project(ctx)
-    filter = PersonFilter.build_from_locals(locals())
 
     # Retrieve the persons
     persons = db.get_persons(
-        filter.get_specifications(), options=[RetrieveOption.LOAD_PERSON_LABELS]
+        _filter.get_specifications(),
+        options=[RetrieveOption.LOAD_PERSON_LABELS],
     )
     if persons:
         print_table(
@@ -106,21 +161,17 @@ def mv(
 
 
 @persons.command(name='set-birthdate', help='Set the birthdate for a person')
+@with_person_filters
 def set_birthdate(
+    _filter: PersonFilter,
     ctx: Context,
     birthdate: str = Argument(help='Birthdate for the person (YYYY-MM-DD)'),
-    name: str | None = filter_args['name'],
-    iname: str | None = filter_args['iname'],
-    name_contains: list[str] | None = filter_args['name_contains'],
-    iname_contains: list[str] | None = filter_args['iname_contains'],
-    label: list[str] | None = filter_args['label'],
 ) -> None:
     """Set the birthdate for a person."""
     (_, _, db, console) = get_initialized_project(ctx)
-    filter = PersonFilter.build_from_locals(locals())
     persons = db.set_birthdate_for_persons(
         date_string_to_date(birthdate),
-        specification=filter.get_specifications(),
+        specification=_filter.get_specifications(),
     )
     console.print(f'Set birthdate for {len(persons)} persons')
 
@@ -128,74 +179,56 @@ def set_birthdate(
 @persons.command(
     name='delete-birthdate', help='Delete the birthdate for a person'
 )
+@with_person_filters
 def delete_birthdate(
+    _filter: PersonFilter,
     ctx: Context,
-    name: str | None = filter_args['name'],
-    iname: str | None = filter_args['iname'],
-    name_contains: list[str] | None = filter_args['name_contains'],
-    iname_contains: list[str] | None = filter_args['iname_contains'],
-    label: list[str] | None = filter_args['label'],
 ) -> None:
     """Delete the birthdate for a person."""
     (_, _, db, console) = get_initialized_project(ctx)
-    filter = PersonFilter.build_from_locals(locals())
     persons = db.set_birthdate_for_persons(
-        None, specification=filter.get_specifications()
+        None, specification=_filter.get_specifications()
     )
     console.print(f'Deleted birthdate for {len(persons)} persons')
 
 
 @persons.command(name='rm', help='Delete a person')
+@with_person_filters
 def rm(
+    _filter: PersonFilter,
     ctx: Context,
-    name: str | None = filter_args['name'],
-    iname: str | None = filter_args['iname'],
-    name_contains: list[str] | None = filter_args['name_contains'],
-    iname_contains: list[str] | None = filter_args['iname_contains'],
-    label: list[str] | None = filter_args['label'],
 ) -> None:
     """Delete a person."""
     (_, _, db, console) = get_initialized_project(ctx)
-    filter = PersonFilter.build_from_locals(locals())
-    persons = db.delete_persons(filter.get_specifications())
+    persons = db.delete_persons(_filter.get_specifications())
     console.print(f'Deleted {persons} persons')
 
 
 @persons.command(name='label', help='Label specific persons')
+@with_person_filters
 def label(
+    _filter: PersonFilter,
     ctx: Context,
     label_name: str = Argument(help='The name of the label to add'),
-    name: str | None = filter_args['name'],
-    iname: str | None = filter_args['iname'],
-    name_contains: list[str] | None = filter_args['name_contains'],
-    iname_contains: list[str] | None = filter_args['iname_contains'],
-    label: list[str] | None = filter_args['label'],
 ) -> None:
     """Remove a label from persons."""
     (_, _, db, console) = get_initialized_project(ctx)
-    filter = PersonFilter.build_from_locals(locals())
-
     persons = db.add_label_to_persons(
-        label_name, specification=filter.get_specifications()
+        label_name, specification=_filter.get_specifications()
     )
     console.print(f'Added label "{label_name}" to {len(persons)} persons')
 
 
 @persons.command(name='unlabel', help='Unlabel specific persons')
+@with_person_filters
 def unlabel(
+    _filter: PersonFilter,
     ctx: Context,
     label_name: str = Argument(help='The name of the label to remove'),
-    name: str | None = filter_args['name'],
-    iname: str | None = filter_args['iname'],
-    name_contains: list[str] | None = filter_args['name_contains'],
-    iname_contains: list[str] | None = filter_args['iname_contains'],
-    label: list[str] | None = filter_args['label'],
 ) -> None:
     """Add a label to persons."""
     (_, _, db, console) = get_initialized_project(ctx)
-    filter = PersonFilter.build_from_locals(locals())
-
     persons = db.remove_label_from_persons(
-        label_name, specification=filter.get_specifications()
+        label_name, specification=_filter.get_specifications()
     )
     console.print(f'Removed label "{label_name}" from {len(persons)} persons')

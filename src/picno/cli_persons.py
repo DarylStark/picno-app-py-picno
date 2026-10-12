@@ -14,7 +14,7 @@ from .specs_persons import PersonFilter
 persons = Typer(name='persons', help='Person management')
 
 
-def with_persons_filter(param_name: str) -> Callable:
+def with_persons_filter(param_name: str = '_filter') -> Callable:
     """Create a decorator for a Persons Filter."""
 
     def decorator(func: Callable) -> Callable:
@@ -83,7 +83,7 @@ def with_persons_filter(param_name: str) -> Callable:
 
 
 @persons.command(name='ls', help='List persons')
-@with_persons_filter('_filter')
+@with_persons_filter()
 def ls(
     _filter: PersonFilter,
     ctx: Context,
@@ -145,7 +145,7 @@ def mv(
 
 
 @persons.command(name='set-birthdate', help='Set the birthdate for a person')
-@with_persons_filter('_filter')
+@with_persons_filter()
 def set_birthdate(
     _filter: PersonFilter,
     ctx: Context,
@@ -163,7 +163,7 @@ def set_birthdate(
 @persons.command(
     name='delete-birthdate', help='Delete the birthdate for a person'
 )
-@with_persons_filter('_filter')
+@with_persons_filter()
 def delete_birthdate(
     _filter: PersonFilter,
     ctx: Context,
@@ -177,7 +177,7 @@ def delete_birthdate(
 
 
 @persons.command(name='rm', help='Delete a person')
-@with_persons_filter('_filter')
+@with_persons_filter()
 def rm(
     _filter: PersonFilter,
     ctx: Context,
@@ -189,7 +189,7 @@ def rm(
 
 
 @persons.command(name='label', help='Label specific persons')
-@with_persons_filter('_filter')
+@with_persons_filter()
 def label(
     _filter: PersonFilter,
     ctx: Context,
@@ -204,7 +204,7 @@ def label(
 
 
 @persons.command(name='unlabel', help='Unlabel specific persons')
-@with_persons_filter('_filter')
+@with_persons_filter()
 def unlabel(
     _filter: PersonFilter,
     ctx: Context,

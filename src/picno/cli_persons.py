@@ -8,6 +8,7 @@ from .cli_helpers import (
     create_delete_confirm_callback,
     create_label_confirm_callback,
     create_unlabel_confirm_callback,
+    create_update_confirm_callback,
     date_string_to_date,
     with_filtering,
 )
@@ -85,12 +86,15 @@ def set_birthdate(
     _filter: PersonFilter,
     ctx: Context,
     birthdate: str = Argument(help='Birthdate for the person (YYYY-MM-DD)'),
+    force: bool = Option(default=False, help="Don't ask for confirmation"),
 ) -> None:
     """Set the birthdate for a person."""
     (_, _, db, console) = get_initialized_project(ctx)
+    select_callback = create_update_confirm_callback(force, console, 'name')
     persons = db.set_birthdate_for_persons(
         date_string_to_date(birthdate),
         specification=_filter.get_specifications(),
+        select_callback=select_callback,
     )
     console.print(f'Set birthdate for {len(persons)} persons')
 
@@ -102,11 +106,15 @@ def set_birthdate(
 def delete_birthdate(
     _filter: PersonFilter,
     ctx: Context,
+    force: bool = Option(default=False, help="Don't ask for confirmation"),
 ) -> None:
     """Delete the birthdate for a person."""
     (_, _, db, console) = get_initialized_project(ctx)
+    select_callback = create_update_confirm_callback(force, console, 'name')
     persons = db.set_birthdate_for_persons(
-        None, specification=_filter.get_specifications()
+        None,
+        specification=_filter.get_specifications(),
+        select_callback=select_callback,
     )
     console.print(f'Deleted birthdate for {len(persons)} persons')
 

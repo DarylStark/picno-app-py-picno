@@ -5,7 +5,7 @@ from datetime import date
 from pathlib import Path
 from sqlite3 import Connection as SQLiteConnection
 from sqlite3 import Cursor as SQLiteCursor
-from typing import TypeVar, cast, override
+from typing import Any, TypeVar, cast, override
 
 from sqlalchemy import Delete, event
 from sqlalchemy.exc import IntegrityError
@@ -692,30 +692,51 @@ class DatabaseSql(Database):
                 ) from exc
             return person
 
+    def _update_resources(
+        self,
+        model: type[T],
+        new_data: dict[str, Any],
+        *,
+        specification: Specification[T] | None = None,
+        select_callback: Callable[[Sequence[T]], bool] | None = None,
+    ) -> list[T]:
+        return_list: list[T] = []
+        with Session(self._engine) as session:
+            resources = self._get_resources_with_session(
+                session, model, specification=specification
+            )
+
+            for resource in resources:
+                for field, value in new_data.items():
+                    setattr(resource, field, value)
+                    if session.is_modified(resource):
+                        return_list.append(resource)
+
+            if select_callback and not select_callback(return_list):
+                session.rollback()
+                return []
+
+            session.commit()
+
+            for resource in return_list:
+                session.refresh(resource)
+        return return_list
+
     @override
     def set_birthdate_for_persons(
         self,
         new_birthdate: date | None = None,
         *,
         specification: PersonSpecification | None = None,
+        select_callback: SelectCallbackPersons | None = None,
     ) -> list[Person]:
         """Set the birthday for persons."""
-        return_list: list[Person] = []
-        with Session(self._engine) as session:
-            persons = self._get_resources_with_session(
-                session, Person, specification=specification
-            )
-            for person in persons:
-                if person.birthdate != new_birthdate:
-                    person.birthdate = new_birthdate
-                    session.add(person)
-                    return_list.append(person)
-
-            session.commit()
-
-            for person in return_list:
-                session.refresh(person)
-        return return_list
+        return self._update_resources(
+            Person,
+            new_data={'birthdate': new_birthdate},
+            specification=specification,
+            select_callback=select_callback,
+        )
 
     @override
     def delete_person(self, id: int) -> bool:

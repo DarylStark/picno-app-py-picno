@@ -300,6 +300,37 @@ def test_database_sql_filled_db_set_birthday_for_person_clear(
     assert updated_person.birthdate is None
 
 
+def test_database_sql_filled_db_set_birthday_for_person_already_good(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Check if we get 0 when we set the birthdate to the already known value.
+    """
+    persons = filled_db.set_birthdate_for_persons(
+        date(1986, 10, 26), specification=NameIsPersonSpec('Example Person 5')
+    )
+    assert len(persons) == 0
+    for person in persons:
+        assert person.birthdate is None
+
+    updated_person = filled_db.get_person(id=5)
+    assert updated_person is not None
+    assert updated_person.id == 5
+    assert updated_person.birthdate == date(1986, 10, 26)
+
+
+def test_database_sql_filled_db_set_birthday_for_all_persons(
+    filled_db: DatabaseSql,
+) -> None:
+    """Test with a filled database.
+
+    Check if we get 4 when updating all birthdates.
+    """
+    persons = filled_db.set_birthdate_for_persons(date(1986, 10, 26))
+    assert len(persons) == 4
+
+
 def test_database_sql_filled_db_delete_one_person_valid_id(
     filled_db: DatabaseSql,
 ) -> None:

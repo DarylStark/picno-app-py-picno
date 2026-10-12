@@ -135,6 +135,7 @@ class Database(ABC):
         new_birthdate: date | None = None,
         *,
         specification: PersonSpecification | None = None,
+        select_callback: SelectCallbackPersons | None = None,
     ) -> list[Person]:
         """Set the birthdate for persons."""
 

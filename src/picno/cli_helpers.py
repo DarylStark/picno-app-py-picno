@@ -189,6 +189,17 @@ def create_delete_confirm_callback[T](
     )
 
 
+def create_update_confirm_callback[T](
+    force: bool,
+    console: Console,
+    resource_name_attr: str,
+) -> Callable[[Sequence[T]], bool] | None:
+    """Create a confirm callback for deleting items."""
+    return create_confirm_callback(
+        force, console, Noun.UPDATING, resource_name_attr
+    )
+
+
 def create_label_confirm_callback[T](
     force: bool,
     console: Console,

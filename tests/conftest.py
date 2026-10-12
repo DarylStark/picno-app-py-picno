@@ -97,7 +97,7 @@ def filled_db(empty_db: DatabaseSql) -> DatabaseSql:
 
     # Add persons to images
     empty_db.add_person_to_images(
-        'Example Person 3', NameIsImageSpec('image_001.jpg')
+        'Example Person 3', specification=NameIsImageSpec('image_001.jpg')
     )
 
     return empty_db

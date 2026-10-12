@@ -46,7 +46,7 @@ def test_database_sql_empty_db_empty_create_persons_with_birthdate(
     Check if we can add persons and get the created person.
     """
     persons = empty_db.create_persons(
-        ['Example Person 1', 'Example Person 2'], date(1986, 10, 26)
+        ['Example Person 1', 'Example Person 2'], birthdate=date(1986, 10, 26)
     )
 
     assert len(persons) == 2
@@ -134,7 +134,7 @@ def test_database_sql_filled_db_set_birthday_for_person_already_good(
         assert person.birthdate is None
 
     updated_persons = filled_db.get_persons(
-        NameIsPersonSpec('Example Person 5')
+        specification=NameIsPersonSpec('Example Person 5')
     )
     assert len(updated_persons) == 1
     assert updated_persons[0].id == 5
@@ -159,10 +159,14 @@ def test_database_sql_filled_db_delete_many_persons_valid_spec(
 
     Check if we can delete multiple persons based on a spec.
     """
-    deleted = filled_db.delete_persons(NameContainsPersonSpec('Example Person'))
+    deleted = filled_db.delete_persons(
+        specification=NameContainsPersonSpec('Example Person')
+    )
     assert deleted == 5
 
-    persons = filled_db.get_persons(NameContainsPersonSpec('Example Person'))
+    persons = filled_db.get_persons(
+        specification=NameContainsPersonSpec('Example Person')
+    )
     assert len(persons) == 0
 
 
@@ -187,7 +191,9 @@ def test_database_sql_filled_db_delete_many_persons_invalid_spec(
 
     Check if we get a 0 result when deleting persons that don't exist.
     """
-    deleted = filled_db.delete_persons(NameContainsPersonSpec('not_existing'))
+    deleted = filled_db.delete_persons(
+        specification=NameContainsPersonSpec('not_existing')
+    )
     assert deleted == 0
 
     persons = filled_db.get_persons()
@@ -207,7 +213,7 @@ def test_database_sql_filled_db_rename_person(
     assert person.name == 'Example Person 123'
 
     updated_persons = filled_db.get_persons(
-        NameIsPersonSpec('Example Person 123')
+        specification=NameIsPersonSpec('Example Person 123')
     )
     assert len(updated_persons) == 1
     assert updated_persons[0].id == 1
@@ -285,7 +291,7 @@ def test_database_sql_filled_db_add_label_to_all_persons_double(
     Check if we can add labels to persons.
     """
     persons = filled_db.add_label_to_persons(
-        'test_label_2', NameIsPersonSpec(name='Example Person 2')
+        'test_label_2', specification=NameIsPersonSpec(name='Example Person 2')
     )
     assert len(persons) == 0
 

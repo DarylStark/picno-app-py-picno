@@ -128,7 +128,7 @@ def test_database_sql_filled_db_add_label_to_all_images_double(
     Check if we can add labels to images
     """
     images = filled_db.add_label_to_images(
-        'test_label_1', NameIsImageSpec(name='image_001.jpg')
+        'test_label_1', specification=NameIsImageSpec(name='image_001.jpg')
     )
     assert len(images) == 0
 
@@ -248,7 +248,7 @@ def test_database_sql_filled_db_add_person_to_all_images_double(
     Check if we can add persons to images.
     """
     images = filled_db.add_person_to_images(
-        'Example Person 3', NameIsImageSpec(name='image_001.jpg')
+        'Example Person 3', specification=NameIsImageSpec(name='image_001.jpg')
     )
     assert len(images) == 0
 

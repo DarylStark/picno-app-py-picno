@@ -24,7 +24,7 @@ def ls(
     """List the labels in the database."""
     (_, _, db, console) = get_initialized_project(ctx)
     # Retrieve the labels
-    labels = db.get_labels(_filter.get_specifications())
+    labels = db.get_labels(specification=_filter.get_specifications())
     if labels:
         print_table(
             console,
@@ -78,6 +78,7 @@ def rm(
     (_, _, db, console) = get_initialized_project(ctx)
     select_callback = create_delete_confirm_callback(force, console, 'name')
     labels = db.delete_labels(
-        _filter.get_specifications(), select_callback=select_callback
+        specification=_filter.get_specifications(),
+        select_callback=select_callback,
     )
     console.print(f'Deleted {labels} labels')

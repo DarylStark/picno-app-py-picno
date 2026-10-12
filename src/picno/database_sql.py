@@ -647,7 +647,7 @@ class DatabaseSql(Database):
 
     @override
     def get_labels(
-        self, specification: LabelSpecification | None = None
+        self, *, specification: LabelSpecification | None = None
     ) -> list[Label]:
         """Method to retrieve (a subset of) the labels in the database."""
         return self._get_resources(Label, specification=specification)
@@ -657,6 +657,7 @@ class DatabaseSql(Database):
         self,
         label_name: str,
         new_name: str,
+        *,
         select_callback: SelectCallbackLabel | None = None,
     ) -> Label:
         """Rename a label."""
@@ -681,6 +682,7 @@ class DatabaseSql(Database):
     @override
     def delete_labels(
         self,
+        *,
         specification: LabelSpecification | None = None,
         select_callback: SelectCallbackLabel | None = None,
     ) -> int:
@@ -695,7 +697,7 @@ class DatabaseSql(Database):
 
     @override
     def create_persons(
-        self, names: list[str], birthdate: date | None = None
+        self, names: list[str], *, birthdate: date | None = None
     ) -> list[Person]:
         """Method to add multiple persons to the database."""
         objs: list[Person] = [
@@ -709,6 +711,7 @@ class DatabaseSql(Database):
     @override
     def get_persons(
         self,
+        *,
         specification: PersonSpecification | None = None,
         options: Sequence[RetrieveOption] | None = None,
     ) -> list[Person]:
@@ -722,6 +725,7 @@ class DatabaseSql(Database):
         self,
         person_name: str,
         new_name: str,
+        *,
         select_callback: SelectCallbackPerson | None = None,
     ) -> Person:
         """Rename a person."""
@@ -762,6 +766,7 @@ class DatabaseSql(Database):
     @override
     def delete_persons(
         self,
+        *,
         specification: PersonSpecification | None = None,
         select_callback: SelectCallbackPerson | None = None,
     ) -> int:
@@ -778,6 +783,7 @@ class DatabaseSql(Database):
     def add_label_to_persons(
         self,
         label: str,
+        *,
         specification: PersonSpecification | None = None,
         select_callback: SelectCallbackPerson | None = None,
     ) -> list[Person]:
@@ -798,6 +804,7 @@ class DatabaseSql(Database):
     def remove_label_from_persons(
         self,
         label: str,
+        *,
         specification: PersonSpecification | None = None,
         select_callback: SelectCallbackPerson | None = None,
     ) -> list[Person]:
@@ -838,6 +845,7 @@ class DatabaseSql(Database):
     @override
     def get_images(
         self,
+        *,
         specification: ImageSpecification | None = None,
         options: Sequence[RetrieveOption] | None = None,
     ) -> list[Image]:
@@ -850,6 +858,7 @@ class DatabaseSql(Database):
     def set_image_status(
         self,
         status: ResourceStatus,
+        *,
         specification: ImageSpecification | None = None,
         select_callback: SelectCallbackImage | None = None,
     ) -> list[Image]:
@@ -868,6 +877,7 @@ class DatabaseSql(Database):
     def add_label_to_images(
         self,
         label: str,
+        *,
         specification: ImageSpecification | None = None,
         select_callback: SelectCallbackImage | None = None,
     ) -> list[Image]:
@@ -888,6 +898,7 @@ class DatabaseSql(Database):
     def add_person_to_images(
         self,
         person: str,
+        *,
         specification: ImageSpecification | None = None,
         select_callback: SelectCallbackImage | None = None,
     ) -> list[Image]:
@@ -908,6 +919,7 @@ class DatabaseSql(Database):
     def remove_label_from_images(
         self,
         label: str,
+        *,
         specification: ImageSpecification | None = None,
         select_callback: SelectCallbackImage | None = None,
     ) -> list[Image]:
@@ -928,6 +940,7 @@ class DatabaseSql(Database):
     def remove_person_from_images(
         self,
         person: str,
+        *,
         specification: ImageSpecification | None = None,
         select_callback: SelectCallbackImage | None = None,
     ) -> list[Image]:
@@ -966,6 +979,7 @@ class DatabaseSql(Database):
         self,
         image_title: str,
         new_title: str,
+        *,
         select_callback: SelectCallbackImage | None = None,
     ) -> Image:
         """Rename a image."""

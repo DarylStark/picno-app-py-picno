@@ -39,7 +39,7 @@ class Database(ABC):
 
     @abstractmethod
     def get_labels(
-        self, specification: LabelSpecification | None = None
+        self, *, specification: LabelSpecification | None = None
     ) -> list[Label]:
         """Method to retrieve (a subset of) the labels in the database."""
 
@@ -48,6 +48,7 @@ class Database(ABC):
         self,
         label_name: str,
         new_name: str,
+        *,
         select_callback: SelectCallbackLabel | None = None,
     ) -> Label:
         """Rename a label."""
@@ -55,6 +56,7 @@ class Database(ABC):
     @abstractmethod
     def delete_labels(
         self,
+        *,
         specification: LabelSpecification | None = None,
         select_callback: SelectCallbackLabel | None = None,
     ) -> int:
@@ -66,13 +68,14 @@ class Database(ABC):
 
     @abstractmethod
     def create_persons(
-        self, names: list[str], birthdate: date | None = None
+        self, names: list[str], *, birthdate: date | None = None
     ) -> list[Person]:
         """Method to add multiple persons to the database."""
 
     @abstractmethod
     def get_persons(
         self,
+        *,
         specification: PersonSpecification | None = None,
         options: Sequence[RetrieveOption] | None = None,
     ) -> list[Person]:
@@ -83,6 +86,7 @@ class Database(ABC):
         self,
         person_name: str,
         new_name: str,
+        *,
         select_callback: SelectCallbackPerson | None = None,
     ) -> Person:
         """Rename a person."""
@@ -100,6 +104,7 @@ class Database(ABC):
     @abstractmethod
     def delete_persons(
         self,
+        *,
         specification: PersonSpecification | None = None,
         select_callback: SelectCallbackPerson | None = None,
     ) -> int:
@@ -113,6 +118,7 @@ class Database(ABC):
     def add_label_to_persons(
         self,
         label: str,
+        *,
         specification: PersonSpecification | None = None,
         select_callback: SelectCallbackPerson | None = None,
     ) -> list[Person]:
@@ -122,6 +128,7 @@ class Database(ABC):
     def remove_label_from_persons(
         self,
         label: str,
+        *,
         specification: PersonSpecification | None = None,
         select_callback: SelectCallbackPerson | None = None,
     ) -> list[Person]:
@@ -136,6 +143,7 @@ class Database(ABC):
     @abstractmethod
     def get_images(
         self,
+        *,
         specification: ImageSpecification | None = None,
         options: Sequence[RetrieveOption] | None = None,
     ) -> list[Image]:
@@ -145,6 +153,7 @@ class Database(ABC):
     def set_image_status(
         self,
         status: ResourceStatus,
+        *,
         specification: ImageSpecification | None = None,
         select_callback: SelectCallbackImage | None = None,
     ) -> list[Image]:
@@ -154,6 +163,7 @@ class Database(ABC):
     def add_label_to_images(
         self,
         label: str,
+        *,
         specification: ImageSpecification | None = None,
         select_callback: SelectCallbackImage | None = None,
     ) -> list[Image]:
@@ -163,6 +173,7 @@ class Database(ABC):
     def add_person_to_images(
         self,
         person: str,
+        *,
         specification: ImageSpecification | None = None,
         select_callback: SelectCallbackImage | None = None,
     ) -> list[Image]:
@@ -172,6 +183,7 @@ class Database(ABC):
     def remove_label_from_images(
         self,
         label: str,
+        *,
         specification: ImageSpecification | None = None,
         select_callback: SelectCallbackImage | None = None,
     ) -> list[Image]:
@@ -181,6 +193,7 @@ class Database(ABC):
     def remove_person_from_images(
         self,
         person: str,
+        *,
         specification: ImageSpecification | None = None,
         select_callback: SelectCallbackImage | None = None,
     ) -> list[Image]:
@@ -201,6 +214,7 @@ class Database(ABC):
         self,
         image_title: str,
         new_title: str,
+        *,
         select_callback: SelectCallbackImage | None = None,
     ) -> Image:
         """Rename a image."""

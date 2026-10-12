@@ -62,7 +62,9 @@ def test_database_sql_filled_db_get_labels_filtered_on_name_insesitive(
     Check if we get all labels when we filter on name with the case insensitive
     flag set.
     """
-    labels = filled_db.get_labels(NameContainsLabelSpec('tEst', True))
+    labels = filled_db.get_labels(
+        specification=NameContainsLabelSpec('tEst', True)
+    )
     assert len(labels) == 5
 
 
@@ -74,7 +76,9 @@ def test_database_sql_filled_db_get_labels_filtered_on_name_sesitive(
     Check if we get all labels when we filter on name with the case insensitive
     flag not set.
     """
-    labels = filled_db.get_labels(NameContainsLabelSpec('test', False))
+    labels = filled_db.get_labels(
+        specification=NameContainsLabelSpec('test', False)
+    )
     assert len(labels) == 5
 
 
@@ -128,10 +132,12 @@ def test_database_sql_filled_db_delete_many_labels_valid_spec(
 
     Check if we can delete multiple labels based on a spec.
     """
-    deleted = filled_db.delete_labels(NameContainsLabelSpec('test'))
+    deleted = filled_db.delete_labels(
+        specification=NameContainsLabelSpec('test')
+    )
     assert deleted == 5
 
-    labels = filled_db.get_labels(NameContainsLabelSpec('test'))
+    labels = filled_db.get_labels(specification=NameContainsLabelSpec('test'))
     assert len(labels) == 0
 
 
@@ -156,7 +162,9 @@ def test_database_sql_filled_db_delete_many_labels_invalid_spec(
 
     Check if we get a 0 result when deleting labels that don't exist.
     """
-    deleted = filled_db.delete_labels(NameContainsLabelSpec('not_existing'))
+    deleted = filled_db.delete_labels(
+        specification=NameContainsLabelSpec('not_existing')
+    )
     assert deleted == 0
 
     labels = filled_db.get_labels()

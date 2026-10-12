@@ -165,13 +165,21 @@ def create_confirm_callback[T](
     def confirm(resources: Sequence[T]) -> bool:
         if len(resources) == 0:
             return True
-        question = f'{noun.value} {len(resources)} resources:\n'
+        question = f'{noun.value} [b]{len(resources)}[/b] resources:\n\n'
         resources = sorted(
             resources,
             key=lambda r: getattr(r, resource_name_attr, '--unknown').lower(),
         )
-        for resource in resources:
-            question += '- "' + getattr(resource, resource_name_attr) + '"\n'
+        max_resources_to_display = console.height - 7
+        for resource in resources[0:max_resources_to_display]:
+            question += ' - "' + getattr(resource, resource_name_attr) + '"\n'
+        question += '\n'
+        if len(resources) > max_resources_to_display:
+            left = len(resources) - max_resources_to_display
+            question += (
+                f'[i]  (... and {left} other resources '
+                'not displayed ...)[/i]\n\n'
+            )
         question += 'Do you want to continue?'
         return Confirm.ask(question, console=console)
 

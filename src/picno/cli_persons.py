@@ -2,104 +2,88 @@
 
 import inspect
 from collections.abc import Callable
-from typing import Any
 
 from typer import Argument, Context, Option, Typer
 
-from picno.cli_helpers import date_string_to_date
-from picno.database import RetrieveOption
-
 from .cli_context import get_initialized_project
 from .cli_format import TableColumn, print_table
+from .cli_helpers import date_string_to_date, shared_args
+from .database import RetrieveOption
 from .specs_persons import PersonFilter
 
 persons = Typer(name='persons', help='Person management')
 
 
-def with_person_filters(func: Callable) -> Callable:
-    """Decorator to add filters to CLI commands."""
-    sig = inspect.signature(func)
-    params = list(sig.parameters.values())
+def with_persons_filter(param_name: str) -> Callable:
+    """Create a decorator for a Persons Filter."""
 
-    shared = [
-        inspect.Parameter(
-            'name',
-            kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
-            annotation=str | None,
-            default=Option(
-                default=None,
-                help='Filter on specific name',
-                rich_help_panel='Filtering',
-            ),
-        ),
-        inspect.Parameter(
-            'iname',
-            kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
-            annotation=str | None,
-            default=Option(
-                default=None,
-                help='Filter on a specific name (case insensitive)',
-                rich_help_panel='Filtering',
-            ),
-        ),
-        inspect.Parameter(
-            'name_contains',
-            kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
-            annotation=str | None,
-            default=Option(
-                default=None,
-                help='Filter on a text in the name <repeatable>',
-                rich_help_panel='Filtering',
-            ),
-        ),
-        inspect.Parameter(
-            'iname_contains',
-            kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
-            annotation=str | None,
-            default=Option(
-                default=None,
-                help=(
-                    'Filter on a text in the name (case insensitive) '
-                    '<repeatable>'
+    def decorator(func: Callable) -> Callable:
+        """Decorator to add filters to CLI commands."""
+        return shared_args(
+            [
+                inspect.Parameter(
+                    'name',
+                    kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                    annotation=str | None,
+                    default=Option(
+                        default=None,
+                        help='Filter on specific name',
+                        rich_help_panel='Filtering',
+                    ),
                 ),
-                rich_help_panel='Filtering',
-            ),
-        ),
-        inspect.Parameter(
-            'label',
-            kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
-            annotation=list[str] | None,
-            default=Option(
-                default=None,
-                help='Filter on a specific label <repeatable>',
-                rich_help_panel='Filtering',
-            ),
-        ),
-    ]
+                inspect.Parameter(
+                    'iname',
+                    kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                    annotation=str | None,
+                    default=Option(
+                        default=None,
+                        help='Filter on a specific name (case insensitive)',
+                        rich_help_panel='Filtering',
+                    ),
+                ),
+                inspect.Parameter(
+                    'name_contains',
+                    kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                    annotation=str | None,
+                    default=Option(
+                        default=None,
+                        help='Filter on a text in the name <repeatable>',
+                        rich_help_panel='Filtering',
+                    ),
+                ),
+                inspect.Parameter(
+                    'iname_contains',
+                    kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                    annotation=str | None,
+                    default=Option(
+                        default=None,
+                        help=(
+                            'Filter on a text in the name (case insensitive) '
+                            '<repeatable>'
+                        ),
+                        rich_help_panel='Filtering',
+                    ),
+                ),
+                inspect.Parameter(
+                    'label',
+                    kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                    annotation=list[str] | None,
+                    default=Option(
+                        default=None,
+                        help='Filter on a specific label <repeatable>',
+                        rich_help_panel='Filtering',
+                    ),
+                ),
+            ],
+            param_name=param_name,
+            param_builder=PersonFilter.build_from_locals,
+        )(func)
 
-    def inner(*args: list[Any], **kwargs: dict[str, Any]) -> None:
-        shared_kwargs = {
-            shared_kwarg.name: kwargs[shared_kwarg.name]
-            for shared_kwarg in shared
-        }
-        filter = PersonFilter.build_from_locals(shared_kwargs)
-        kwargs = {
-            kwarg[0]: kwarg[1]
-            for kwarg in kwargs.items()
-            if kwarg[0] not in shared_kwargs
-        }
-        return func(filter, *args, **kwargs)
-
-    # Remove filter from params
-    params = [param for param in params if param.name != '_filter']
-
-    # Create the new function signature
-    inner.__signature__ = inspect.Signature(params + shared)  # ty: ignore[unresolved-attribute]
-    return inner
+    return decorator
 
 
 @persons.command(name='ls', help='List persons')
-@with_person_filters
+@with_persons_filter('_filter')
 def ls(
     _filter: PersonFilter,
     ctx: Context,
@@ -161,7 +145,7 @@ def mv(
 
 
 @persons.command(name='set-birthdate', help='Set the birthdate for a person')
-@with_person_filters
+@with_persons_filter('_filter')
 def set_birthdate(
     _filter: PersonFilter,
     ctx: Context,
@@ -179,7 +163,7 @@ def set_birthdate(
 @persons.command(
     name='delete-birthdate', help='Delete the birthdate for a person'
 )
-@with_person_filters
+@with_persons_filter('_filter')
 def delete_birthdate(
     _filter: PersonFilter,
     ctx: Context,
@@ -193,7 +177,7 @@ def delete_birthdate(
 
 
 @persons.command(name='rm', help='Delete a person')
-@with_person_filters
+@with_persons_filter('_filter')
 def rm(
     _filter: PersonFilter,
     ctx: Context,
@@ -205,7 +189,7 @@ def rm(
 
 
 @persons.command(name='label', help='Label specific persons')
-@with_person_filters
+@with_persons_filter('_filter')
 def label(
     _filter: PersonFilter,
     ctx: Context,
@@ -220,7 +204,7 @@ def label(
 
 
 @persons.command(name='unlabel', help='Unlabel specific persons')
-@with_person_filters
+@with_persons_filter('_filter')
 def unlabel(
     _filter: PersonFilter,
     ctx: Context,

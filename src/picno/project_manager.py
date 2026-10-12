@@ -16,7 +16,7 @@ from .executor import Executor
 from .executor_run_command_list import create_run_command_list
 from .model import Image
 from .project import Project
-from .specs_images import ImageSpecification
+from .specs_images import ImageSpecification, PathIsImageSpec
 
 ProgressCallbackStartScanning = Callable[[], None]
 ProgressCallbackDoneScanning = Callable[[list[Path]], None]
@@ -176,10 +176,14 @@ class ProjectManager:
     def _is_new_image(self, image_path: Path) -> bool:
         """Check if a image is new."""
         return (
-            self._database.get_image_on_path(
-                self._get_relative_path(image_path)
+            len(
+                self._database.get_images(
+                    specification=PathIsImageSpec(
+                        str(self._get_relative_path(image_path)), False
+                    )
+                )
             )
-            is None
+            == 0
         )
 
     def _get_new_files_in_data_directory(

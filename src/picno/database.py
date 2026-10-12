@@ -4,7 +4,6 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable, Sequence
 from datetime import date
 from enum import Enum
-from pathlib import Path
 from typing import TypeVar
 
 from .model import Image, Label, Person, ResourceStatus
@@ -133,10 +132,6 @@ class Database(ABC):
         self, images: Sequence[Image]
     ) -> list[Image]:
         """Create multiple images from mulitple image objects."""
-
-    @abstractmethod
-    def get_image_on_path(self, path: Path) -> Image | None:
-        """Get a image from it's relative path."""
 
     @abstractmethod
     def get_images(

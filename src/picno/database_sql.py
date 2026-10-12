@@ -2,7 +2,6 @@
 
 from collections.abc import Callable, Sequence
 from datetime import date
-from pathlib import Path
 from sqlite3 import Connection as SQLiteConnection
 from sqlite3 import Cursor as SQLiteCursor
 from typing import Any, TypeVar, cast, override
@@ -744,13 +743,6 @@ class DatabaseSql(Database):
                     'Image with this name already exists'
                 ) from exc
         return return_list
-
-    @override
-    def get_image_on_path(self, path: Path) -> Image | None:
-        """Get a image from it's relative path."""
-        return self._get_resource_from_field(
-            Image, field_name='physical_path', field_value=str(path)
-        )
 
     @override
     def get_images(

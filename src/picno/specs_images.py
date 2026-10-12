@@ -48,6 +48,16 @@ class NameContainsImageSpec(ParentSpecification[Image]):
         )
 
 
+class PathIsImageSpec(ParentSpecification[Image]):
+    """Specification for when the path should be the same."""
+
+    def __init__(self, path: str, case_insensitive: bool = True) -> None:
+        """Set the given values."""
+        super().__init__(
+            StrIsSpecification(Image, 'physical_path', path, case_insensitive)
+        )
+
+
 class PathNameContainsImageSpec(ParentSpecification[Image]):
     """Specification for when the path name contains text."""
 

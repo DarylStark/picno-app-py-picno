@@ -28,12 +28,10 @@ from .exceptions import (
     CallbackAbortedError,
     ImageAlreadyExistsError,
     ImageDoesNotExistError,
-    ImageLabelLinkAlreadyExistsError,
     LabelAlreadyExistsError,
     LabelDoesNotExistError,
     PersonAlreadyExistsError,
     PersonDoesNotExistError,
-    PersonLabelLinkAlreadyExistsError,
     ResourceAlreadyExistsError,
     ResourceNotFoundError,
 )
@@ -505,17 +503,6 @@ class DatabaseSql(Database):
         self._engine.dispose()
 
     @override
-    def create_label(self, name: str) -> Label:
-        """Create a new label."""
-        new_resource = Label(name=name)
-        try:
-            return self._create_resource(new_resource)
-        except ResourceAlreadyExistsError as exc:
-            raise LabelAlreadyExistsError(
-                f'A label named {name} already exists.'
-            ) from exc
-
-    @override
     def create_labels(self, names: list[str]) -> list[Label]:
         """Method to add multiple labels to the database."""
         objs: list[Label] = [Label(name=name) for name in names]
@@ -525,40 +512,11 @@ class DatabaseSql(Database):
             raise LabelAlreadyExistsError('Douplicate labels added') from exc
 
     @override
-    def get_label(self, id: int) -> Label | None:
-        """Method to retrieve one label."""
-        return self._get_resource(Label, id)
-
-    @override
-    def get_label_by_name(
-        self, name: str, options: Sequence[RetrieveOption] | None = None
-    ) -> Label | None:
-        """Method to retrieve one label by name."""
-        return self._get_resource_from_field(
-            Label, 'name', name, options=options
-        )
-
-    @override
     def get_labels(
         self, specification: LabelSpecification | None = None
     ) -> list[Label]:
         """Method to retrieve (a subset of) the labels in the database."""
         return self._get_resources(Label, specification=specification)
-
-    @override
-    def update_label(self, id: int, new_name: str) -> Label | None:
-        """Method to update one label."""
-
-        def update_resource(res: Label) -> Label:
-            res.name = new_name
-            return res
-
-        try:
-            return self._update_resource(Label, id, update_resource)
-        except ResourceAlreadyExistsError as exc:
-            raise LabelAlreadyExistsError(
-                f'A label named "{new_name}" already exists.'
-            ) from exc
 
     @override
     def rename_label(
@@ -587,11 +545,6 @@ class DatabaseSql(Database):
         raise LabelDoesNotExistError(f'Image {label_name} not found')
 
     @override
-    def delete_label(self, id: int) -> bool:
-        """Method to delete one label."""
-        return self._delete_resource(Label, id)
-
-    @override
     def delete_labels(
         self,
         specification: LabelSpecification | None = None,
@@ -607,27 +560,6 @@ class DatabaseSql(Database):
         )
 
     @override
-    def delete_label_by_name(self, name: str) -> None:
-        """Method to delete a label by name."""
-        try:
-            self._delete_resource_from_field(Label, 'name', name)
-        except ResourceNotFoundError as exc:
-            raise LabelDoesNotExistError(
-                f'Label "{name}" does not exist'
-            ) from exc
-
-    @override
-    def create_person(self, name: str, birthdate: date | None = None) -> Person:
-        """Create a new person."""
-        new_resource = Person(name=name, birthdate=birthdate)
-        try:
-            return self._create_resource(new_resource)
-        except ResourceAlreadyExistsError as exc:
-            raise PersonAlreadyExistsError(
-                f'A person named "{name}" already exists.'
-            ) from exc
-
-    @override
     def create_persons(
         self, names: list[str], birthdate: date | None = None
     ) -> list[Person]:
@@ -641,23 +573,6 @@ class DatabaseSql(Database):
             raise PersonAlreadyExistsError('Douplicate persons added') from exc
 
     @override
-    def get_person(
-        self, id: int, options: Sequence[RetrieveOption] | None = None
-    ) -> Person | None:
-        """Method to retrieve one Person."""
-        retrieve_options = self._convert_options_to_sql_options(options)
-        return self._get_resource(Person, id, options=retrieve_options)
-
-    @override
-    def get_person_by_name(
-        self, name: str, options: Sequence[RetrieveOption] | None = None
-    ) -> Person | None:
-        """Method to retrieve one person by name."""
-        return self._get_resource_from_field(
-            Person, 'name', name, options=options
-        )
-
-    @override
     def get_persons(
         self,
         specification: PersonSpecification | None = None,
@@ -668,29 +583,6 @@ class DatabaseSql(Database):
         return self._get_resources(
             Person, specification=specification, options=retrieve_options
         )
-
-    @override
-    def update_person(
-        self,
-        id: int,
-        name: str | None = None,
-        birthdate: date | None = None,
-    ) -> Person | None:
-        """Method to update one label."""
-
-        def update_resource(res: Person) -> Person:
-            if name is not None:
-                res.name = name
-            if birthdate is not None:
-                res.birthdate = birthdate
-            return res
-
-        try:
-            return self._update_resource(Person, id, update_resource)
-        except ResourceAlreadyExistsError as exc:
-            raise PersonAlreadyExistsError(
-                f'A person named "{name}" already exists.'
-            ) from exc
 
     @override
     def rename_person(
@@ -778,11 +670,6 @@ class DatabaseSql(Database):
         )
 
     @override
-    def delete_person(self, id: int) -> bool:
-        """Method to delete one person."""
-        return self._delete_resource(Person, id)
-
-    @override
     def delete_persons(
         self,
         specification: PersonSpecification | None = None,
@@ -796,67 +683,6 @@ class DatabaseSql(Database):
         return self._delete_resources(
             Person, specification=specification, select_callback=select_callback
         )
-
-    @override
-    def delete_person_by_name(self, name: str) -> None:
-        """Method to delete a person by name."""
-        try:
-            self._delete_resource_from_field(Person, 'name', name)
-        except ResourceNotFoundError as exc:
-            raise PersonDoesNotExistError(
-                f'Person "{name}" does not exist'
-            ) from exc
-
-    @override
-    def add_label_to_person(self, person: str, label: str) -> None:
-        """Method to add a label to a person (on names)."""
-        with Session(self._engine) as session:
-            person_obj = self._get_resource_from_field(
-                Person,
-                'name',
-                person,
-                session=session,
-                options=[RetrieveOption.LOAD_PERSON_LABELS],
-            )
-            label_obj = self._get_resource_from_field(
-                Label, 'name', label, session=session
-            )
-
-            if person_obj is None:
-                raise PersonDoesNotExistError(
-                    f'Person "{person}" does not exist'
-                )
-
-            if label_obj is None:
-                raise LabelDoesNotExistError(f'Label "{label}" does not exist')
-
-            group_name = label_obj.group
-            if group_name is not None:
-                current_group = [
-                    linked_label
-                    for linked_label in person_obj.labels
-                    if (linked_label.name or '').startswith(group_name)
-                    and (linked_label.name or '') != label_obj.name
-                ]
-                if current_group:
-                    statement = delete(PersonLabelLink).where(
-                        and_(
-                            PersonLabelLink.person_id == person_obj.id,
-                            PersonLabelLink.label_id == current_group[0].id,
-                        )
-                    )
-                    session.exec(statement)
-
-            self._create_resource(
-                PersonLabelLink(person_id=person_obj.id, label_id=label_obj.id),
-                session=session,
-            )
-            try:
-                session.commit()
-            except IntegrityError as exc:
-                raise PersonLabelLinkAlreadyExistsError(
-                    f'Person "{person}" is already labelled with "{label}"'
-                ) from exc
 
     @override
     def add_label_to_persons(
@@ -879,35 +705,6 @@ class DatabaseSql(Database):
         )
 
     @override
-    def remove_label_from_person(self, person: str, label: str) -> None:
-        """Remove a label from a person."""
-        with Session(self._engine) as session:
-            person_obj = self._get_resource_from_field(
-                Person, 'name', person, session=session
-            )
-            label_obj = self._get_resource_from_field(
-                Label, 'name', label, session=session
-            )
-
-            if person_obj is None:
-                raise PersonDoesNotExistError(
-                    f'Person "{person}" does not exist'
-                )
-
-            if label_obj is None:
-                raise LabelDoesNotExistError(f'Label "{label}" does not exist')
-
-            statement = delete(PersonLabelLink).where(
-                and_(
-                    PersonLabelLink.person_id == person_obj.id,
-                    PersonLabelLink.label_id == label_obj.id,
-                )
-            )
-
-            session.exec(statement)
-            session.commit()
-
-    @override
     def remove_label_from_persons(
         self,
         label: str,
@@ -926,16 +723,6 @@ class DatabaseSql(Database):
             ),
             select_callback=select_callback,
         )
-
-    @override
-    def create_image_from_object(self, image: Image) -> Image:
-        """Create and image from a Image object."""
-        try:
-            return self._create_resource(image)
-        except IntegrityError as exc:
-            raise ImageAlreadyExistsError(
-                'Image with this name already exists'
-            ) from exc
 
     @override
     def create_images_from_objects(
@@ -994,55 +781,6 @@ class DatabaseSql(Database):
         )
 
         return rv
-
-    @override
-    def add_label_to_image(self, image: str, label: str) -> None:
-        """Method to add a label to a image (on names)."""
-        with Session(self._engine) as session:
-            image_obj = self._get_resource_from_field(
-                Image,
-                'title',
-                image,
-                session=session,
-                options=[RetrieveOption.LOAD_IMAGE_LABELS],
-            )
-            label_obj = self._get_resource_from_field(
-                Label, 'name', label, session=session
-            )
-
-            if image_obj is None:
-                raise ImageDoesNotExistError(f'Image "{image}" does not exist')
-
-            if label_obj is None:
-                raise LabelDoesNotExistError(f'Label "{label}" does not exist')
-
-            group_name = label_obj.group
-            if group_name is not None:
-                current_group = [
-                    linked_label
-                    for linked_label in image_obj.labels
-                    if (linked_label.name or '').startswith(group_name)
-                    and (linked_label.name or '') != label_obj.name
-                ]
-                if current_group:
-                    statement = delete(ImageLabelLink).where(
-                        and_(
-                            ImageLabelLink.image_id == image_obj.id,
-                            ImageLabelLink.label_id == current_group[0].id,
-                        )
-                    )
-                    session.exec(statement)
-
-            self._create_resource(
-                ImageLabelLink(image_id=image_obj.id, label_id=label_obj.id),
-                session=session,
-            )
-            try:
-                session.commit()
-            except IntegrityError as exc:
-                raise ImageLabelLinkAlreadyExistsError(
-                    f'Image "{image}" is already labelled with "{label}"'
-                ) from exc
 
     def _connect_one_resource_to_many_resources(
         self,
@@ -1235,37 +973,6 @@ class DatabaseSql(Database):
             ),
             select_callback=select_callback,
         )
-
-    @override
-    def remove_label_from_image(self, image: str, label: str) -> None:
-        """Remove a label from a image."""
-        with Session(self._engine) as session:
-            image_obj = self._get_resource_from_field(
-                Image,
-                'title',
-                image,
-                session=session,
-                options=[RetrieveOption.LOAD_IMAGE_LABELS],
-            )
-            label_obj = self._get_resource_from_field(
-                Label, 'name', label, session=session
-            )
-
-            if image_obj is None:
-                raise ImageDoesNotExistError(f'Image "{image}" does not exist')
-
-            if label_obj is None:
-                raise LabelDoesNotExistError(f'Label "{label}" does not exist')
-
-            statement = delete(ImageLabelLink).where(
-                and_(
-                    ImageLabelLink.image_id == image_obj.id,
-                    ImageLabelLink.label_id == label_obj.id,
-                )
-            )
-
-            session.exec(statement)
-            session.commit()
 
     def _disconnect_one_resource_from_many_resources(
         self,

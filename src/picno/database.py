@@ -35,32 +35,14 @@ class Database(ABC):
         """Close the database."""
 
     @abstractmethod
-    def create_label(self, name: str) -> Label:
-        """Method to add a label to the database."""
-
-    @abstractmethod
     def create_labels(self, names: list[str]) -> list[Label]:
         """Method to add multiple labels to the database."""
-
-    @abstractmethod
-    def get_label(self, id: int) -> Label | None:
-        """Method to retrieve one label."""
-
-    @abstractmethod
-    def get_label_by_name(
-        self, name: str, options: Sequence[RetrieveOption] | None = None
-    ) -> Label | None:
-        """Method to retrieve one label by name."""
 
     @abstractmethod
     def get_labels(
         self, specification: LabelSpecification | None = None
     ) -> list[Label]:
         """Method to retrieve (a subset of) the labels in the database."""
-
-    @abstractmethod
-    def update_label(self, id: int, new_name: str) -> Label | None:
-        """Method to update one label."""
 
     @abstractmethod
     def rename_label(
@@ -70,10 +52,6 @@ class Database(ABC):
         select_callback: SelectCallbackLabel | None = None,
     ) -> Label:
         """Rename a label."""
-
-    @abstractmethod
-    def delete_label(self, id: int) -> bool:
-        """Method to delete one label."""
 
     @abstractmethod
     def delete_labels(
@@ -88,30 +66,10 @@ class Database(ABC):
         """
 
     @abstractmethod
-    def delete_label_by_name(self, name: str) -> None:
-        """Method to delete a label by name."""
-
-    @abstractmethod
-    def create_person(self, name: str, birthdate: date | None = None) -> Person:
-        """Method to add a person to the database."""
-
-    @abstractmethod
     def create_persons(
         self, names: list[str], birthdate: date | None = None
     ) -> list[Person]:
         """Method to add multiple persons to the database."""
-
-    @abstractmethod
-    def get_person(
-        self, id: int, options: Sequence[RetrieveOption] | None = None
-    ) -> Person | None:
-        """Method to retrieve one person."""
-
-    @abstractmethod
-    def get_person_by_name(
-        self, name: str, options: Sequence[RetrieveOption] | None = None
-    ) -> Person | None:
-        """Method to retrieve one person by name."""
 
     @abstractmethod
     def get_persons(
@@ -120,15 +78,6 @@ class Database(ABC):
         options: Sequence[RetrieveOption] | None = None,
     ) -> list[Person]:
         """Method to retrieve (a subset of) the persons in the database."""
-
-    @abstractmethod
-    def update_person(
-        self,
-        id: int,
-        name: str | None = None,
-        birthdate: date | None = None,
-    ) -> Person | None:
-        """Method to update one person."""
 
     @abstractmethod
     def rename_person(
@@ -150,14 +99,6 @@ class Database(ABC):
         """Set the birthdate for persons."""
 
     @abstractmethod
-    def delete_person(self, id: int) -> bool:
-        """Method to delete one person."""
-
-    @abstractmethod
-    def delete_person_by_name(self, name: str) -> None:
-        """Method to delete a person by name."""
-
-    @abstractmethod
     def delete_persons(
         self,
         specification: PersonSpecification | None = None,
@@ -170,10 +111,6 @@ class Database(ABC):
         """
 
     @abstractmethod
-    def add_label_to_person(self, person: str, label: str) -> None:
-        """Method to add a label to a person (on names)."""
-
-    @abstractmethod
     def add_label_to_persons(
         self,
         label: str,
@@ -183,10 +120,6 @@ class Database(ABC):
         """Method to add a label to a persons."""
 
     @abstractmethod
-    def remove_label_from_person(self, person: str, label: str) -> None:
-        """Remove a label from a person."""
-
-    @abstractmethod
     def remove_label_from_persons(
         self,
         label: str,
@@ -194,10 +127,6 @@ class Database(ABC):
         select_callback: SelectCallbackPerson | None = None,
     ) -> list[Person]:
         """Method to remove a label from persons."""
-
-    @abstractmethod
-    def create_image_from_object(self, image: Image) -> Image:
-        """Create image from a Image object."""
 
     @abstractmethod
     def create_images_from_objects(
@@ -227,10 +156,6 @@ class Database(ABC):
         """Method to set the status of specific images."""
 
     @abstractmethod
-    def add_label_to_image(self, image: str, label: str) -> None:
-        """Method to add a label to a image (on names)."""
-
-    @abstractmethod
     def add_label_to_images(
         self,
         label: str,
@@ -247,10 +172,6 @@ class Database(ABC):
         select_callback: SelectCallbackImage | None = None,
     ) -> list[Image]:
         """Method to add a person to a images."""
-
-    @abstractmethod
-    def remove_label_from_image(self, image: str, label: str) -> None:
-        """Remove a label from a image."""
 
     @abstractmethod
     def remove_label_from_images(

@@ -982,19 +982,18 @@ class DatabaseSql(Database):
         self,
         status: ResourceStatus,
         specification: ImageSpecification | None = None,
+        select_callback: SelectCallbackImage | None = None,
     ) -> list[Image]:
         """Method to set the status of specific images."""
-        return_list: list[Image] = []
-        with Session(self._engine) as session:
-            resources = self._get_resources_with_session(
-                session, Image, specification=specification
-            )
-            for resource in resources:
-                if resource.status != status:
-                    resource.status = status
-                    return_list.append(resource)
-            session.commit()
-        return return_list
+        rv = self._update_resources(
+            Image,
+            {'status': status},
+            specification=specification,
+            select_callback=select_callback,
+            callback_before_updating=False,
+        )
+
+        return rv
 
     @override
     def add_label_to_image(self, image: str, label: str) -> None:
@@ -1167,6 +1166,8 @@ class DatabaseSql(Database):
         person: str,
         *,
         specification: Specification[TableResourceType] | None = None,
+        select_callback: Callable[[Sequence[TableResourceType]], bool]
+        | None = None,
     ) -> list[TableResourceType]:
         try:
             return self._connect_one_resource_to_many_resources(
@@ -1178,6 +1179,7 @@ class DatabaseSql(Database):
                 resource_field,
                 specification,
                 link_table,
+                select_callback=select_callback,
             )
         except ResourceNotFoundError as exc:
             raise PersonDoesNotExistError(
@@ -1216,7 +1218,10 @@ class DatabaseSql(Database):
 
     @override
     def add_person_to_images(
-        self, person: str, specification: ImageSpecification | None = None
+        self,
+        person: str,
+        specification: ImageSpecification | None = None,
+        select_callback: SelectCallbackImage | None = None,
     ) -> list[Image]:
         """Method to add a person to a images."""
         return self._add_person_to_resource(
@@ -1228,6 +1233,7 @@ class DatabaseSql(Database):
                 NotSpecification(HasPersonImageSpec(person_name=person)),
                 specification,
             ),
+            select_callback=select_callback,
         )
 
     @override
@@ -1369,6 +1375,8 @@ class DatabaseSql(Database):
         person: str,
         *,
         specification: Specification[TableResourceType] | None = None,
+        select_callback: Callable[[Sequence[TableResourceType]], bool]
+        | None = None,
     ) -> list[TableResourceType]:
         """Method to remove a person from resources."""
         try:
@@ -1381,6 +1389,7 @@ class DatabaseSql(Database):
                 resource_field,
                 specification,
                 link_table,
+                select_callback=select_callback,
             )
         except ResourceNotFoundError as exc:
             raise PersonDoesNotExistError(
@@ -1389,7 +1398,10 @@ class DatabaseSql(Database):
 
     @override
     def remove_person_from_images(
-        self, person: str, specification: ImageSpecification | None = None
+        self,
+        person: str,
+        specification: ImageSpecification | None = None,
+        select_callback: SelectCallbackImage | None = None,
     ) -> list[Image]:
         """Method to remove a person from images."""
         return self._remove_person_from_resource(
@@ -1401,6 +1413,7 @@ class DatabaseSql(Database):
                 HasPersonImageSpec(person_name=person),
                 specification,
             ),
+            select_callback=select_callback,
         )
 
     @override
@@ -1409,22 +1422,16 @@ class DatabaseSql(Database):
         favourite: bool,
         *,
         specification: ImageSpecification | None = None,
+        select_callback: SelectCallbackImage | None = None,
     ) -> list[Image]:
         """Set the favourite flag for specific images."""
-        return_list: list[Image] = []
-        with Session(self._engine) as session:
-            images = self._get_resources(
-                Image, specification=specification, session=session
-            )
-
-            for image in images:
-                if image.favourite != favourite:
-                    image.favourite = favourite
-                    return_list.append(image)
-
-            session.commit()
-
-        return return_list
+        return self._update_resources(
+            Image,
+            {'favourite': favourite},
+            specification=specification,
+            select_callback=select_callback,
+            callback_before_updating=False,
+        )
 
     @override
     def rename_image(

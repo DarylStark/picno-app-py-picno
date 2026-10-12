@@ -222,6 +222,7 @@ class Database(ABC):
         self,
         status: ResourceStatus,
         specification: ImageSpecification | None = None,
+        select_callback: SelectCallbackImage | None = None,
     ) -> list[Image]:
         """Method to set the status of specific images."""
 
@@ -240,7 +241,10 @@ class Database(ABC):
 
     @abstractmethod
     def add_person_to_images(
-        self, person: str, specification: ImageSpecification | None = None
+        self,
+        person: str,
+        specification: ImageSpecification | None = None,
+        select_callback: SelectCallbackImage | None = None,
     ) -> list[Image]:
         """Method to add a person to a images."""
 
@@ -259,7 +263,10 @@ class Database(ABC):
 
     @abstractmethod
     def remove_person_from_images(
-        self, person: str, specification: ImageSpecification | None = None
+        self,
+        person: str,
+        specification: ImageSpecification | None = None,
+        select_callback: SelectCallbackImage | None = None,
     ) -> list[Image]:
         """Method to remove a person from images."""
 
@@ -269,6 +276,7 @@ class Database(ABC):
         favourite: bool,
         *,
         specification: ImageSpecification | None = None,
+        select_callback: SelectCallbackImage | None = None,
     ) -> list[Image]:
         """Set the favourite flag for specific images."""
 

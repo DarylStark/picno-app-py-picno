@@ -113,12 +113,15 @@ def set_status(
     _filter: ImageFilter,
     ctx: Context,
     new_status: ResourceStatus = Argument(help='The status to set'),
+    force: bool = Option(default=False, help="Don't ask for confirmation"),
 ) -> None:
     """List the images in the database."""
     (_, _, db, console) = get_initialized_project(ctx)
+    select_callback = create_update_confirm_callback(force, console, 'title')
     images = db.set_image_status(
         status=new_status,
         specification=_filter.get_specifications(),
+        select_callback=select_callback,
     )
     console.print(f'Updated {len(images)} images')
 
@@ -166,12 +169,15 @@ def unlabel(
 def favourite(
     _filter: ImageFilter,
     ctx: Context,
+    force: bool = Option(default=False, help="Don't ask for confirmation"),
 ) -> None:
     """List the images in the database."""
     (_, _, db, console) = get_initialized_project(ctx)
+    select_callback = create_update_confirm_callback(force, console, 'title')
     images = db.set_favourite_for_images(
         favourite=True,
         specification=_filter.get_specifications(),
+        select_callback=select_callback,
     )
     console.print(f'Set {len(images)} images as favourite')
 
@@ -181,12 +187,15 @@ def favourite(
 def unfavourite(
     _filter: ImageFilter,
     ctx: Context,
+    force: bool = Option(default=False, help="Don't ask for confirmation"),
 ) -> None:
     """List the images in the database."""
     (_, _, db, console) = get_initialized_project(ctx)
+    select_callback = create_update_confirm_callback(force, console, 'title')
     images = db.set_favourite_for_images(
         favourite=False,
         specification=_filter.get_specifications(),
+        select_callback=select_callback,
     )
     console.print(f'Removed the favourite flag for {len(images)} images')
 
@@ -242,11 +251,15 @@ def tag_person(
     _filter: ImageFilter,
     ctx: Context,
     person_name: str = Argument(help='The name of the person to tag'),
+    force: bool = Option(default=False, help="Don't ask for confirmation"),
 ) -> None:
     """Add a person to images."""
     (_, _, db, console) = get_initialized_project(ctx)
+    select_callback = create_update_confirm_callback(force, console, 'title')
     images = db.add_person_to_images(
-        person_name, specification=_filter.get_specifications()
+        person_name,
+        specification=_filter.get_specifications(),
+        select_callback=select_callback,
     )
     console.print(f'Added person "{person_name}" to {len(images)} images')
 
@@ -257,10 +270,14 @@ def untag_person(
     _filter: ImageFilter,
     ctx: Context,
     person_name: str = Argument(help='The name of the person to untag'),
+    force: bool = Option(default=False, help="Don't ask for confirmation"),
 ) -> None:
     """Remove a person from images."""
     (_, _, db, console) = get_initialized_project(ctx)
+    select_callback = create_update_confirm_callback(force, console, 'title')
     images = db.remove_person_from_images(
-        person_name, specification=_filter.get_specifications()
+        person_name,
+        specification=_filter.get_specifications(),
+        select_callback=select_callback,
     )
     console.print(f'Removed person "{person_name}" from {len(images)} images')

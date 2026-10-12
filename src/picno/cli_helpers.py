@@ -139,6 +139,8 @@ def with_filtering(
                 )
             )
 
+            filter_args.sort(key=lambda x: x.name)
+
         return shared_filter_args(
             filter_args,
             param_name=param_name,

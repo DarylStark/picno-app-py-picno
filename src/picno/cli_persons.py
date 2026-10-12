@@ -2,60 +2,35 @@
 
 from typer import Argument, Context, Option, Typer
 
-from picno.cli_helpers import date_string_to_date
-from picno.database import RetrieveOption
-
 from .cli_context import get_initialized_project
 from .cli_format import TableColumn, print_table
+from .cli_helpers import (
+    create_delete_confirm_callback,
+    create_label_confirm_callback,
+    create_unlabel_confirm_callback,
+    create_update_confirm_callback,
+    date_string_to_date,
+    with_filtering,
+)
+from .database import RetrieveOption
 from .specs_persons import PersonFilter
 
 persons = Typer(name='persons', help='Person management')
 
-filter_args = {
-    'name': Option(
-        default=None,
-        help='Filter on a specific name',
-        rich_help_panel='Filtering',
-    ),
-    'iname': Option(
-        default=None,
-        help='Filter on a specific name (case insensitive)',
-        rich_help_panel='Filtering',
-    ),
-    'name_contains': Option(
-        default=None,
-        help='Filter on a text in the name <repeatable>',
-        rich_help_panel='Filtering',
-    ),
-    'iname_contains': Option(
-        default=None,
-        help='Filter on a text in the name (case insensitive) <repeatable>',
-        rich_help_panel='Filtering',
-    ),
-    'label': Option(
-        default=None,
-        help='Filter on a specific label <repeatable>',
-        rich_help_panel='Filtering',
-    ),
-}
-
 
 @persons.command(name='ls', help='List persons')
+@with_filtering(PersonFilter)
 def ls(
+    _filter: PersonFilter,
     ctx: Context,
-    name: str | None = filter_args['name'],
-    iname: str | None = filter_args['iname'],
-    name_contains: list[str] | None = filter_args['name_contains'],
-    iname_contains: list[str] | None = filter_args['iname_contains'],
-    label: list[str] | None = filter_args['label'],
 ) -> None:
     """List the persons in the database."""
     (_, _, db, console) = get_initialized_project(ctx)
-    filter = PersonFilter.build_from_locals(locals())
 
     # Retrieve the persons
     persons = db.get_persons(
-        filter.get_specifications(), options=[RetrieveOption.LOAD_PERSON_LABELS]
+        _filter.get_specifications(),
+        options=[RetrieveOption.LOAD_PERSON_LABELS],
     )
     if persons:
         print_table(
@@ -98,29 +73,30 @@ def mv(
     ctx: Context,
     old_name: str = Argument(help='Current name of the person'),
     new_name: str = Argument(help='New name of the person'),
+    force: bool = Option(default=False, help="Don't ask for confirmation"),
 ) -> None:
     """Rename a person."""
     (_, _, db, console) = get_initialized_project(ctx)
-    db.rename_person(old_name, new_name)
+    select_callback = create_update_confirm_callback(force, console, 'name')
+    db.rename_person(old_name, new_name, select_callback=select_callback)
     console.print(f'Renamed person "{old_name}" to "{new_name}"')
 
 
 @persons.command(name='set-birthdate', help='Set the birthdate for a person')
+@with_filtering(PersonFilter)
 def set_birthdate(
+    _filter: PersonFilter,
     ctx: Context,
     birthdate: str = Argument(help='Birthdate for the person (YYYY-MM-DD)'),
-    name: str | None = filter_args['name'],
-    iname: str | None = filter_args['iname'],
-    name_contains: list[str] | None = filter_args['name_contains'],
-    iname_contains: list[str] | None = filter_args['iname_contains'],
-    label: list[str] | None = filter_args['label'],
+    force: bool = Option(default=False, help="Don't ask for confirmation"),
 ) -> None:
     """Set the birthdate for a person."""
     (_, _, db, console) = get_initialized_project(ctx)
-    filter = PersonFilter.build_from_locals(locals())
+    select_callback = create_update_confirm_callback(force, console, 'name')
     persons = db.set_birthdate_for_persons(
         date_string_to_date(birthdate),
-        specification=filter.get_specifications(),
+        specification=_filter.get_specifications(),
+        select_callback=select_callback,
     )
     console.print(f'Set birthdate for {len(persons)} persons')
 
@@ -128,74 +104,72 @@ def set_birthdate(
 @persons.command(
     name='delete-birthdate', help='Delete the birthdate for a person'
 )
+@with_filtering(PersonFilter)
 def delete_birthdate(
+    _filter: PersonFilter,
     ctx: Context,
-    name: str | None = filter_args['name'],
-    iname: str | None = filter_args['iname'],
-    name_contains: list[str] | None = filter_args['name_contains'],
-    iname_contains: list[str] | None = filter_args['iname_contains'],
-    label: list[str] | None = filter_args['label'],
+    force: bool = Option(default=False, help="Don't ask for confirmation"),
 ) -> None:
     """Delete the birthdate for a person."""
     (_, _, db, console) = get_initialized_project(ctx)
-    filter = PersonFilter.build_from_locals(locals())
+    select_callback = create_update_confirm_callback(force, console, 'name')
     persons = db.set_birthdate_for_persons(
-        None, specification=filter.get_specifications()
+        None,
+        specification=_filter.get_specifications(),
+        select_callback=select_callback,
     )
     console.print(f'Deleted birthdate for {len(persons)} persons')
 
 
 @persons.command(name='rm', help='Delete a person')
+@with_filtering(PersonFilter)
 def rm(
+    _filter: PersonFilter,
     ctx: Context,
-    name: str | None = filter_args['name'],
-    iname: str | None = filter_args['iname'],
-    name_contains: list[str] | None = filter_args['name_contains'],
-    iname_contains: list[str] | None = filter_args['iname_contains'],
-    label: list[str] | None = filter_args['label'],
+    force: bool = Option(default=False, help="Don't ask for confirmation"),
 ) -> None:
     """Delete a person."""
     (_, _, db, console) = get_initialized_project(ctx)
-    filter = PersonFilter.build_from_locals(locals())
-    persons = db.delete_persons(filter.get_specifications())
+    select_callback = create_delete_confirm_callback(force, console, 'name')
+    persons = db.delete_persons(
+        _filter.get_specifications(), select_callback=select_callback
+    )
     console.print(f'Deleted {persons} persons')
 
 
 @persons.command(name='label', help='Label specific persons')
+@with_filtering(PersonFilter)
 def label(
+    _filter: PersonFilter,
     ctx: Context,
     label_name: str = Argument(help='The name of the label to add'),
-    name: str | None = filter_args['name'],
-    iname: str | None = filter_args['iname'],
-    name_contains: list[str] | None = filter_args['name_contains'],
-    iname_contains: list[str] | None = filter_args['iname_contains'],
-    label: list[str] | None = filter_args['label'],
+    force: bool = Option(default=False, help="Don't ask for confirmation"),
 ) -> None:
     """Remove a label from persons."""
     (_, _, db, console) = get_initialized_project(ctx)
-    filter = PersonFilter.build_from_locals(locals())
-
+    select_callback = create_label_confirm_callback(force, console, 'name')
     persons = db.add_label_to_persons(
-        label_name, specification=filter.get_specifications()
+        label_name,
+        specification=_filter.get_specifications(),
+        select_callback=select_callback,
     )
     console.print(f'Added label "{label_name}" to {len(persons)} persons')
 
 
 @persons.command(name='unlabel', help='Unlabel specific persons')
+@with_filtering(PersonFilter)
 def unlabel(
+    _filter: PersonFilter,
     ctx: Context,
     label_name: str = Argument(help='The name of the label to remove'),
-    name: str | None = filter_args['name'],
-    iname: str | None = filter_args['iname'],
-    name_contains: list[str] | None = filter_args['name_contains'],
-    iname_contains: list[str] | None = filter_args['iname_contains'],
-    label: list[str] | None = filter_args['label'],
+    force: bool = Option(default=False, help="Don't ask for confirmation"),
 ) -> None:
     """Add a label to persons."""
     (_, _, db, console) = get_initialized_project(ctx)
-    filter = PersonFilter.build_from_locals(locals())
-
+    select_callback = create_unlabel_confirm_callback(force, console, 'name')
     persons = db.remove_label_from_persons(
-        label_name, specification=filter.get_specifications()
+        label_name,
+        specification=_filter.get_specifications(),
+        select_callback=select_callback,
     )
     console.print(f'Removed label "{label_name}" from {len(persons)} persons')

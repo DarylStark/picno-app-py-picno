@@ -149,11 +149,11 @@ class ImageFilter(Filter[ImageSpecification]):
     """Class for Image Filter builder."""
 
     name: str | None = None
-    iname: str | None = None
-    name_contains: list[str] | None = None
-    iname_contains: list[str] | None = None
-    path_name_contains: list[str] | None = None
-    ipath_name_contains: list[str] | None = None
+    name__ci: str | None = None
+    name__contains: list[str] | None = None
+    name__contains_ci: list[str] | None = None
+    path_name__contains: list[str] | None = None
+    path_name__contains_ci: list[str] | None = None
     has_location: bool | None = None
     status: ResourceStatus | None = None
     favourite: bool | None = None
@@ -168,27 +168,27 @@ class ImageFilter(Filter[ImageSpecification]):
                 NameIsImageSpec(name=self.name, case_insensitive=False)
             )
 
-        if self.iname:
+        if self.name__ci:
             specs.append(
-                NameIsImageSpec(name=self.iname, case_insensitive=True)
+                NameIsImageSpec(name=self.name__ci, case_insensitive=True)
             )
 
-        for value in self.name_contains or []:
+        for value in self.name__contains or []:
             specs.append(
                 NameContainsImageSpec(text=value, case_insensitive=False)
             )
 
-        for value in self.iname_contains or []:
+        for value in self.name__contains_ci or []:
             specs.append(
                 NameContainsImageSpec(text=value, case_insensitive=True)
             )
 
-        for value in self.path_name_contains or []:
+        for value in self.path_name__contains or []:
             specs.append(
                 PathNameContainsImageSpec(text=value, case_insensitive=False)
             )
 
-        for value in self.ipath_name_contains or []:
+        for value in self.path_name__contains_ci or []:
             specs.append(
                 PathNameContainsImageSpec(text=value, case_insensitive=True)
             )

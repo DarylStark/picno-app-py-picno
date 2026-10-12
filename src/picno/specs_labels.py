@@ -76,11 +76,11 @@ class LabelFilter(Filter[LabelSpecification]):
     """Class for Label Filter builder."""
 
     name: str | None = None
-    iname: str | None = None
+    name__ci: str | None = None
     group_name: str | None = None
-    igroup_name: str | None = None
-    name_contains: list[str] | None = None
-    iname_contains: list[str] | None = None
+    group_name__ci: str | None = None
+    name__contains: list[str] | None = None
+    name__contains_ci: list[str] | None = None
 
     def get_specifications(self) -> LabelSpecification | None:
         """Builder for Label Specifications."""
@@ -91,9 +91,9 @@ class LabelFilter(Filter[LabelSpecification]):
                 NameIsLabelSpec(name=self.name, case_insensitive=False)
             )
 
-        if self.iname:
+        if self.name__ci:
             specs.append(
-                NameIsLabelSpec(name=self.iname, case_insensitive=True)
+                NameIsLabelSpec(name=self.name__ci, case_insensitive=True)
             )
 
         if self.group_name:
@@ -101,17 +101,19 @@ class LabelFilter(Filter[LabelSpecification]):
                 GroupIsLabelSpec(group=self.group_name, case_insensitive=False)
             )
 
-        if self.igroup_name:
+        if self.group_name__ci:
             specs.append(
-                GroupIsLabelSpec(group=self.igroup_name, case_insensitive=True)
+                GroupIsLabelSpec(
+                    group=self.group_name__ci, case_insensitive=True
+                )
             )
 
-        for value in self.name_contains or []:
+        for value in self.name__contains or []:
             specs.append(
                 NameContainsLabelSpec(text=value, case_insensitive=False)
             )
 
-        for value in self.iname_contains or []:
+        for value in self.name__contains_ci or []:
             specs.append(
                 NameContainsLabelSpec(text=value, case_insensitive=True)
             )

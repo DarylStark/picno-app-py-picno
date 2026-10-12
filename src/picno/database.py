@@ -14,9 +14,9 @@ from .specs_persons import PersonSpecification
 
 T = TypeVar('T')
 
-SelectCallbackLabels = Callable[[Sequence[Label]], bool]
-SelectCallbackPersons = Callable[[Sequence[Person]], bool]
-SelectCallbackImages = Callable[[Sequence[Image]], bool]
+SelectCallbackLabel = Callable[[Sequence[Label]], bool]
+SelectCallbackPerson = Callable[[Sequence[Person]], bool]
+SelectCallbackImage = Callable[[Sequence[Image]], bool]
 
 
 class RetrieveOption(Enum):
@@ -63,7 +63,12 @@ class Database(ABC):
         """Method to update one label."""
 
     @abstractmethod
-    def rename_label(self, label_name: str, new_name: str) -> Label:
+    def rename_label(
+        self,
+        label_name: str,
+        new_name: str,
+        select_callback: SelectCallbackLabel | None = None,
+    ) -> Label:
         """Rename a label."""
 
     @abstractmethod
@@ -74,7 +79,7 @@ class Database(ABC):
     def delete_labels(
         self,
         specification: LabelSpecification | None = None,
-        select_callback: SelectCallbackLabels | None = None,
+        select_callback: SelectCallbackLabel | None = None,
     ) -> int:
         """Delete labels matching a specification.
 
@@ -126,7 +131,12 @@ class Database(ABC):
         """Method to update one person."""
 
     @abstractmethod
-    def rename_person(self, person_name: str, new_name: str) -> Person:
+    def rename_person(
+        self,
+        person_name: str,
+        new_name: str,
+        select_callback: SelectCallbackPerson | None = None,
+    ) -> Person:
         """Rename a person."""
 
     @abstractmethod
@@ -135,7 +145,7 @@ class Database(ABC):
         new_birthdate: date | None = None,
         *,
         specification: PersonSpecification | None = None,
-        select_callback: SelectCallbackPersons | None = None,
+        select_callback: SelectCallbackPerson | None = None,
     ) -> list[Person]:
         """Set the birthdate for persons."""
 
@@ -151,7 +161,7 @@ class Database(ABC):
     def delete_persons(
         self,
         specification: PersonSpecification | None = None,
-        select_callback: SelectCallbackPersons | None = None,
+        select_callback: SelectCallbackPerson | None = None,
     ) -> int:
         """Delete persons matching a specification.
 
@@ -168,7 +178,7 @@ class Database(ABC):
         self,
         label: str,
         specification: PersonSpecification | None = None,
-        select_callback: SelectCallbackPersons | None = None,
+        select_callback: SelectCallbackPerson | None = None,
     ) -> list[Person]:
         """Method to add a label to a persons."""
 
@@ -181,7 +191,7 @@ class Database(ABC):
         self,
         label: str,
         specification: PersonSpecification | None = None,
-        select_callback: SelectCallbackPersons | None = None,
+        select_callback: SelectCallbackPerson | None = None,
     ) -> list[Person]:
         """Method to remove a label from persons."""
 
@@ -224,7 +234,7 @@ class Database(ABC):
         self,
         label: str,
         specification: ImageSpecification | None = None,
-        select_callback: SelectCallbackImages | None = None,
+        select_callback: SelectCallbackImage | None = None,
     ) -> list[Image]:
         """Method to add a label to a images."""
 
@@ -243,7 +253,7 @@ class Database(ABC):
         self,
         label: str,
         specification: ImageSpecification | None = None,
-        select_callback: SelectCallbackImages | None = None,
+        select_callback: SelectCallbackImage | None = None,
     ) -> list[Image]:
         """Method to remove a label from images."""
 
@@ -263,5 +273,10 @@ class Database(ABC):
         """Set the favourite flag for specific images."""
 
     @abstractmethod
-    def rename_image(self, image_title: str, new_title: str) -> Image:
+    def rename_image(
+        self,
+        image_title: str,
+        new_title: str,
+        select_callback: SelectCallbackImage | None = None,
+    ) -> Image:
         """Rename a image."""

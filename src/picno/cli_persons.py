@@ -73,10 +73,12 @@ def mv(
     ctx: Context,
     old_name: str = Argument(help='Current name of the person'),
     new_name: str = Argument(help='New name of the person'),
+    force: bool = Option(default=False, help="Don't ask for confirmation"),
 ) -> None:
     """Rename a person."""
     (_, _, db, console) = get_initialized_project(ctx)
-    db.rename_person(old_name, new_name)
+    select_callback = create_update_confirm_callback(force, console, 'name')
+    db.rename_person(old_name, new_name, select_callback=select_callback)
     console.print(f'Renamed person "{old_name}" to "{new_name}"')
 
 

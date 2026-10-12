@@ -14,7 +14,12 @@ from .cli_labels import labels
 from .cli_media import media
 from .cli_persons import persons
 from .cli_project import project
-from .exceptions import CliError, DatabaseError, ProjectParseError
+from .exceptions import (
+    CallbackAbortedError,
+    CliError,
+    DatabaseError,
+    ProjectParseError,
+)
 from .project import Project
 from .project_manager import ProjectManager
 
@@ -63,8 +68,10 @@ def main() -> None:
         sys.exit(0)
     except CliError as e:
         err_console.print(f'[red][b]CLI error:[/b][/red] {e}')
+    except CallbackAbortedError:
+        sys.exit(0)
     except DatabaseError as e:
         err_console.print(f'[red][b]Database error:[/b][/red] {e}')
-    # except Exception as e:
-    #     err_console.print(f'[red][b]Unknown error:[/b][/red] {e}')
+    except Exception as e:
+        err_console.print(f'[red][b]Unknown error:[/b][/red] {e}')
     sys.exit(1)

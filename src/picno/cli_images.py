@@ -8,6 +8,7 @@ from typer import Argument, Context, Option, Typer
 from picno.cli_helpers import (
     create_label_confirm_callback,
     create_unlabel_confirm_callback,
+    create_update_confirm_callback,
     with_filtering,
 )
 from picno.database import RetrieveOption
@@ -195,10 +196,12 @@ def mv(
     ctx: Context,
     old_title: str = Argument(help='Current title of the image'),
     new_title: str = Argument(help='New title of the image'),
+    force: bool = Option(default=False, help="Don't ask for confirmation"),
 ) -> None:
     """Rename a image."""
     (_, _, db, console) = get_initialized_project(ctx)
-    db.rename_image(old_title, new_title)
+    select_callback = create_update_confirm_callback(force, console, 'title')
+    db.rename_image(old_title, new_title, select_callback=select_callback)
     console.print(f'Renamed image "{old_title}" to "{new_title}"')
 
 

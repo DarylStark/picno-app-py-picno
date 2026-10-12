@@ -14,15 +14,18 @@ from sqlalchemy.orm.interfaces import ORMOption
 from sqlmodel import Session, SQLModel, and_, col, create_engine, delete, select
 from sqlmodel.sql.expression import SelectOfScalar
 
+from picno.specs_labels import NameIsLabelSpec
+
 from .database import (
     Database,
     LabelSpecification,
     RetrieveOption,
-    SelectCallbackImages,
-    SelectCallbackLabels,
-    SelectCallbackPersons,
+    SelectCallbackImage,
+    SelectCallbackLabel,
+    SelectCallbackPerson,
 )
 from .exceptions import (
+    CallbackAbortedError,
     ImageAlreadyExistsError,
     ImageDoesNotExistError,
     ImageLabelLinkAlreadyExistsError,
@@ -51,8 +54,13 @@ from .specs_images import (
     HasLabelImageSpec,
     HasPersonImageSpec,
     ImageSpecification,
+    NameIsImageSpec,
 )
-from .specs_persons import HasLabelPersonSpec, PersonSpecification
+from .specs_persons import (
+    HasLabelPersonSpec,
+    NameIsPersonSpec,
+    PersonSpecification,
+)
 
 T = TypeVar('T')
 LabelLinkTableType = TypeVar('LabelLinkTableType', bound=LabelLinkTable)
@@ -450,7 +458,7 @@ class DatabaseSql(Database):
             )
             items = session.exec(statement_select).all()
             if not select_callback(items):
-                return 0
+                raise CallbackAbortedError
 
         statement_delete = self._create_delete_statement(
             model, specification=specification
@@ -553,20 +561,30 @@ class DatabaseSql(Database):
             ) from exc
 
     @override
-    def rename_label(self, label_name: str, new_name: str) -> Label:
+    def rename_label(
+        self,
+        label_name: str,
+        new_name: str,
+        select_callback: SelectCallbackLabel | None = None,
+    ) -> Label:
         """Rename a label."""
-        with Session(self._engine) as session:
-            label = self._get_label_from_name_with_session(session, label_name)
-            label.name = new_name
-            session.add(label)
-            try:
-                session.commit()
-                session.refresh(label)
-            except IntegrityError as exc:
-                raise LabelAlreadyExistsError(
-                    f'A label named "{new_name}" already exists.'
-                ) from exc
-            return label
+        try:
+            rv = self._update_resources(
+                Label,
+                {'name': new_name},
+                specification=NameIsLabelSpec(label_name, False),
+                select_callback=select_callback,
+                callback_before_updating=True,
+            )
+        except IntegrityError as exc:
+            raise LabelAlreadyExistsError(
+                f'A label named "{new_name}" already exists.'
+            ) from exc
+
+        if len(rv) == 1:
+            return rv[0]
+
+        raise LabelDoesNotExistError(f'Image {label_name} not found')
 
     @override
     def delete_label(self, id: int) -> bool:
@@ -577,7 +595,7 @@ class DatabaseSql(Database):
     def delete_labels(
         self,
         specification: LabelSpecification | None = None,
-        select_callback: SelectCallbackLabels | None = None,
+        select_callback: SelectCallbackLabel | None = None,
     ) -> int:
         """Delete labels matching a specification.
 
@@ -675,22 +693,30 @@ class DatabaseSql(Database):
             ) from exc
 
     @override
-    def rename_person(self, person_name: str, new_name: str) -> Person:
+    def rename_person(
+        self,
+        person_name: str,
+        new_name: str,
+        select_callback: SelectCallbackPerson | None = None,
+    ) -> Person:
         """Rename a person."""
-        with Session(self._engine) as session:
-            person = self._get_person_from_name_with_session(
-                session, person_name
+        try:
+            rv = self._update_resources(
+                Person,
+                {'name': new_name},
+                specification=NameIsPersonSpec(person_name, False),
+                select_callback=select_callback,
+                callback_before_updating=True,
             )
-            person.name = new_name
-            session.add(person)
-            try:
-                session.commit()
-                session.refresh(person)
-            except IntegrityError as exc:
-                raise PersonAlreadyExistsError(
-                    f'A person named "{new_name}" already exists.'
-                ) from exc
-            return person
+        except IntegrityError as exc:
+            raise PersonAlreadyExistsError(
+                f'A person named "{new_name}" already exists.'
+            ) from exc
+
+        if len(rv) == 1:
+            return rv[0]
+
+        raise PersonDoesNotExistError(f'Person {person_name} not found')
 
     def _update_resources(
         self,
@@ -699,28 +725,41 @@ class DatabaseSql(Database):
         *,
         specification: Specification[T] | None = None,
         select_callback: Callable[[Sequence[T]], bool] | None = None,
+        callback_before_updating: bool = False,
     ) -> list[T]:
-        return_list: list[T] = []
+        updated_resources: list[T] = []
         with Session(self._engine) as session:
             resources = self._get_resources_with_session(
                 session, model, specification=specification
             )
 
+            if (
+                select_callback
+                and callback_before_updating
+                and not select_callback(resources)
+            ):
+                session.rollback()
+                raise CallbackAbortedError
+
             for resource in resources:
                 for field, value in new_data.items():
                     setattr(resource, field, value)
                     if session.is_modified(resource):
-                        return_list.append(resource)
+                        updated_resources.append(resource)
 
-            if select_callback and not select_callback(return_list):
+            if (
+                select_callback
+                and not callback_before_updating
+                and not select_callback(updated_resources)
+            ):
                 session.rollback()
-                return []
+                raise CallbackAbortedError
 
             session.commit()
 
-            for resource in return_list:
+            for resource in updated_resources:
                 session.refresh(resource)
-        return return_list
+        return updated_resources
 
     @override
     def set_birthdate_for_persons(
@@ -728,7 +767,7 @@ class DatabaseSql(Database):
         new_birthdate: date | None = None,
         *,
         specification: PersonSpecification | None = None,
-        select_callback: SelectCallbackPersons | None = None,
+        select_callback: SelectCallbackPerson | None = None,
     ) -> list[Person]:
         """Set the birthday for persons."""
         return self._update_resources(
@@ -747,7 +786,7 @@ class DatabaseSql(Database):
     def delete_persons(
         self,
         specification: PersonSpecification | None = None,
-        select_callback: SelectCallbackPersons | None = None,
+        select_callback: SelectCallbackPerson | None = None,
     ) -> int:
         """Delete persons matching a specification.
 
@@ -824,7 +863,7 @@ class DatabaseSql(Database):
         self,
         label: str,
         specification: PersonSpecification | None = None,
-        select_callback: SelectCallbackPersons | None = None,
+        select_callback: SelectCallbackPerson | None = None,
     ) -> list[Person]:
         """Method to add a label to a persons."""
         return self._add_label_to_resource(
@@ -873,7 +912,7 @@ class DatabaseSql(Database):
         self,
         label: str,
         specification: PersonSpecification | None = None,
-        select_callback: SelectCallbackPersons | None = None,
+        select_callback: SelectCallbackPerson | None = None,
     ) -> list[Person]:
         """Method to remove a label from persons."""
         return self._remove_label_from_resource(
@@ -1042,7 +1081,7 @@ class DatabaseSql(Database):
             )
 
             if select_callback and not select_callback(resources):
-                return []
+                raise CallbackAbortedError
 
             for resource in resources:
                 if preprocessor is not None:
@@ -1160,7 +1199,7 @@ class DatabaseSql(Database):
         self,
         label: str,
         specification: ImageSpecification | None = None,
-        select_callback: SelectCallbackImages | None = None,
+        select_callback: SelectCallbackImage | None = None,
     ) -> list[Image]:
         """Method to add a label to a images."""
         return self._add_label_to_resource(
@@ -1254,7 +1293,7 @@ class DatabaseSql(Database):
             )
 
             if select_callback and not select_callback(resources):
-                return []
+                raise CallbackAbortedError
 
             for resource in resources:
                 statement = delete(link_table).where(
@@ -1307,7 +1346,7 @@ class DatabaseSql(Database):
         self,
         label: str,
         specification: ImageSpecification | None = None,
-        select_callback: SelectCallbackImages | None = None,
+        select_callback: SelectCallbackImage | None = None,
     ) -> list[Image]:
         """Method to remove a label from images."""
         return self._remove_label_from_resource(
@@ -1388,19 +1427,27 @@ class DatabaseSql(Database):
         return return_list
 
     @override
-    def rename_image(self, image_title: str, new_title: str) -> Image:
+    def rename_image(
+        self,
+        image_title: str,
+        new_title: str,
+        select_callback: SelectCallbackImage | None = None,
+    ) -> Image:
         """Rename a image."""
-        with Session(self._engine) as session:
-            image = self._get_image_from_title_with_session(
-                session, image_title
+        try:
+            rv = self._update_resources(
+                Image,
+                {'title': new_title},
+                specification=NameIsImageSpec(image_title, False),
+                select_callback=select_callback,
+                callback_before_updating=True,
             )
-            image.title = new_title
-            session.add(image)
-            try:
-                session.commit()
-                session.refresh(image)
-            except IntegrityError as exc:
-                raise ImageAlreadyExistsError(
-                    f'A image named "{new_title}" already exists.'
-                ) from exc
-            return image
+        except IntegrityError as exc:
+            raise ImageAlreadyExistsError(
+                f'A image named "{new_title}" already exists.'
+            ) from exc
+
+        if len(rv) == 1:
+            return rv[0]
+
+        raise ImageDoesNotExistError(f'Image {image_title} not found')

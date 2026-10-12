@@ -79,3 +79,7 @@ class ImageDoesNotExistError(DatabaseError):
 
 class ImageLabelLinkAlreadyExistsError(DatabaseError):
     """Exception when a image is already linked to a label."""
+
+
+class CallbackAbortedError(DatabaseError):
+    """Exception when a callback is False."""

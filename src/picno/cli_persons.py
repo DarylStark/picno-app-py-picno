@@ -29,7 +29,7 @@ def ls(
 
     # Retrieve the persons
     persons = db.get_persons(
-        _filter.get_specifications(),
+        specification=_filter.get_specifications(),
         options=[RetrieveOption.LOAD_PERSON_LABELS],
     )
     if persons:
@@ -132,7 +132,8 @@ def rm(
     (_, _, db, console) = get_initialized_project(ctx)
     select_callback = create_delete_confirm_callback(force, console, 'name')
     persons = db.delete_persons(
-        _filter.get_specifications(), select_callback=select_callback
+        specification=_filter.get_specifications(),
+        select_callback=select_callback,
     )
     console.print(f'Deleted {persons} persons')
 

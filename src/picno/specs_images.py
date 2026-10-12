@@ -48,6 +48,16 @@ class NameContainsImageSpec(ParentSpecification[Image]):
         )
 
 
+class PathNameIsImageSpec(ParentSpecification[Image]):
+    """Specification for when the path should be the same."""
+
+    def __init__(self, path: str, case_insensitive: bool = True) -> None:
+        """Set the given values."""
+        super().__init__(
+            StrIsSpecification(Image, 'physical_path', path, case_insensitive)
+        )
+
+
 class PathNameContainsImageSpec(ParentSpecification[Image]):
     """Specification for when the path name contains text."""
 
@@ -152,6 +162,8 @@ class ImageFilter(Filter[ImageSpecification]):
     name__ci: str | None = None
     name__contains: list[str] | None = None
     name__contains_ci: list[str] | None = None
+    path_name: str | None = None
+    path_name__ci: str | None = None
     path_name__contains: list[str] | None = None
     path_name__contains_ci: list[str] | None = None
     has_location: bool | None = None
@@ -159,7 +171,7 @@ class ImageFilter(Filter[ImageSpecification]):
     favourite: bool | None = None
     label: list[str] | None = None
 
-    def get_specifications(self) -> ImageSpecification | None:
+    def get_specifications(self) -> ImageSpecification | None:  # noqa: PLR0912
         """Builder for Image Specifications."""
         specs = ImageAllSpecification()
 
@@ -171,6 +183,18 @@ class ImageFilter(Filter[ImageSpecification]):
         if self.name__ci:
             specs.append(
                 NameIsImageSpec(name=self.name__ci, case_insensitive=True)
+            )
+
+        if self.path_name:
+            specs.append(
+                PathNameIsImageSpec(path=self.path_name, case_insensitive=False)
+            )
+
+        if self.path_name__ci:
+            specs.append(
+                PathNameIsImageSpec(
+                    path=self.path_name__ci, case_insensitive=True
+                )
             )
 
         for value in self.name__contains or []:

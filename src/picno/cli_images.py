@@ -42,7 +42,7 @@ def ls(
 
     # Retrieve the images
     images = db.get_images(
-        _filter.get_specifications(),
+        specification=_filter.get_specifications(),
         options=[
             RetrieveOption.LOAD_IMAGE_LABELS,
             RetrieveOption.LOAD_IMAGE_PERSONS,

@@ -1,89 +1,18 @@
 """Module with the `pico persons` options."""
 
-import inspect
-from collections.abc import Callable
-
 from typer import Argument, Context, Option, Typer
 
 from .cli_context import get_initialized_project
 from .cli_format import TableColumn, print_table
-from .cli_helpers import date_string_to_date, shared_args
+from .cli_helpers import date_string_to_date, with_filtering
 from .database import RetrieveOption
 from .specs_persons import PersonFilter
 
 persons = Typer(name='persons', help='Person management')
 
 
-def with_persons_filter(param_name: str = '_filter') -> Callable:
-    """Create a decorator for a Persons Filter."""
-
-    def decorator(func: Callable) -> Callable:
-        """Decorator to add filters to CLI commands."""
-        return shared_args(
-            [
-                inspect.Parameter(
-                    'name',
-                    kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
-                    annotation=str | None,
-                    default=Option(
-                        default=None,
-                        help='Filter on specific name',
-                        rich_help_panel='Filtering',
-                    ),
-                ),
-                inspect.Parameter(
-                    'iname',
-                    kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
-                    annotation=str | None,
-                    default=Option(
-                        default=None,
-                        help='Filter on a specific name (case insensitive)',
-                        rich_help_panel='Filtering',
-                    ),
-                ),
-                inspect.Parameter(
-                    'name_contains',
-                    kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
-                    annotation=str | None,
-                    default=Option(
-                        default=None,
-                        help='Filter on a text in the name <repeatable>',
-                        rich_help_panel='Filtering',
-                    ),
-                ),
-                inspect.Parameter(
-                    'iname_contains',
-                    kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
-                    annotation=str | None,
-                    default=Option(
-                        default=None,
-                        help=(
-                            'Filter on a text in the name (case insensitive) '
-                            '<repeatable>'
-                        ),
-                        rich_help_panel='Filtering',
-                    ),
-                ),
-                inspect.Parameter(
-                    'label',
-                    kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
-                    annotation=list[str] | None,
-                    default=Option(
-                        default=None,
-                        help='Filter on a specific label <repeatable>',
-                        rich_help_panel='Filtering',
-                    ),
-                ),
-            ],
-            param_name=param_name,
-            param_builder=PersonFilter.build_from_locals,
-        )(func)
-
-    return decorator
-
-
 @persons.command(name='ls', help='List persons')
-@with_persons_filter()
+@with_filtering(PersonFilter)
 def ls(
     _filter: PersonFilter,
     ctx: Context,
@@ -145,7 +74,7 @@ def mv(
 
 
 @persons.command(name='set-birthdate', help='Set the birthdate for a person')
-@with_persons_filter()
+@with_filtering(PersonFilter)
 def set_birthdate(
     _filter: PersonFilter,
     ctx: Context,
@@ -163,7 +92,7 @@ def set_birthdate(
 @persons.command(
     name='delete-birthdate', help='Delete the birthdate for a person'
 )
-@with_persons_filter()
+@with_filtering(PersonFilter)
 def delete_birthdate(
     _filter: PersonFilter,
     ctx: Context,
@@ -177,7 +106,7 @@ def delete_birthdate(
 
 
 @persons.command(name='rm', help='Delete a person')
-@with_persons_filter()
+@with_filtering(PersonFilter)
 def rm(
     _filter: PersonFilter,
     ctx: Context,
@@ -189,7 +118,7 @@ def rm(
 
 
 @persons.command(name='label', help='Label specific persons')
-@with_persons_filter()
+@with_filtering(PersonFilter)
 def label(
     _filter: PersonFilter,
     ctx: Context,
@@ -204,7 +133,7 @@ def label(
 
 
 @persons.command(name='unlabel', help='Unlabel specific persons')
-@with_persons_filter()
+@with_filtering(PersonFilter)
 def unlabel(
     _filter: PersonFilter,
     ctx: Context,

@@ -7,14 +7,20 @@ from sqlite3 import Connection as SQLiteConnection
 from sqlite3 import Cursor as SQLiteCursor
 from typing import TypeVar, cast, override
 
-from sqlalchemy import event
+from sqlalchemy import Delete, event
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import InstrumentedAttribute, selectinload
 from sqlalchemy.orm.interfaces import ORMOption
 from sqlmodel import Session, SQLModel, and_, col, create_engine, delete, select
 from sqlmodel.sql.expression import SelectOfScalar
 
-from .database import Database, LabelSpecification, RetrieveOption
+from .database import (
+    Database,
+    LabelSpecification,
+    RetrieveOption,
+    SelectCallbackLabels,
+    SelectCallbackPersons,
+)
 from .exceptions import (
     ImageAlreadyExistsError,
     ImageDoesNotExistError,
@@ -124,6 +130,22 @@ class DatabaseSql(Database):
                 created_session.refresh(obj)
                 return obj
         return self._create_resource_with_session(session, obj)
+
+    def _create_select_statement(
+        self, model: type[T], *, specification: Specification[T] | None = None
+    ) -> SelectOfScalar[T]:
+        statement = select(model)
+        if specification:
+            statement = statement.where(specification.as_sql())
+        return statement
+
+    def _create_delete_statement(
+        self, model: type[T], *, specification: Specification[T] | None = None
+    ) -> Delete:
+        statement = delete(model)
+        if specification:
+            statement = statement.where(specification.as_sql())
+        return statement
 
     def _create_resource_with_session(self, session: Session, obj: T) -> T:
         """Method to create resources in the database."""
@@ -382,6 +404,7 @@ class DatabaseSql(Database):
         model: type[T],
         *,
         specification: Specification[T] | None = None,
+        select_callback: Callable[[Sequence[T]], bool] | None = None,
         session: Session | None = None,
     ) -> int:
         """Delete resources matching a specification.
@@ -392,13 +415,19 @@ class DatabaseSql(Database):
         if session is None:
             with Session(self._engine) as created_session:
                 count = self._delete_resources_with_session(
-                    created_session, model, specification=specification
+                    created_session,
+                    model,
+                    specification=specification,
+                    select_callback=select_callback,
                 )
                 if count:
                     created_session.commit()
                 return count
         return self._delete_resources_with_session(
-            session, model, specification=specification
+            session,
+            model,
+            specification=specification,
+            select_callback=select_callback,
         )
 
     def _delete_resources_with_session(
@@ -407,17 +436,25 @@ class DatabaseSql(Database):
         model: type[T],
         *,
         specification: Specification[T] | None = None,
+        select_callback: Callable[[Sequence[T]], bool] | None = None,
     ) -> int:
         """Delete resources matching a specification.
 
         Returns:
             The number of resources deleted.
         """
-        statement = delete(model)
-        if specification:
-            statement = statement.where(specification.as_sql())
+        if select_callback:
+            statement_select = self._create_select_statement(
+                model, specification=specification
+            )
+            items = session.exec(statement_select).all()
+            if not select_callback(items):
+                return 0
 
-        result = session.exec(statement)
+        statement_delete = self._create_delete_statement(
+            model, specification=specification
+        )
+        result = session.exec(statement_delete)
         return result.rowcount
 
     def _get_person_from_name_with_session(
@@ -537,14 +574,18 @@ class DatabaseSql(Database):
 
     @override
     def delete_labels(
-        self, specification: LabelSpecification | None = None
+        self,
+        specification: LabelSpecification | None = None,
+        select_callback: SelectCallbackLabels | None = None,
     ) -> int:
         """Delete labels matching a specification.
 
         Returns:
             The number of labels deleted.
         """
-        return self._delete_resources(Label, specification=specification)
+        return self._delete_resources(
+            Label, specification=specification, select_callback=select_callback
+        )
 
     @override
     def delete_label_by_name(self, name: str) -> None:
@@ -682,14 +723,18 @@ class DatabaseSql(Database):
 
     @override
     def delete_persons(
-        self, specification: PersonSpecification | None = None
+        self,
+        specification: PersonSpecification | None = None,
+        select_callback: SelectCallbackPersons | None = None,
     ) -> int:
         """Delete persons matching a specification.
 
         Returns:
             The number of persons deleted.
         """
-        return self._delete_resources(Person, specification=specification)
+        return self._delete_resources(
+            Person, specification=specification, select_callback=select_callback
+        )
 
     @override
     def delete_person_by_name(self, name: str) -> None:

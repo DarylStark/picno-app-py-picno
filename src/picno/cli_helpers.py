@@ -1,17 +1,27 @@
 """Module with CLI helper functions."""
 
 import inspect
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import fields
 from datetime import date
+from enum import Enum
 from types import UnionType
 from typing import Any, get_args, get_origin
 
+from rich.console import Console
+from rich.prompt import Confirm
 from typer import Option
 
 from picno.filter import Filter
 
 from .exceptions import InvalidArgumentInputError
+
+
+class Noun(Enum):
+    """Enum class for nouns."""
+
+    DELETING = 'Deleting'
+    UPDATING = 'Updating'
 
 
 def date_string_to_date(date_str: str | None) -> date | None:
@@ -136,3 +146,40 @@ def with_filtering(
         )(func)
 
     return decorator
+
+
+def create_confirm_callback[T](
+    force: bool,
+    console: Console,
+    noun: Noun,
+    resource_name_attr: str,
+) -> Callable[[Sequence[T]], bool] | None:
+    """Create a confirm callback."""
+    if force:
+        return None
+
+    def confirm(resources: Sequence[T]) -> bool:
+        if len(resources) == 0:
+            return True
+        question = f'{noun.value} {len(resources)} resources:\n'
+        resources = sorted(
+            resources,
+            key=lambda r: getattr(r, resource_name_attr, '--unknown').lower(),
+        )
+        for resource in resources:
+            question += '- "' + getattr(resource, resource_name_attr) + '"\n'
+        question += 'Do you want to continue?'
+        return Confirm.ask(question, console=console)
+
+    return confirm
+
+
+def create_delete_confirm_callback[T](
+    force: bool,
+    console: Console,
+    resource_name_attr: str,
+) -> Callable[[Sequence[T]], bool] | None:
+    """Create a confirm callback for deleting items."""
+    return create_confirm_callback(
+        force, console, Noun.DELETING, resource_name_attr
+    )

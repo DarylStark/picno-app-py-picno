@@ -1,8 +1,11 @@
 """Module with the `pico labels` options."""
 
-from typer import Argument, Context, Typer
+from typer import Argument, Context, Option, Typer
 
-from picno.cli_helpers import with_filtering
+from picno.cli_helpers import (
+    create_delete_confirm_callback,
+    with_filtering,
+)
 
 from .cli_context import get_initialized_project
 from .cli_format import TableColumn, print_table
@@ -66,8 +69,12 @@ def mv(
 def rm(
     _filter: LabelFilter,
     ctx: Context,
+    force: bool = Option(default=False, help="Don't ask for confirmation"),
 ) -> None:
     """Delete a label."""
     (_, _, db, console) = get_initialized_project(ctx)
-    labels = db.delete_labels(_filter.get_specifications())
+    select_callback = create_delete_confirm_callback(force, console, 'name')
+    labels = db.delete_labels(
+        _filter.get_specifications(), select_callback=select_callback
+    )
     console.print(f'Deleted {labels} labels')

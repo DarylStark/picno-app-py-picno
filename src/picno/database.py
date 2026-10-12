@@ -1,15 +1,21 @@
 """Module with the database abstraction."""
 
 from abc import ABC, abstractmethod
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from datetime import date
 from enum import Enum
 from pathlib import Path
+from typing import TypeVar
 
 from .model import Image, Label, Person, ResourceStatus
 from .specs_images import ImageSpecification
 from .specs_labels import LabelSpecification
 from .specs_persons import PersonSpecification
+
+T = TypeVar('T')
+
+SelectCallbackLabels = Callable[[Sequence[Label]], bool]
+SelectCallbackPersons = Callable[[Sequence[Person]], bool]
 
 
 class RetrieveOption(Enum):
@@ -65,7 +71,9 @@ class Database(ABC):
 
     @abstractmethod
     def delete_labels(
-        self, specification: LabelSpecification | None = None
+        self,
+        specification: LabelSpecification | None = None,
+        select_callback: SelectCallbackLabels | None = None,
     ) -> int:
         """Delete labels matching a specification.
 
@@ -139,7 +147,9 @@ class Database(ABC):
 
     @abstractmethod
     def delete_persons(
-        self, specification: PersonSpecification | None = None
+        self,
+        specification: PersonSpecification | None = None,
+        select_callback: SelectCallbackPersons | None = None,
     ) -> int:
         """Delete persons matching a specification.
 

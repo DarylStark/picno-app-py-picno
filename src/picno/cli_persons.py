@@ -4,7 +4,11 @@ from typer import Argument, Context, Option, Typer
 
 from .cli_context import get_initialized_project
 from .cli_format import TableColumn, print_table
-from .cli_helpers import date_string_to_date, with_filtering
+from .cli_helpers import (
+    create_delete_confirm_callback,
+    date_string_to_date,
+    with_filtering,
+)
 from .database import RetrieveOption
 from .specs_persons import PersonFilter
 
@@ -110,10 +114,14 @@ def delete_birthdate(
 def rm(
     _filter: PersonFilter,
     ctx: Context,
+    force: bool = Option(default=False, help="Don't ask for confirmation"),
 ) -> None:
     """Delete a person."""
     (_, _, db, console) = get_initialized_project(ctx)
-    persons = db.delete_persons(_filter.get_specifications())
+    select_callback = create_delete_confirm_callback(force, console, 'name')
+    persons = db.delete_persons(
+        _filter.get_specifications(), select_callback=select_callback
+    )
     console.print(f'Deleted {persons} persons')
 
 

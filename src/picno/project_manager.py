@@ -16,7 +16,7 @@ from .executor import Executor
 from .executor_run_command_list import create_run_command_list
 from .model import Image
 from .project import Project
-from .specs_images import ImageSpecification, PathIsImageSpec
+from .specs_images import ImageSpecification, PathNameIsImageSpec
 
 ProgressCallbackStartScanning = Callable[[], None]
 ProgressCallbackDoneScanning = Callable[[list[Path]], None]
@@ -178,7 +178,7 @@ class ProjectManager:
         return (
             len(
                 self._database.get_images(
-                    specification=PathIsImageSpec(
+                    specification=PathNameIsImageSpec(
                         str(self._get_relative_path(image_path)), False
                     )
                 )

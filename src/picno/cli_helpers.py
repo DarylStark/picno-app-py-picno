@@ -2,17 +2,24 @@
 
 import inspect
 from collections.abc import Callable, Sequence
-from dataclasses import fields
 from datetime import date
 from enum import Enum
+from itertools import product
 from types import UnionType
-from typing import Any, get_args, get_origin
+from typing import Any, TypeVar, get_args, get_origin
 
 from rich.console import Console
 from rich.prompt import Confirm
+from sqlmodel import SQLModel
 from typer import Option
 
-from picno.filter import Filter
+from picno.filter_new import (
+    FilterField,
+    FilterGivenValue,
+    FilterNew,
+    FilterValue,
+)
+from picno.specs import Specification
 
 from .exceptions import InvalidArgumentInputError
 
@@ -60,9 +67,49 @@ def shared_filter_args[T](
             shared_kwargs = {
                 shared_kwarg.name: kwargs[shared_kwarg.name]
                 for shared_kwarg in shared_args
+                if kwargs[shared_kwarg.name]
             }
-            # filter = param_type.build_from_locals(shared_kwargs)
             filter = param_builder(shared_kwargs)
+            kwargs = {
+                kwarg[0]: kwarg[1]
+                for kwarg in kwargs.items()
+                if kwarg[0] not in shared_kwargs
+            }
+            return func(filter, *args, **kwargs)
+
+        # Remove filter from params
+        params = [param for param in params if param.name != param_name]
+
+        # Create the new function signature
+        inner.__signature__ = inspect.Signature(params + shared_args)  # ty: ignore[unresolved-attribute]
+        return inner
+
+    return decorator
+
+
+def shared_filter_args_new[T](
+    shared_args: list[inspect.Parameter],
+    param_name: str,
+    param_builder: Callable[[dict[str, Any]], T | None],
+) -> Callable:
+    """Decorator to add filters to CLI commands."""
+
+    def decorator(func: Callable) -> Callable:
+        sig = inspect.signature(func)
+        params = list(sig.parameters.values())
+
+        def inner(*args: list[Any], **kwargs: dict[str, Any]) -> None:
+            shared_kwargs = {
+                shared_kwarg.name: kwargs[shared_kwarg.name]
+                for shared_kwarg in shared_args
+            }
+            filter = param_builder(
+                {
+                    filter: value
+                    for filter, value in shared_kwargs.items()
+                    if value is not None
+                }
+            )
             kwargs = {
                 kwarg[0]: kwarg[1]
                 for kwarg in kwargs.items()
@@ -90,68 +137,221 @@ def contains_list_type(tp: Any) -> bool:  # ruff: ignore[ANN401]
     return origin is list
 
 
-def with_filtering(
-    filter: type[Filter],
-    *,
-    param_name: str = '_filter',
-    filter_prefix: str | None = None,
-    filter_group: str = 'Filter',
+def with_filters(
+    builder: FilterParamBuilder, *, param_name: str = '_filter'
 ) -> Callable:
     """Create a decorator for a filter arguments."""
 
     def decorator(func: Callable) -> Callable:
         """Decorator to add filters to CLI commands."""
-        filter_args: list[inspect.Parameter] = []
+        filter_args: list[inspect.Parameter] = builder.fields
+        filter_args.sort(key=lambda x: x.name)
 
-        for field in fields(filter):
-            help_text_notes: list[str] = []
-            field_name_splitted = field.name.split('__')
-            field_name = field_name_splitted[0]
-            arg_name = field.name
-            flags = (
-                field_name_splitted[1].split('_')
-                if len(field_name_splitted) == 2
-                else []
-            )
-            if 'ci' in flags:
-                help_text_notes.append('case insensitive')
-            if 'contains' in flags:
-                help_text_notes.append('containing')
-            if 'any' in flags:
-                help_text_notes.append('any')
-
-            if contains_list_type(field.type):
-                help_text_notes.append('repeatable')
-
-            help_text = f'Filter on field "{field_name}"'
-            if help_text_notes:
-                help_text += f' ({", ".join(help_text_notes)})'
-
-            if filter_prefix:
-                arg_name = f'{filter_prefix}_{field.name}'
-
-            filter_args.append(
-                inspect.Parameter(
-                    arg_name,
-                    kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
-                    annotation=field.type,
-                    default=Option(
-                        default=None,
-                        help=help_text,
-                        rich_help_panel=filter_group,
-                    ),
-                )
-            )
-
-            filter_args.sort(key=lambda x: x.name)
-
-        return shared_filter_args(
+        return shared_filter_args_new(
             filter_args,
             param_name=param_name,
-            param_builder=filter.build_from_locals,
+            param_builder=builder.convert_args_filter,
         )(func)
 
     return decorator
+
+
+class NumberSpecifier(Enum):
+    """Specifiers for numbers."""
+
+    LE = 'le'
+    LT = 'lt'
+    GE = 'ge'
+    GT = 'gt'
+
+
+SqlTable = TypeVar('SqlTable', bound=SQLModel)
+
+
+class FilterParamBuilder:
+    """Class to build filter parameters based on object."""
+
+    def __init__(
+        self,
+        model: type[SqlTable],
+        filter_group: str = 'Filter',
+        filter_prefix: str | None = None,
+    ) -> None:
+        """Set values."""
+        self._model = model
+        self._filter = FilterNew(model)
+        self._filter_group = filter_group
+        self._filter_prefix = filter_prefix
+        self._fields = self.create_params()
+
+    def _get_name_for_param(
+        self,
+        field_type: FilterField,
+        *,
+        contains: bool = False,
+        case_insensitive: bool = False,
+        any: bool = False,
+        number_specifier: NumberSpecifier | None = None,
+    ) -> str:
+        name = field_type.name
+        flags: list[str] = []
+        if contains:
+            flags.append('contains')
+        if case_insensitive:
+            flags.append('ci')
+        if any:
+            flags.append('any')
+
+        if number_specifier is not None:
+            flags.append(number_specifier.value)
+
+        if flags:
+            combined = '_'.join(flags)
+            name = f'{name}__{combined}'
+
+        if not self._filter_prefix:
+            return name
+        return f'{self._filter_prefix}_{name}'
+
+    def _get_help_text_for_param(self, field: FilterField) -> str:
+        return '<Not yet defined>'
+
+    def _get_type_annotation(
+        self, field_type: FilterField, *, always_list: bool = False
+    ) -> Any:  # noqa: ANN401
+        if not always_list:
+            return field_type.field_type | None
+        return list[field_type.field_type] | None  # ty: ignore[invalid-type-form]
+
+    def _create_param(
+        self,
+        field_type: FilterField,
+        *,
+        contains: bool = False,
+        case_insensitive: bool = False,
+        any: bool = False,
+        number_specifier: NumberSpecifier | None = None,
+    ) -> inspect.Parameter:
+        return inspect.Parameter(
+            name=self._get_name_for_param(
+                field_type,
+                contains=contains,
+                case_insensitive=case_insensitive,
+                any=any,
+                number_specifier=number_specifier,
+            ),
+            kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
+            annotation=self._get_type_annotation(
+                field_type, always_list=any | contains
+            ),
+            default=Option(
+                default=None,
+                help=self._get_help_text_for_param(field_type),
+                rich_help_panel=self._filter_group,
+            ),
+        )
+
+    def _create_params_for_str(
+        self, field_type: FilterField
+    ) -> list[inspect.Parameter]:
+        rv = [
+            self._create_param(
+                field_type,
+                contains=value[0],
+                case_insensitive=value[1],
+                any=value[2],
+            )
+            for value in list(product([False, True], repeat=3))
+        ]
+        return rv
+
+    def _create_params_for_int(
+        self, field_type: FilterField
+    ) -> list[inspect.Parameter]:
+        rv = [
+            self._create_param(field_type, number_specifier=specifier)
+            for specifier in [
+                None,
+                NumberSpecifier.GE,
+                NumberSpecifier.GT,
+                NumberSpecifier.LE,
+                NumberSpecifier.LT,
+            ]
+        ]
+        rv.append(self._create_param(field_type, any=True))
+        return rv
+
+    def _create_params_for_filterfield(
+        self, field_type: FilterField
+    ) -> list[inspect.Parameter]:
+        if field_type.field_type is str:
+            return self._create_params_for_str(field_type)
+        elif field_type.field_type is int:
+            return self._create_params_for_int(field_type)
+        return []
+
+    def create_params(
+        self,
+    ) -> list[inspect.Parameter]:
+        """Method to create function parameters for filtering."""
+        params: list[inspect.Parameter] = []
+        for _, field_type in self._filter.filter_fields.items():
+            params.extend(self._create_params_for_filterfield(field_type))
+
+        return params
+
+    @property
+    def fields(self) -> list[inspect.Parameter]:
+        """Get the fields."""
+        return self._fields
+
+    def convert_args_filter(
+        self, values: dict[str, Any]
+    ) -> Specification[SqlTable] | None:
+        """Convert given filters to a filter object."""
+        filters: dict[str, FilterGivenValue] = {}
+        for field, value in values.items():
+            splitted_field = field.split('__')
+            field_name = splitted_field[0]
+            item = filters.get(field_name, FilterGivenValue(name=field_name))
+            flags: list[str] = []
+            if len(splitted_field) == 2:
+                flags = splitted_field[1].split('_')
+
+            case_sensitive = 'ci' in flags
+            contains = 'contains' in flags
+            any_field = 'any' in flags
+            ge_field = 'ge' in flags
+            gt_field = 'gt' in flags
+            le_field = 'le' in flags
+            lt_field = 'lt' in flags
+
+            filter_value = FilterValue(
+                value=value, case_sensistive=case_sensitive, contains=contains
+            )
+
+            if any_field:
+                item.any_field = [
+                    FilterValue(
+                        value=any_value,
+                        case_sensistive=case_sensitive,
+                        contains=contains,
+                    )
+                    for any_value in value
+                ]
+            elif ge_field:
+                item.precise_value_ge = filter_value
+            elif gt_field:
+                item.precise_value_gt = filter_value
+            elif le_field:
+                item.precise_value_le = filter_value
+            elif lt_field:
+                item.precise_value_lt = filter_value
+            else:
+                item.precise_value = filter_value
+
+            filters[field_name] = item
+        return self._filter.get_specification(list(filters.values()))
 
 
 def create_confirm_callback[T](

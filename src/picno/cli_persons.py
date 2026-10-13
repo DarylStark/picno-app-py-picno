@@ -2,26 +2,30 @@
 
 from typer import Argument, Context, Option, Typer
 
+from picno.model import Person
+from picno.specs import Specification
+
 from .cli_context import get_initialized_project
 from .cli_format import TableColumn, print_table
 from .cli_helpers import (
+    FilterParamBuilder,
     create_delete_confirm_callback,
     create_label_confirm_callback,
     create_unlabel_confirm_callback,
     create_update_confirm_callback,
     date_string_to_date,
-    with_filtering,
+    with_filters,
 )
 from .database import RetrieveOption
-from .specs_persons import PersonFilter
 
 persons = Typer(name='persons', help='Person management')
+filter_builder = FilterParamBuilder(Person)
 
 
 @persons.command(name='ls', help='List persons')
-@with_filtering(PersonFilter)
+@with_filters(filter_builder)
 def ls(
-    _filter: PersonFilter,
+    _filter: Specification[Person],
     ctx: Context,
 ) -> None:
     """List the persons in the database."""
@@ -29,7 +33,7 @@ def ls(
 
     # Retrieve the persons
     persons = db.get_persons(
-        specification=_filter.get_specifications(),
+        specification=_filter,
         options=[RetrieveOption.LOAD_PERSON_LABELS],
     )
     if persons:
@@ -83,9 +87,9 @@ def mv(
 
 
 @persons.command(name='set-birthdate', help='Set the birthdate for a person')
-@with_filtering(PersonFilter)
+@with_filters(filter_builder)
 def set_birthdate(
-    _filter: PersonFilter,
+    _filter: Specification[Person],
     ctx: Context,
     birthdate: str = Argument(help='Birthdate for the person (YYYY-MM-DD)'),
     force: bool = Option(default=False, help="Don't ask for confirmation"),
@@ -95,7 +99,7 @@ def set_birthdate(
     select_callback = create_update_confirm_callback(force, console, 'name')
     persons = db.set_birthdate_for_persons(
         date_string_to_date(birthdate),
-        specification=_filter.get_specifications(),
+        specification=_filter,
         select_callback=select_callback,
     )
     console.print(f'Set birthdate for {len(persons)} persons')
@@ -104,9 +108,9 @@ def set_birthdate(
 @persons.command(
     name='delete-birthdate', help='Delete the birthdate for a person'
 )
-@with_filtering(PersonFilter)
+@with_filters(filter_builder)
 def delete_birthdate(
-    _filter: PersonFilter,
+    _filter: Specification[Person],
     ctx: Context,
     force: bool = Option(default=False, help="Don't ask for confirmation"),
 ) -> None:
@@ -115,16 +119,16 @@ def delete_birthdate(
     select_callback = create_update_confirm_callback(force, console, 'name')
     persons = db.set_birthdate_for_persons(
         None,
-        specification=_filter.get_specifications(),
+        specification=_filter,
         select_callback=select_callback,
     )
     console.print(f'Deleted birthdate for {len(persons)} persons')
 
 
 @persons.command(name='rm', help='Delete a person')
-@with_filtering(PersonFilter)
+@with_filters(filter_builder)
 def rm(
-    _filter: PersonFilter,
+    _filter: Specification[Person],
     ctx: Context,
     force: bool = Option(default=False, help="Don't ask for confirmation"),
 ) -> None:
@@ -132,16 +136,16 @@ def rm(
     (_, _, db, console) = get_initialized_project(ctx)
     select_callback = create_delete_confirm_callback(force, console, 'name')
     persons = db.delete_persons(
-        specification=_filter.get_specifications(),
+        specification=_filter,
         select_callback=select_callback,
     )
     console.print(f'Deleted {persons} persons')
 
 
 @persons.command(name='label', help='Label specific persons')
-@with_filtering(PersonFilter)
+@with_filters(filter_builder)
 def label(
-    _filter: PersonFilter,
+    _filter: Specification[Person],
     ctx: Context,
     label_name: str = Argument(help='The name of the label to add'),
     force: bool = Option(default=False, help="Don't ask for confirmation"),
@@ -151,16 +155,16 @@ def label(
     select_callback = create_label_confirm_callback(force, console, 'name')
     persons = db.add_label_to_persons(
         label_name,
-        specification=_filter.get_specifications(),
+        specification=_filter,
         select_callback=select_callback,
     )
     console.print(f'Added label "{label_name}" to {len(persons)} persons')
 
 
 @persons.command(name='unlabel', help='Unlabel specific persons')
-@with_filtering(PersonFilter)
+@with_filters(filter_builder)
 def unlabel(
-    _filter: PersonFilter,
+    _filter: Specification[Person],
     ctx: Context,
     label_name: str = Argument(help='The name of the label to remove'),
     force: bool = Option(default=False, help="Don't ask for confirmation"),
@@ -170,7 +174,7 @@ def unlabel(
     select_callback = create_unlabel_confirm_callback(force, console, 'name')
     persons = db.remove_label_from_persons(
         label_name,
-        specification=_filter.get_specifications(),
+        specification=_filter,
         select_callback=select_callback,
     )
     console.print(f'Removed label "{label_name}" from {len(persons)} persons')

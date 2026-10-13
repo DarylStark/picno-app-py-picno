@@ -5,23 +5,22 @@ from collections.abc import Callable, Sequence
 from datetime import date
 from enum import Enum
 from itertools import product
-from types import UnionType
-from typing import Any, TypeVar, get_args, get_origin
+from typing import Any, TypeVar
 
 from rich.console import Console
 from rich.prompt import Confirm
 from sqlmodel import SQLModel
 from typer import Option
 
-from picno.filter_new import (
-    FilterField,
-    FilterGivenValue,
-    FilterNew,
-    FilterValue,
-)
 from picno.specs import Specification
 
 from .exceptions import InvalidArgumentInputError
+from .filter import (
+    Filter,
+    FilterField,
+    FilterGivenValue,
+    FilterValue,
+)
 
 
 class Noun(Enum):
@@ -53,41 +52,6 @@ def date_string_to_date(date_str: str | None) -> date | None:
 
 
 def shared_filter_args[T](
-    shared_args: list[inspect.Parameter],
-    param_name: str,
-    param_builder: Callable[[dict[str, Any]], T],
-) -> Callable:
-    """Decorator to add filters to CLI commands."""
-
-    def decorator(func: Callable) -> Callable:
-        sig = inspect.signature(func)
-        params = list(sig.parameters.values())
-
-        def inner(*args: list[Any], **kwargs: dict[str, Any]) -> None:
-            shared_kwargs = {
-                shared_kwarg.name: kwargs[shared_kwarg.name]
-                for shared_kwarg in shared_args
-                if kwargs[shared_kwarg.name]
-            }
-            filter = param_builder(shared_kwargs)
-            kwargs = {
-                kwarg[0]: kwarg[1]
-                for kwarg in kwargs.items()
-                if kwarg[0] not in shared_kwargs
-            }
-            return func(filter, *args, **kwargs)
-
-        # Remove filter from params
-        params = [param for param in params if param.name != param_name]
-
-        # Create the new function signature
-        inner.__signature__ = inspect.Signature(params + shared_args)  # ty: ignore[unresolved-attribute]
-        return inner
-
-    return decorator
-
-
-def shared_filter_args_new[T](
     shared_args: list[inspect.Parameter],
     param_name: str,
     param_builder: Callable[[dict[str, Any]], T | None],
@@ -127,16 +91,6 @@ def shared_filter_args_new[T](
     return decorator
 
 
-def contains_list_type(tp: Any) -> bool:  # ruff: ignore[ANN401]
-    """Check if a type list contains a `list` object."""
-    origin = get_origin(tp)
-
-    if origin is UnionType:
-        return any(contains_list_type(arg) for arg in get_args(tp))
-
-    return origin is list
-
-
 def with_filters(
     builder: FilterParamBuilder, *, param_name: str = '_filter'
 ) -> Callable:
@@ -147,7 +101,7 @@ def with_filters(
         filter_args: list[inspect.Parameter] = builder.fields
         filter_args.sort(key=lambda x: x.name)
 
-        return shared_filter_args_new(
+        return shared_filter_args(
             filter_args,
             param_name=param_name,
             param_builder=builder.convert_args_filter,
@@ -179,7 +133,7 @@ class FilterParamBuilder:
     ) -> None:
         """Set values."""
         self._model = model
-        self._filter = FilterNew(model)
+        self._filter = Filter(model)
         self._filter_group = filter_group
         self._filter_prefix = filter_prefix
         self._fields = self.create_params()

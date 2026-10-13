@@ -1,12 +1,10 @@
 """Module with the specifications for labels."""
 
-from dataclasses import dataclass
 from typing import override
 
 from sqlalchemy import ColumnElement
 from sqlmodel import and_, col, exists, select
 
-from .filter import Filter
 from .model import Label, Person, PersonLabelLink
 from .specs import (
     AllSpecification,
@@ -61,46 +59,3 @@ class HasLabelPersonSpec(PersonSpecification):
                 )
             )
         )
-
-
-@dataclass(frozen=True)
-class PersonFilter(Filter[PersonSpecification]):
-    """Class for Label Filter builder."""
-
-    name: str | None = None
-    name__ci: str | None = None
-    name__contains: list[str] | None = None
-    name__contains_ci: list[str] | None = None
-    label: list[str] | None = None
-
-    def get_specifications(self) -> PersonSpecification | None:
-        """Builder for Person Specifications."""
-        specs = PersonAllSpecification()
-
-        if self.name:
-            specs.append(
-                NameIsPersonSpec(name=self.name, case_insensitive=False)
-            )
-
-        if self.name__ci:
-            specs.append(
-                NameIsPersonSpec(name=self.name__ci, case_insensitive=True)
-            )
-
-        for value in self.name__contains or []:
-            specs.append(
-                NameContainsPersonSpec(text=value, case_insensitive=False)
-            )
-
-        for value in self.name__contains_ci or []:
-            specs.append(
-                NameContainsPersonSpec(text=value, case_insensitive=True)
-            )
-
-        if self.label is not None:
-            all_spec = AllSpecification[Person]()
-            for label in self.label:
-                all_spec.append(HasLabelPersonSpec(label))
-            specs.append(all_spec)
-
-        return specs if specs else None

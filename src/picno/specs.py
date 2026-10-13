@@ -5,7 +5,7 @@ from typing import override
 
 from sqlalchemy import and_, true
 from sqlalchemy.sql.elements import ColumnElement
-from sqlmodel import col
+from sqlmodel import col, false, or_
 
 
 class Specification[T](ABC):
@@ -79,6 +79,26 @@ class AllSpecification[T](Specification[T]):
         if not self._specs:
             return true()
         return and_(*(spec.as_sql() for spec in self._specs))
+
+
+class AnySpecification[T](Specification[T]):
+    """Specification for ALL logic."""
+
+    def __init__(self) -> None:
+        """Create empty list of specifications."""
+        self._specs: list[Specification[T]] = []
+
+    def append(self, spec: Specification[T]) -> AnySpecification[T]:
+        """Add a specification."""
+        self._specs.append(spec)
+        return self
+
+    @override
+    def as_sql(self) -> ColumnElement[bool]:
+        """Return the query for the specification."""
+        if not self._specs:
+            return false()
+        return or_(*(spec.as_sql() for spec in self._specs))
 
 
 class ParentSpecification[T](Specification[T]):

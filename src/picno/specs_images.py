@@ -17,6 +17,7 @@ from .model import (
 )
 from .specs import (
     AllSpecification,
+    AnySpecification,
     FieldIsSpecification,
     ParentSpecification,
     Specification,
@@ -151,29 +152,90 @@ class HasPersonImageSpec(ImageSpecification):
         )
 
 
-dict_items = type({}.items())
+class IdIsImageSpec(ParentSpecification[Image]):
+    """Filter on images with a specific ID."""
+
+    def __init__(self, id: int) -> None:
+        """Set the given values."""
+        super().__init__(FieldIsSpecification(Image, 'id', id, False))
+
+
+class CameraModelIsImageSpec(ParentSpecification[Image]):
+    """Specification for when the name should be the same."""
+
+    def __init__(self, name: str, case_insensitive: bool = True) -> None:
+        """Set the given values."""
+        super().__init__(
+            StrIsSpecification(Image, 'camera_model', name, case_insensitive)
+        )
+
+
+class CameraModelContainsImageSpec(ParentSpecification[Image]):
+    """Specification for when the name contains text."""
+
+    def __init__(self, text: str, case_insensitive: bool = True) -> None:
+        """Set the given values."""
+        super().__init__(
+            StrContainsSpecification(
+                Image, 'camera_model', text, case_insensitive
+            )
+        )
+
+
+# dict_items = type({}.items())
 
 
 @dataclass(frozen=True)
 class ImageFilter(Filter[ImageSpecification]):
     """Class for Image Filter builder."""
 
+    id: int | None = None
+    id__any: list[int] | None = None
     name: str | None = None
     name__ci: str | None = None
+    name__any: list[str] | None = None
+    name__any_ci: list[str] | None = None
+
     name__contains: list[str] | None = None
     name__contains_ci: list[str] | None = None
+    name__contains_any: list[str] | None = None
+    name__contains_any_ci: list[str] | None = None
+
+    camera_model: str | None = None
+    camera_model__ci: str | None = None
+    camera_model__any: list[str] | None = None
+    camera_model__any_ci: list[str] | None = None
+
+    camera_model__contains: list[str] | None = None
+    camera_model__contains_ci: list[str] | None = None
+    camera_model__contains_any: list[str] | None = None
+    camera_model__contains_any_ci: list[str] | None = None
+
     path_name: str | None = None
     path_name__ci: str | None = None
     path_name__contains: list[str] | None = None
     path_name__contains_ci: list[str] | None = None
+
     has_location: bool | None = None
     status: ResourceStatus | None = None
     favourite: bool | None = None
     label: list[str] | None = None
 
-    def get_specifications(self) -> ImageSpecification | None:  # noqa: PLR0912
+    def get_specifications(self) -> ImageSpecification | None:  # noqa: PLR0912, PLR0915
         """Builder for Image Specifications."""
         specs = ImageAllSpecification()
+
+        # --- ID
+        if self.id:
+            specs.append(IdIsImageSpec(self.id))
+
+        if self.id__any:
+            any_spec = AnySpecification[Image]()
+            for id in self.id__any:
+                any_spec.append(IdIsImageSpec(id))
+            specs.append(any_spec)
+
+        # --- Name
 
         if self.name:
             specs.append(
@@ -185,17 +247,29 @@ class ImageFilter(Filter[ImageSpecification]):
                 NameIsImageSpec(name=self.name__ci, case_insensitive=True)
             )
 
-        if self.path_name:
-            specs.append(
-                PathNameIsImageSpec(path=self.path_name, case_insensitive=False)
-            )
+        if self.name__any:
+            any_spec = AnySpecification[Image]()
+            for name in self.name__any:
+                any_spec.append(NameIsImageSpec(name, False))
+            specs.append(any_spec)
 
-        if self.path_name__ci:
-            specs.append(
-                PathNameIsImageSpec(
-                    path=self.path_name__ci, case_insensitive=True
-                )
-            )
+        if self.name__any_ci:
+            any_spec = AnySpecification[Image]()
+            for name in self.name__any_ci:
+                any_spec.append(NameIsImageSpec(name, True))
+            specs.append(any_spec)
+
+        if self.name__contains_any:
+            any_spec = AnySpecification[Image]()
+            for name in self.name__contains_any:
+                any_spec.append(NameContainsImageSpec(name, False))
+            specs.append(any_spec)
+
+        if self.name__contains_any_ci:
+            any_spec = AnySpecification[Image]()
+            for name in self.name__contains_any_ci:
+                any_spec.append(NameContainsImageSpec(name, True))
+            specs.append(any_spec)
 
         for value in self.name__contains or []:
             specs.append(
@@ -215,6 +289,71 @@ class ImageFilter(Filter[ImageSpecification]):
         for value in self.path_name__contains_ci or []:
             specs.append(
                 PathNameContainsImageSpec(text=value, case_insensitive=True)
+            )
+
+        ## --- Camera Model
+
+        if self.camera_model:
+            specs.append(
+                CameraModelIsImageSpec(
+                    name=self.camera_model, case_insensitive=False
+                )
+            )
+
+        if self.camera_model__ci:
+            specs.append(
+                CameraModelIsImageSpec(
+                    name=self.camera_model__ci, case_insensitive=True
+                )
+            )
+
+        if self.camera_model__any:
+            any_spec = AnySpecification[Image]()
+            for name in self.camera_model__any:
+                any_spec.append(CameraModelIsImageSpec(name, False))
+            specs.append(any_spec)
+
+        if self.camera_model__any_ci:
+            any_spec = AnySpecification[Image]()
+            for name in self.camera_model__any_ci:
+                any_spec.append(CameraModelIsImageSpec(name, True))
+            specs.append(any_spec)
+
+        if self.camera_model__contains:
+            any_spec = AnySpecification[Image]()
+            for name in self.camera_model__contains:
+                any_spec.append(CameraModelContainsImageSpec(name, False))
+            specs.append(any_spec)
+
+        if self.camera_model__contains_ci:
+            any_spec = AnySpecification[Image]()
+            for name in self.camera_model__contains_ci:
+                any_spec.append(CameraModelContainsImageSpec(name, True))
+            specs.append(any_spec)
+
+        if self.camera_model__contains_any:
+            any_spec = AnySpecification[Image]()
+            for name in self.camera_model__contains_any:
+                any_spec.append(CameraModelContainsImageSpec(name, False))
+            specs.append(any_spec)
+
+        if self.camera_model__contains_any_ci:
+            any_spec = AnySpecification[Image]()
+            for name in self.camera_model__contains_any_ci:
+                any_spec.append(CameraModelContainsImageSpec(name, True))
+            specs.append(any_spec)
+
+        # --- OTHERS
+        if self.path_name:
+            specs.append(
+                PathNameIsImageSpec(path=self.path_name, case_insensitive=False)
+            )
+
+        if self.path_name__ci:
+            specs.append(
+                PathNameIsImageSpec(
+                    path=self.path_name__ci, case_insensitive=True
+                )
             )
 
         if self.has_location is not None:

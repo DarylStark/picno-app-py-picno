@@ -117,6 +117,8 @@ def with_filtering(
                 help_text_notes.append('case insensitive')
             if 'contains' in flags:
                 help_text_notes.append('containing')
+            if 'any' in flags:
+                help_text_notes.append('any')
 
             if contains_list_type(field.type):
                 help_text_notes.append('repeatable')

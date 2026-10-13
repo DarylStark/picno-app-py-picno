@@ -72,7 +72,10 @@ def ls(
                     TableColumn('Megapixels', lambda image: image.megapixels),
                     TableColumn('Datetime', lambda image: image.date or ''),
                     TableColumn(
-                        'Camera', lambda image: image.camera_model or ''
+                        'Camera make', lambda image: image.camera_make or ''
+                    ),
+                    TableColumn(
+                        'Camera model', lambda image: image.camera_model or ''
                     ),
                     TableColumn(
                         'Has location',

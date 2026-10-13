@@ -16,7 +16,11 @@ from .executor import Executor
 from .executor_run_command_list import create_run_command_list
 from .model import Image
 from .project import Project
-from .specs_images import ImageSpecification, PathNameIsImageSpec
+from .specs_images import (
+    ImageSpecification,
+    NameIsImageSpec,
+    PathNameIsImageSpec,
+)
 
 ProgressCallbackStartScanning = Callable[[], None]
 ProgressCallbackDoneScanning = Callable[[list[Path]], None]
@@ -186,6 +190,19 @@ class ProjectManager:
             == 0
         )
 
+    def _is_existing_title(self, image: Image) -> bool:
+        """Check if a title is already in the database."""
+        if image.title is None:
+            return False
+        return (
+            len(
+                self.database.get_images(
+                    specification=NameIsImageSpec(name=image.title)
+                )
+            )
+            > 0
+        )
+
     def _get_new_files_in_data_directory(
         self,
         *,
@@ -207,10 +224,24 @@ class ProjectManager:
 
         if callback_processing_image:
             callback_processing_image(len(all_media), 0)
+        added_titles: list[str] = []
         for idx, media in enumerate(all_media):
             if self._is_new_image(media):
                 image_obj = self.get_image_object_from_file(media)
                 image_obj.physical_file = self._get_relative_path(media)
+
+                if (
+                    self._is_existing_title(image_obj)
+                    or image_obj.title in added_titles
+                ):
+                    name_extension = (
+                        f' - {datetime.now().strftime("%Y%m%d_%H%M%S")}-{idx}'
+                    )
+                    image_obj.title = (
+                        f'{media.stem}{name_extension}{media.suffix}'
+                    )
+
+                added_titles.append(image_obj.title or '')
                 new_data.append(image_obj)
             if callback_processing_image:
                 callback_processing_image(len(all_media), idx + 1)
@@ -263,7 +294,6 @@ class ProjectManager:
         exec_type = executors.get(executor)
         if not exec_type:
             raise ValueError('Unknown executor')
-            return
 
         exec = exec_type(self._structure.data_folder, options)
         exec.start()

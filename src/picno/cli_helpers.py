@@ -238,6 +238,20 @@ class FilterParamBuilder[SqlTable: SQLModel]:
                 NumberSpecifier.LT,
             ]
         ]
+        rv.extend(
+            [
+                self._create_param(
+                    field_type, number_specifier=specifier, not_flag=True
+                )
+                for specifier in [
+                    None,
+                    NumberSpecifier.GE,
+                    NumberSpecifier.GT,
+                    NumberSpecifier.LE,
+                    NumberSpecifier.LT,
+                ]
+            ]
+        )
         rv.append(self._create_param(field_type, any=True))
         return rv
 

@@ -2,6 +2,7 @@
 
 from typer import Argument, Context, Option, Typer
 
+from picno.filter import Filter
 from picno.model import Person
 from picno.specs import Specification
 
@@ -19,7 +20,8 @@ from .cli_helpers import (
 from .database import RetrieveOption
 
 persons = Typer(name='persons', help='Person management')
-filter_builder = FilterParamBuilder(Person)
+filter = Filter(Person)
+filter_builder = FilterParamBuilder(filter)
 
 
 @persons.command(name='ls', help='List persons')

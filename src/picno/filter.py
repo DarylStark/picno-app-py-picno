@@ -7,18 +7,20 @@ from typing import Any, get_args
 
 from sqlmodel import Column, SQLModel
 
+from picno.model import Image, ImageLabelLink, ImagePersonLink, Label, Person
 from picno.specs import (
     AllSpecification,
     AnySpecification,
     FieldIsSpecification,
     NotSpecification,
     NumercFieldSpecification,
+    RelationshipSpec,
     Specification,
     SpecType,
     StrContainsSpecification,
 )
 
-# TODO: Add filtering on relationships
+# TODO: Add filtering for nullable fields (--camera-makt--not-set, for instance)
 
 
 def _annotation_contains_type(annotation: Any, search_type: type) -> bool:  # ruff: ignore[ANN401]
@@ -58,12 +60,24 @@ def _get_column(model: type[SQLModel], column: str) -> Column | None:
 
 
 @dataclass
+class RelationshipFilter:
+    """Filter fields for a relationship."""
+
+    other_table: type[SQLModel]
+    link_table: type[SQLModel]
+    link_table_field: str
+    link_table_other_field: str
+    search_field: str
+
+
+@dataclass
 class FilterField:
     """Field to filter on."""
 
     name: str
-    is_unique: bool
     field_type: type
+    is_unique: bool = False
+    relationship: RelationshipFilter | None = None
 
 
 @dataclass
@@ -89,13 +103,26 @@ class FilterGivenValue[ValueType]:
     any_field: list[FilterValue[ValueType]] = field(default_factory=list)
 
 
+@dataclass
+class RelationShipFilter:
+    """Field for a relationship filter."""
+
+    name: str
+
+
 class Filter[SqlTable: SQLModel]:
     """Filter type."""
 
-    def __init__(self, model: type[SqlTable]) -> None:
+    def __init__(
+        self,
+        model: type[SqlTable],
+        *,
+        relationship_filters: dict[str, RelationshipFilter] | None = None,
+    ) -> None:
         """Retrieve the correct filtering fields."""
         self._filter_fields: dict[str, FilterField] = {}
         self._model = model
+        self._relationship_filters = relationship_filters or {}
 
         possible_types = [str, int, bool, Enum]
 
@@ -123,6 +150,15 @@ class Filter[SqlTable: SQLModel]:
                 is_unique=is_unique,
                 field_type=field_annotation_type,
             )
+
+        if relationship_filters:
+            for relation_name, relation_details in relationship_filters.items():
+                self._filter_fields[relation_name] = FilterField(
+                    name=relation_name,
+                    is_unique=False,
+                    field_type=str,
+                    relationship=relation_details,
+                )
 
     def _get_field_is_spec(
         self, field_name: str, filter: FilterValue
@@ -160,6 +196,23 @@ class Filter[SqlTable: SQLModel]:
 
         all_spec = AllSpecification[SqlTable]()
         for given_value in given_values:
+            if given_value.name in self._relationship_filters:
+                filter = self._relationship_filters[given_value.name]
+                if not given_value.precise_value:
+                    continue
+                all_spec.append(
+                    RelationshipSpec(
+                        model_a=self._model,
+                        model_b=filter.other_table,
+                        link_table=filter.link_table,
+                        link_table_field_a=filter.link_table_field,
+                        link_table_field_b=filter.link_table_other_field,
+                        search_field=filter.search_field,
+                        search_value=given_value.precise_value.value,
+                    )
+                )
+                continue
+
             if given_value.precise_value:
                 for spec in self._get_field_is_spec(
                     given_value.name, given_value.precise_value
@@ -204,3 +257,29 @@ class Filter[SqlTable: SQLModel]:
     def filter_fields(self) -> dict[str, FilterField]:
         """Property for all filter fields."""
         return self._filter_fields
+
+
+class ImageFilter(Filter[Image]):
+    """Filter for images."""
+
+    def __init__(self) -> None:
+        """Set default values."""
+        super().__init__(
+            Image,
+            relationship_filters={
+                'label': RelationshipFilter(
+                    other_table=Label,
+                    link_table=ImageLabelLink,
+                    link_table_field='image_id',
+                    link_table_other_field='label_id',
+                    search_field='name',
+                ),
+                'person': RelationshipFilter(
+                    other_table=Person,
+                    link_table=ImagePersonLink,
+                    link_table_field='image_id',
+                    link_table_other_field='person_id',
+                    search_field='name',
+                ),
+            },
+        )

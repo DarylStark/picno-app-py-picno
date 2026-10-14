@@ -6,6 +6,7 @@ import pytest
 from sqlmodel import SQLModel
 
 from picno.cli_helpers import FilterParamBuilder
+from picno.filter import Filter
 from picno.model import Image, Person
 
 
@@ -16,7 +17,7 @@ def _check_type_annotation(annotation: Any, required: Any) -> bool:  # noqa: ANN
 @pytest.mark.parametrize('type', [Image, Person])
 def test_filter_param_builder_for_all(type: type[SQLModel]) -> None:
     """Test the Filter Param Builder for images."""
-    params = FilterParamBuilder(Image).fields
+    params = FilterParamBuilder(Filter(type)).fields
     fields = {param.name: param.annotation for param in params}
 
     assert 'id' in fields
@@ -36,7 +37,7 @@ def test_filter_param_builder_for_all(type: type[SQLModel]) -> None:
 
 def test_filter_param_builder_for_images() -> None:
     """Test the Filter Param Builder for images."""
-    params = FilterParamBuilder(Image).fields
+    params = FilterParamBuilder(Filter(Image)).fields
     fields = {param.name: param.annotation for param in params}
 
     assert 'title' in fields
@@ -55,15 +56,17 @@ def test_filter_param_builder_for_images() -> None:
 
 def test_filter_param_builder_for_persons() -> None:
     """Test the Filter Param Builder for persons."""
-    params = FilterParamBuilder(Person).fields
+    params = FilterParamBuilder(Filter(Image)).fields
     fields = {param.name: param.annotation for param in params}
 
-    assert 'name' in fields
-    assert 'name__any' in fields
-    assert 'name__ci' in fields
-    assert 'name__contains_ci' in fields
+    assert 'title' in fields
+    assert 'title__any' in fields
+    assert 'title__ci' in fields
+    assert 'title__contains_ci' in fields
 
-    assert _check_type_annotation(fields['name'], str | None)
-    assert _check_type_annotation(fields['name__any'], list[str] | None)
-    assert _check_type_annotation(fields['name__ci'], str | None)
-    assert _check_type_annotation(fields['name__contains_ci'], list[str] | None)
+    assert _check_type_annotation(fields['title'], str | None)
+    assert _check_type_annotation(fields['title__any'], list[str] | None)
+    assert _check_type_annotation(fields['title__ci'], str | None)
+    assert _check_type_annotation(
+        fields['title__contains_ci'], list[str] | None
+    )

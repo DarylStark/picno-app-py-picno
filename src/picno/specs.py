@@ -6,7 +6,7 @@ from typing import override
 
 from sqlalchemy import and_, true
 from sqlalchemy.sql.elements import ColumnElement
-from sqlmodel import SQLModel, col, false, or_
+from sqlmodel import SQLModel, col, exists, false, or_, select
 
 
 class Specification[SqlTable](ABC):
@@ -145,6 +145,53 @@ class FieldIsSpecification[SqlTable, T2](Specification[SqlTable]):
         if self._case_insensitive:
             return col(field).ilike(self._expected_value)
         return col(field) == self._expected_value
+
+
+class RelationshipSpec[
+    SqlTableA: SQLModel,
+    SqlTableB: SQLModel,
+    SqlTableC: SQLModel,
+](Specification[SqlTableA]):
+    """Filter on model A via relationship to model B through link table."""
+
+    def __init__(
+        self,
+        model_a: type[SqlTableA],
+        model_b: type[SqlTableB],
+        link_table: type[SqlTableC],
+        link_table_field_a: str,
+        link_table_field_b: str,
+        search_field: str,
+        search_value: str | None,
+    ) -> None:
+        """Set given values."""
+        self._search_value = search_value
+        self._model_a = model_a
+        self._model_b = model_b
+        self._link_table = link_table
+        self._link_table_field_a = link_table_field_a
+        self._link_table_field_b = link_table_field_b
+        self._search_field = search_field
+
+    @override
+    def as_sql(self) -> ColumnElement[bool]:
+        model_a_id = getattr(self._model_a, 'id')  # noqa: B009
+        model_b_id = getattr(self._model_b, 'id')  # noqa: B009
+        link_a = getattr(self._link_table, self._link_table_field_a)
+        link_b = getattr(self._link_table, self._link_table_field_b)
+        search_col = getattr(self._model_b, self._search_field)
+
+        return exists(
+            select(1)
+            .select_from(self._link_table)
+            .join(self._model_b, model_b_id == link_b)
+            .where(
+                and_(
+                    link_a == model_a_id,
+                    search_col == self._search_value,
+                )
+            )
+        )
 
 
 class StrIsSpecification[SqlTable](Specification[SqlTable]):

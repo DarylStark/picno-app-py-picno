@@ -13,6 +13,7 @@ from picno.cli_helpers import (
     with_filters,
 )
 from picno.database import RetrieveOption
+from picno.filter import ImageFilter
 from picno.model import Image, ResourceStatus
 from picno.specs import Specification
 
@@ -20,7 +21,8 @@ from .cli_context import get_initialized_project
 from .cli_format import TableColumn, print_table
 
 images = Typer(name='images', help='Image management')
-filter_builder = FilterParamBuilder(Image)
+filter = ImageFilter()
+filter_builder = FilterParamBuilder(filter)
 
 
 class OutputFormat(Enum):

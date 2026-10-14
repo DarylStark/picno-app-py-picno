@@ -127,13 +127,12 @@ class FilterParamBuilder[SqlTable: SQLModel]:
 
     def __init__(
         self,
-        model: type[SqlTable],
+        filter_obj: Filter[SqlTable],
         filter_group: str = 'Filter',
         filter_prefix: str | None = None,
     ) -> None:
         """Set values."""
-        self._model = model
-        self._filter = Filter(model)
+        self._filter: Filter[SqlTable] = filter_obj
         self._filter_group = filter_group
         self._filter_prefix = filter_prefix
         self._fields = self.create_params()
@@ -213,16 +212,28 @@ class FilterParamBuilder[SqlTable: SQLModel]:
     def _create_params_for_str(
         self, field_type: FilterField
     ) -> list[inspect.Parameter]:
-        rv = [
-            self._create_param(
-                field_type,
-                contains=value[0],
-                case_insensitive=value[1],
-                any=value[2],
-                not_flag=value[3],
-            )
-            for value in list(product([False, True], repeat=4))
-        ]
+        rv = []
+        if field_type.relationship is None:
+            rv = [
+                self._create_param(
+                    field_type,
+                    contains=value[0],
+                    case_insensitive=value[1],
+                    any=value[2],
+                    not_flag=value[3],
+                )
+                for value in list(product([False, True], repeat=4))
+            ]
+        else:
+            rv = [
+                self._create_param(
+                    field_type,
+                    contains=False,
+                    case_insensitive=False,
+                    any=False,
+                    not_flag=False,
+                )
+            ]
         return rv
 
     def _create_params_for_int(

@@ -8,6 +8,7 @@ from picno.cli_helpers import (
     create_update_confirm_callback,
     with_filters,
 )
+from picno.filter import Filter
 from picno.model import Label
 from picno.specs import Specification
 
@@ -15,7 +16,8 @@ from .cli_context import get_initialized_project
 from .cli_format import TableColumn, print_table
 
 labels = Typer(name='labels', help='Label management')
-filter_builder = FilterParamBuilder(Label)
+filter = Filter(Label)
+filter_builder = FilterParamBuilder(filter)
 
 
 @labels.command(name='ls', help='List labels')

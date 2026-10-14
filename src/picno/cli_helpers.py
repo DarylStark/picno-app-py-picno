@@ -235,6 +235,21 @@ class FilterParamBuilder:
         rv.append(self._create_param(field_type, any=True))
         return rv
 
+    def _create_params_for_generic_field(
+        self, field_type: FilterField, *, any_field: bool = False
+    ) -> list[inspect.Parameter]:
+        anies = [False]
+        if any_field:
+            anies.append(True)
+        rv = [
+            self._create_param(
+                field_type,
+                any=value,
+            )
+            for value in anies
+        ]
+        return rv
+
     def _create_params_for_filterfield(
         self, field_type: FilterField
     ) -> list[inspect.Parameter]:
@@ -242,6 +257,12 @@ class FilterParamBuilder:
             return self._create_params_for_str(field_type)
         elif field_type.field_type is int:
             return self._create_params_for_int(field_type)
+        elif field_type.field_type is bool:
+            return self._create_params_for_generic_field(field_type)
+        elif issubclass(field_type.field_type, Enum):
+            return self._create_params_for_generic_field(
+                field_type, any_field=True
+            )
         return []
 
     def create_params(

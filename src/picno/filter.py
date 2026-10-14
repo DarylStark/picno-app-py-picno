@@ -1,7 +1,8 @@
 """Module with a Filter class for Images."""
 
 from dataclasses import dataclass, field
-from types import UnionType
+from enum import Enum
+from types import NoneType, UnionType
 from typing import Any, TypeVar, get_args
 
 from sqlmodel import Column, SQLModel
@@ -14,7 +15,6 @@ from picno.specs import (
     StrContainsSpecification,
 )
 
-# TODO: Add filters for boolean values.
 # TODO: Add negation filters (--title--not)
 # TODO: Add filtering on relationships
 
@@ -27,7 +27,20 @@ def _annotation_contains_type(annotation: Any, search_type: type) -> bool:  # ru
             for arg in get_args(annotation)
         )
 
-    return annotation is search_type
+    return annotation is search_type or issubclass(annotation, search_type)
+
+
+def _annotation_real_type(annotation: Any) -> type | None:  # noqa: ANN401
+    if isinstance(annotation, UnionType):
+        args = [
+            arg
+            for arg in get_args(annotation)
+            if arg is not None and arg is not NoneType
+        ]
+        if len(args) == 1:
+            return args[0]
+        return None
+    return annotation
 
 
 def _get_column(model: type[SQLModel], column: str) -> Column | None:
@@ -84,7 +97,7 @@ class Filter:
         self._filter_fields: dict[str, FilterField] = {}
         self._model = model
 
-        possible_types = [str, int]
+        possible_types = [str, int, bool, Enum]
 
         for field_name, field_type in model.model_fields.items():
             column = _get_column(model, field_name)
@@ -97,8 +110,10 @@ class Filter:
                 if _annotation_contains_type(
                     field_type.annotation, possible_type
                 ):
-                    field_annotation_type = possible_type
-                    break
+                    field_annotation_type = _annotation_real_type(
+                        field_type.annotation
+                    )
+                    pass
 
             if field_annotation_type is None:
                 continue

@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 from enum import Enum
 from types import NoneType, UnionType
-from typing import Any, TypeVar, get_args
+from typing import Any, get_args
 
 from sqlmodel import Column, SQLModel
 
@@ -11,7 +11,9 @@ from picno.specs import (
     AllSpecification,
     AnySpecification,
     FieldIsSpecification,
+    NumercFieldSpecification,
     Specification,
+    SpecType,
     StrContainsSpecification,
 )
 
@@ -86,10 +88,7 @@ class FilterGivenValue[ValueType]:
     any_field: list[FilterValue[ValueType]] = field(default_factory=list)
 
 
-SqlTable = TypeVar('SqlTable', bound=SQLModel)
-
-
-class Filter:
+class Filter[SqlTable: SQLModel]:
     """Filter type."""
 
     def __init__(self, model: type[SqlTable]) -> None:
@@ -99,8 +98,8 @@ class Filter:
 
         possible_types = [str, int, bool, Enum]
 
-        for field_name, field_type in model.model_fields.items():
-            column = _get_column(model, field_name)
+        for field_name, field_type in self._model.model_fields.items():
+            column = _get_column(self._model, field_name)
             if column is None:
                 continue
             is_unique = getattr(column, 'unique', True)
@@ -175,7 +174,22 @@ class Filter:
                         any_spec.append(spec)
                 all_spec.append(any_spec)
 
-            # TODO: Numeric specifications.
+            for operator in [
+                ('precise_value_lt', SpecType.LT),
+                ('precise_value_gt', SpecType.GT),
+                ('precise_value_le', SpecType.LE),
+                ('precise_value_ge', SpecType.GE),
+            ]:
+                field = getattr(given_value, operator[0], 0)
+                if field:
+                    all_spec.append(
+                        NumercFieldSpecification[SqlTable, int](
+                            self._model,
+                            given_value.name,
+                            field,
+                            spec_type=operator[1],
+                        )
+                    )
 
         return all_spec
 

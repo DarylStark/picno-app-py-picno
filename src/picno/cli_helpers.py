@@ -122,7 +122,7 @@ class NumberSpecifier(Enum):
 SqlTable = TypeVar('SqlTable', bound=SQLModel)
 
 
-class FilterParamBuilder:
+class FilterParamBuilder[SqlTable: SQLModel]:
     """Class to build filter parameters based on object."""
 
     def __init__(
@@ -315,13 +315,13 @@ class FilterParamBuilder:
                     for any_value in value
                 ]
             elif ge_field:
-                item.precise_value_ge = filter_value
+                item.precise_value_ge = value
             elif gt_field:
-                item.precise_value_gt = filter_value
+                item.precise_value_gt = value
             elif le_field:
-                item.precise_value_le = filter_value
+                item.precise_value_le = value
             elif lt_field:
-                item.precise_value_lt = filter_value
+                item.precise_value_lt = value
             else:
                 item.precise_value = filter_value
 

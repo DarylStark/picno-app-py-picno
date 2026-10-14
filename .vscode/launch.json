@@ -13,7 +13,9 @@
                 "images",
                 "ls",
                 "--title--contains",
-                "image"
+                "image",
+                "--id--le",
+                "10"
             ],
             "cwd": "${workspaceFolder}/tests/unmanaged_project",
             "python": "${workspaceFolder}/.venv/bin/python",

@@ -1,14 +1,15 @@
 """Module with the generic specification."""
 
 from abc import ABC, abstractmethod
+from enum import Enum
 from typing import override
 
 from sqlalchemy import and_, true
 from sqlalchemy.sql.elements import ColumnElement
-from sqlmodel import col, false, or_
+from sqlmodel import SQLModel, col, false, or_
 
 
-class Specification[T](ABC):
+class Specification[SqlTable](ABC):
     """Generic baseclass for Specifications."""
 
     @abstractmethod
@@ -16,11 +17,11 @@ class Specification[T](ABC):
         """Abstract method to create a SQL query object."""
 
 
-class AndSpecification[T](Specification[T]):
+class AndSpecification[SqlTable](Specification[SqlTable]):
     """Specification for AND logic."""
 
     def __init__(
-        self, spec_a: Specification[T], spec_b: Specification[T]
+        self, spec_a: Specification[SqlTable], spec_b: Specification[SqlTable]
     ) -> None:
         """Set the specification."""
         self._spec_a = spec_a
@@ -32,11 +33,11 @@ class AndSpecification[T](Specification[T]):
         return self._spec_a.as_sql() & self._spec_b.as_sql()
 
 
-class OrSpecification[T](Specification[T]):
+class OrSpecification[SqlTable](Specification[SqlTable]):
     """Specification for OR logic."""
 
     def __init__(
-        self, spec_a: Specification[T], spec_b: Specification[T]
+        self, spec_a: Specification[SqlTable], spec_b: Specification[SqlTable]
     ) -> None:
         """Set the specification."""
         self._spec_a = spec_a
@@ -48,10 +49,10 @@ class OrSpecification[T](Specification[T]):
         return self._spec_a.as_sql() & self._spec_b.as_sql()
 
 
-class NotSpecification[T](Specification[T]):
+class NotSpecification[SqlTable](Specification[SqlTable]):
     """Specification for NOT logic."""
 
-    def __init__(self, spec: Specification[T]) -> None:
+    def __init__(self, spec: Specification[SqlTable]) -> None:
         """Set the specification."""
         self._spec = spec
 
@@ -61,14 +62,16 @@ class NotSpecification[T](Specification[T]):
         return ~self._spec.as_sql()
 
 
-class AllSpecification[T](Specification[T]):
+class AllSpecification[SqlTable](Specification[SqlTable]):
     """Specification for ALL logic."""
 
     def __init__(self) -> None:
         """Create empty list of specifications."""
-        self._specs: list[Specification[T]] = []
+        self._specs: list[Specification[SqlTable]] = []
 
-    def append(self, spec: Specification[T]) -> AllSpecification[T]:
+    def append(
+        self, spec: Specification[SqlTable]
+    ) -> AllSpecification[SqlTable]:
         """Add a specification."""
         self._specs.append(spec)
         return self
@@ -81,14 +84,16 @@ class AllSpecification[T](Specification[T]):
         return and_(*(spec.as_sql() for spec in self._specs))
 
 
-class AnySpecification[T](Specification[T]):
+class AnySpecification[SqlTable](Specification[SqlTable]):
     """Specification for ALL logic."""
 
     def __init__(self) -> None:
         """Create empty list of specifications."""
-        self._specs: list[Specification[T]] = []
+        self._specs: list[Specification[SqlTable]] = []
 
-    def append(self, spec: Specification[T]) -> AnySpecification[T]:
+    def append(
+        self, spec: Specification[SqlTable]
+    ) -> AnySpecification[SqlTable]:
         """Add a specification."""
         self._specs.append(spec)
         return self
@@ -101,13 +106,13 @@ class AnySpecification[T](Specification[T]):
         return or_(*(spec.as_sql() for spec in self._specs))
 
 
-class ParentSpecification[T](Specification[T]):
+class ParentSpecification[SqlTable](Specification[SqlTable]):
     """Specification with a parent.
 
     Can be used to simplify specifications.
     """
 
-    def __init__(self, parent: Specification[T]) -> None:
+    def __init__(self, parent: Specification[SqlTable]) -> None:
         """Set the parent specification."""
         self._parent_spec = parent
 
@@ -117,12 +122,12 @@ class ParentSpecification[T](Specification[T]):
         return self._parent_spec.as_sql()
 
 
-class FieldIsSpecification[T, T2](Specification[T]):
+class FieldIsSpecification[SqlTable, T2](Specification[SqlTable]):
     """Specification that checks if a specific field is equal."""
 
     def __init__(
         self,
-        model: type[T],
+        model: type[SqlTable],
         field_name: str,
         expected_value: T2,
         case_insensitive: bool = True,
@@ -142,12 +147,12 @@ class FieldIsSpecification[T, T2](Specification[T]):
         return col(field) == self._expected_value
 
 
-class StrIsSpecification[T](Specification[T]):
+class StrIsSpecification[SqlTable](Specification[SqlTable]):
     """Specification that checks if a specific string is equal."""
 
     def __init__(
         self,
-        model: type[T],
+        model: type[SqlTable],
         field_name: str,
         expected_value: str,
         case_insensitive: bool = True,
@@ -167,12 +172,12 @@ class StrIsSpecification[T](Specification[T]):
         return col(field) == self._expected_value
 
 
-class StrContainsSpecification[T](Specification[T]):
+class StrContainsSpecification[SqlTable](Specification[SqlTable]):
     """Specification that checks if a specific string is equal."""
 
     def __init__(
         self,
-        model: type[T],
+        model: type[SqlTable],
         field_name: str,
         search_value: str,
         case_insensitive: bool = True,
@@ -190,3 +195,48 @@ class StrContainsSpecification[T](Specification[T]):
         if self._case_insensitive:
             return col(field).ilike(f'%{self._search_value}%')
         return col(field).contains(self._search_value)
+
+
+class SpecType(Enum):
+    """Enum for specification types."""
+
+    EQ = 0
+    LE = 1
+    LT = 2
+    GE = 3
+    GT = 4
+
+
+class NumercFieldSpecification[SqlTable: SQLModel, NumT: int | float](
+    Specification[SqlTable]
+):
+    """Specification for numeric fields."""
+
+    def __init__(
+        self,
+        model: type[SqlTable],
+        field_name: str,
+        expected_value: NumT,
+        *,
+        spec_type: SpecType = SpecType.EQ,
+    ) -> None:
+        """Set the default values."""
+        self._model = model
+        self._field_name = field_name
+        self._expected_value = expected_value
+        self._spec_type = spec_type
+
+    @override
+    def as_sql(self) -> ColumnElement[bool]:
+        """Return the query for the specification."""
+        field = getattr(self._model, self._field_name)
+        if self._spec_type == SpecType.EQ:
+            return field == self._expected_value
+        elif self._spec_type == SpecType.LE:
+            return field <= self._expected_value
+        elif self._spec_type == SpecType.LT:
+            return field < self._expected_value
+        elif self._spec_type == SpecType.GE:
+            return field >= self._expected_value
+        elif self._spec_type == SpecType.GT:
+            return field > self._expected_value

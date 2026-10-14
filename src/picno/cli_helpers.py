@@ -146,9 +146,12 @@ class FilterParamBuilder[SqlTable: SQLModel]:
         case_insensitive: bool = False,
         any: bool = False,
         number_specifier: NumberSpecifier | None = None,
+        not_flag: bool = False,
     ) -> str:
         name = field_type.name
         flags: list[str] = []
+        if not_flag:
+            flags.append('not')
         if contains:
             flags.append('contains')
         if case_insensitive:
@@ -184,6 +187,7 @@ class FilterParamBuilder[SqlTable: SQLModel]:
         contains: bool = False,
         case_insensitive: bool = False,
         any: bool = False,
+        not_flag: bool = False,
         number_specifier: NumberSpecifier | None = None,
     ) -> inspect.Parameter:
         return inspect.Parameter(
@@ -192,6 +196,7 @@ class FilterParamBuilder[SqlTable: SQLModel]:
                 contains=contains,
                 case_insensitive=case_insensitive,
                 any=any,
+                not_flag=not_flag,
                 number_specifier=number_specifier,
             ),
             kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
@@ -214,8 +219,9 @@ class FilterParamBuilder[SqlTable: SQLModel]:
                 contains=value[0],
                 case_insensitive=value[1],
                 any=value[2],
+                not_flag=value[3],
             )
-            for value in list(product([False, True], repeat=3))
+            for value in list(product([False, True], repeat=4))
         ]
         return rv
 
@@ -242,12 +248,15 @@ class FilterParamBuilder[SqlTable: SQLModel]:
         if any_field:
             anies.append(True)
         rv = [
-            self._create_param(
-                field_type,
-                any=value,
-            )
+            self._create_param(field_type, any=value, not_flag=False)
             for value in anies
         ]
+        rv.extend(
+            [
+                self._create_param(field_type, any=value, not_flag=True)
+                for value in anies
+            ]
+        )
         return rv
 
     def _create_params_for_filterfield(
@@ -300,9 +309,13 @@ class FilterParamBuilder[SqlTable: SQLModel]:
             gt_field = 'gt' in flags
             le_field = 'le' in flags
             lt_field = 'lt' in flags
+            negate = 'not' in flags
 
             filter_value = FilterValue(
-                value=value, case_sensistive=case_sensitive, contains=contains
+                value=value,
+                case_sensistive=case_sensitive,
+                contains=contains,
+                negate=negate,
             )
 
             if any_field:

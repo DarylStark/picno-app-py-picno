@@ -11,13 +11,13 @@ from picno.specs import (
     AllSpecification,
     AnySpecification,
     FieldIsSpecification,
+    NotSpecification,
     NumercFieldSpecification,
     Specification,
     SpecType,
     StrContainsSpecification,
 )
 
-# TODO: Add negation filters (--title--not)
 # TODO: Add filtering on relationships
 
 
@@ -73,6 +73,7 @@ class FilterValue[ValueType]:
     value: ValueType
     case_sensistive: bool = False
     contains: bool = False
+    negate: bool = False
 
 
 @dataclass
@@ -150,7 +151,7 @@ class Filter[SqlTable: SQLModel]:
             for v in value
         ]
 
-    def get_specification(
+    def get_specification(  # noqa: PLR0912
         self, given_values: list[FilterGivenValue]
     ) -> Specification[SqlTable] | None:
         """Create a specification from given filter values."""
@@ -163,7 +164,10 @@ class Filter[SqlTable: SQLModel]:
                 for spec in self._get_field_is_spec(
                     given_value.name, given_value.precise_value
                 ):
-                    all_spec.append(spec)
+                    if given_value.precise_value.negate:
+                        all_spec.append(NotSpecification(spec))
+                    else:
+                        all_spec.append(spec)
 
             if given_value.any_field:
                 any_spec = AnySpecification()
@@ -171,7 +175,10 @@ class Filter[SqlTable: SQLModel]:
                     for spec in self._get_field_is_spec(
                         given_value.name, filter
                     ):
-                        any_spec.append(spec)
+                        if filter.negate:
+                            any_spec.append(NotSpecification(spec))
+                        else:
+                            any_spec.append(spec)
                 all_spec.append(any_spec)
 
             for operator in [

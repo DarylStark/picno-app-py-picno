@@ -144,6 +144,7 @@ class RelationshipSpec[
     SqlTableA: SQLModel,
     SqlTableB: SQLModel,
     SqlTableC: SQLModel,
+    ValueType,
 ](Specification[SqlTableA]):
     """Filter on model A via relationship to model B through link table."""
 
@@ -155,7 +156,7 @@ class RelationshipSpec[
         link_table_field_a: str,
         link_table_field_b: str,
         search_field: str,
-        search_value: str | None,
+        search_value: ValueType,
     ) -> None:
         """Set given values."""
         self._search_value = search_value

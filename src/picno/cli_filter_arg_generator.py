@@ -13,10 +13,9 @@ from picno.resource_filter import FilterBuilder, ResourceFilter
 class CliFilterArgGenerator[SqlTable: SQLModel]:
     """Class to generate Typer args for filters."""
 
-    def __init__(self, model: type[SqlTable]) -> None:
+    def __init__(self, filter_builder: FilterBuilder[SqlTable]) -> None:
         """Set default values."""
-        self._model = model
-        self._resource_filter = FilterBuilder(self._model)
+        self._resource_filter = filter_builder
         self._signature_parameters: list[inspect.Parameter] = []
 
     @property

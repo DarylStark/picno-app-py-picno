@@ -10,16 +10,10 @@
             "request": "launch",
             "module": "picno",
             "args": [
-                "images",
+                "persons",
                 "ls",
-                "--id",
-                "1",
-                "--id",
-                "1..",
-                "--id",
-                "..2",
-                "--id",
-                "1..10"
+                "--label",
+                "Testfilter"
             ],
             "cwd": "${workspaceFolder}/tests/unmanaged_project",
             "python": "${workspaceFolder}/.venv/bin/python",

@@ -15,6 +15,7 @@ from picno.specs import (
     NotSpecification,
     NumercFieldSpecification,
     NumericOperatorType,
+    RelationshipSpec,
     Specification,
     StrSpecification,
 )
@@ -229,7 +230,80 @@ class FilterValueGeneric[SqlTable: SQLModel, ValueType](
 
 
 @dataclass
-class ResourceFieldFilter[SqlTable: SQLModel]:
+class FilterValueRelation[SqlTable: SQLModel, ValueType](
+    FilterValue[SqlTable, ValueType]
+):
+    """A value for a filter for a string."""
+
+    relationship_filter: RelationshipFilter | None = None
+    is_case_sensitive: bool = False
+
+    @override
+    def _as_spec(self) -> Specification[SqlTable]:
+        """Generate a specification for this filter."""
+        if not self.relationship_filter:
+            raise TypeError('Relationshipfilter not set')
+
+        rf = self.relationship_filter
+
+        return RelationshipSpec(
+            rf.model_a,
+            rf.model_b,
+            rf.link_table,
+            rf.link_table_field_a,
+            rf.link_table_field_b,
+            rf.search_field,
+            self.value,
+        )
+
+    @override
+    @classmethod
+    def from_value(
+        cls,
+        model: type[SqlTable],
+        field_name: str,
+        value: ValueType,
+        *,
+        is_any: bool = False,
+        relationship_filter: RelationshipFilter | None = None,
+    ) -> FilterValueRelation:
+        is_negated = False
+        if isinstance(value, str) and len(value) > 0:
+            is_negated = value[0] == '~'
+            if is_negated:
+                value = value[1:]  # ty: ignore[invalid-assignment]
+
+        """Create a object from value."""
+        return FilterValueRelation(
+            model=model,
+            field=field_name,
+            value=value,
+            is_negated=is_negated,
+            is_any=is_any,
+            relationship_filter=relationship_filter,
+        )
+
+
+@dataclass
+class RelationshipFilter[
+    SqlTableA: SQLModel,
+    SqlTableB: SQLModel,
+    SqlTableLink: SQLModel,
+    ValueType,
+]:
+    """Class that specifies a filter for a relationship."""
+
+    model_a: type[SqlTableA]
+    model_b: type[SqlTableB]
+    link_table: type[SqlTableLink]
+    link_table_field_a: str
+    link_table_field_b: str
+    search_field: str
+    search_field_type: type
+
+
+@dataclass
+class ResourceFilterField[SqlTable: SQLModel]:
     """A class that specifies a field that is filtered on."""
 
     field: str
@@ -257,7 +331,7 @@ class ResourceFieldFilter[SqlTable: SQLModel]:
 class ResourceFilter[SqlTable: SQLModel]:
     """A class for a filter for a model."""
 
-    fields: dict[str, ResourceFieldFilter[SqlTable]]
+    fields: dict[str, ResourceFilterField[SqlTable]]
 
     def as_spec(self) -> Specification[SqlTable]:
         """Generate a specification for this filter."""
@@ -271,21 +345,78 @@ class ResourceFilter[SqlTable: SQLModel]:
 
 
 @dataclass
-class FilterField[ValueType]:
+class FilterField[ValueType](ABC):
     """Class for a field that can be filtered on."""
 
     name: str
     type: type[ValueType]
+
+    @abstractmethod
+    def build_filter_value_type(
+        self, model: type[SQLModel], value: ValueType, is_any: bool
+    ) -> FilterValue:
+        """Generate a FilterValue type that fits this filter."""
+
+
+@dataclass
+class FilterFieldModelField[ValueType](FilterField[ValueType]):
+    """Class for a field that can be filtered on."""
+
     value_type: type[FilterValue]
+
+    @override
+    def build_filter_value_type(
+        self, model: type[SQLModel], value: ValueType, is_any: bool
+    ) -> FilterValue:
+        """Generate a FilterValue type that fits this filter."""
+        return self.value_type.from_value(
+            model=model, field_name=self.name, value=value, is_any=is_any
+        )
+
+
+@dataclass
+class FilterFieldRelation[ValueType](FilterField[ValueType]):
+    """Class for a field that can be filtered on."""
+
+    relationship_filter: RelationshipFilter
+
+    @override
+    def build_filter_value_type(
+        self, model: type[SQLModel], value: ValueType, is_any: bool
+    ) -> FilterValue:
+        """Generate a FilterValue type that fits this filter."""
+        new_value = value
+        if self.relationship_filter.search_field_type is int:
+            try:
+                new_value = int(value)  # ty: ignore[invalid-argument-type]
+            except ValueError as exc:
+                # TODO: Custom exception
+                raise ValueError(
+                    'Value could not be converted to int: "{value}"'
+                ) from exc
+
+        return FilterValueRelation.from_value(
+            model,
+            self.name,
+            new_value,
+            is_any=is_any,
+            relationship_filter=self.relationship_filter,
+        )
 
 
 class FilterBuilder[SqlTable: SQLModel]:
     """A class that can filter resources."""
 
-    def __init__(self, model: type[SqlTable]) -> None:
+    def __init__(
+        self,
+        model: type[SqlTable],
+        *,
+        relationship_filters: dict[str, RelationshipFilter] | None = None,
+    ) -> None:
         """Set the values."""
         self._model = model
         self._fields: dict[str, FilterField] = {}
+        self._relationsip_filters = relationship_filters
 
     def _get_type_from_annotation(self, annotation: Any) -> type:  # ruff: ignore[ANN401]
         """Check if a type list contains a specific object."""
@@ -304,6 +435,23 @@ class FilterBuilder[SqlTable: SQLModel]:
     def _generate_fields(self) -> None:
         """Generate the field list."""
         self._generate_from_model_fields()
+        self._generate_from_model_relationship_fields()
+
+    def _generate_from_model_relationship_fields(self) -> None:
+        """Generate fields from the model fields."""
+        if self._relationsip_filters is None:
+            return
+
+        for (
+            filter_name,
+            relationship_filter,
+        ) in self._relationsip_filters.items():
+            """Generate fields from the relationship fields."""
+            self._fields[filter_name] = FilterFieldRelation(
+                name=filter_name,
+                type=relationship_filter.search_field_type,
+                relationship_filter=relationship_filter,
+            )
 
     def _generate_from_model_fields(self) -> None:
         """Generate fields from the model fields."""
@@ -313,7 +461,7 @@ class FilterBuilder[SqlTable: SQLModel]:
                 int: FilterValueInt,
             }
             annotation = self._get_type_from_annotation(field_type.annotation)
-            self._fields[field_name] = FilterField(
+            self._fields[field_name] = FilterFieldModelField(
                 name=field_name,
                 type=annotation,
                 value_type=value_types.get(annotation, FilterValueGeneric),
@@ -350,7 +498,7 @@ class FilterBuilder[SqlTable: SQLModel]:
         field_name: str,
         value: str | int | bool,
         is_any: bool,
-        flt: ResourceFieldFilter[SqlTable],
+        flt: ResourceFilterField[SqlTable],
     ) -> None:
         """Create a Filter Value and append it to a Filter object."""
         if field_name not in self.fields:
@@ -358,9 +506,7 @@ class FilterBuilder[SqlTable: SQLModel]:
             raise ValueError(f'Field "{field_name}" cannot be filtered on')
 
         field = self.fields[field_name]
-        flt_value = field.value_type.from_value(
-            model=self._model, field_name=field_name, value=value, is_any=is_any
-        )
+        flt_value = field.build_filter_value_type(self._model, value, is_any)
 
         if flt_value.is_any:
             flt.any_spec.append(flt_value)
@@ -371,11 +517,11 @@ class FilterBuilder[SqlTable: SQLModel]:
         self, arguments: dict[str, str | int | bool | list[str] | list[int]]
     ) -> ResourceFilter[SqlTable]:
         """Convert given arguments to FilterValue objects."""
-        filter_values: dict[str, ResourceFieldFilter[SqlTable]] = {}
+        filter_values: dict[str, ResourceFilterField[SqlTable]] = {}
         for argument, value in arguments.items():
             field_name, is_any = self._get_argument_properties(argument)
             flt = filter_values.setdefault(
-                field_name, ResourceFieldFilter[SqlTable](field=field_name)
+                field_name, ResourceFilterField[SqlTable](field=field_name)
             )
 
             if isinstance(value, list):

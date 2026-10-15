@@ -13,14 +13,67 @@ from picno.cli_helpers import (
     with_filters,
 )
 from picno.database import RetrieveOption
-from picno.model import Image, ResourceStatus
-from picno.resource_filter import ResourceFilter
+from picno.model import (
+    Image,
+    ImageLabelLink,
+    ImagePersonLink,
+    Label,
+    Person,
+    ResourceStatus,
+)
+from picno.resource_filter import (
+    FilterBuilder,
+    RelationshipFilter,
+    ResourceFilter,
+)
 
 from .cli_context import get_initialized_project
 from .cli_format import TableColumn, print_table
 
 images = Typer(name='images', help='Image management')
-filter_gen = CliFilterArgGenerator(Image)
+filter_gen = CliFilterArgGenerator(
+    FilterBuilder(
+        Image,
+        relationship_filters={
+            'label': RelationshipFilter(
+                Image,
+                Label,
+                ImageLabelLink,
+                'image_id',
+                'label_id',
+                'name',
+                str,
+            ),
+            'label_id': RelationshipFilter(
+                Image,
+                Label,
+                ImageLabelLink,
+                'image_id',
+                'label_id',
+                'id',
+                int,
+            ),
+            'person': RelationshipFilter(
+                Image,
+                Person,
+                ImagePersonLink,
+                'image_id',
+                'person_id',
+                'name',
+                str,
+            ),
+            'person_id': RelationshipFilter(
+                Image,
+                Person,
+                ImagePersonLink,
+                'image_id',
+                'person_id',
+                'id',
+                int,
+            ),
+        },
+    )
+)
 
 
 class OutputFormat(Enum):

@@ -12,6 +12,7 @@ from rich.prompt import Confirm
 from sqlmodel import SQLModel
 from typer import Option
 
+from picno.cli_filter_arg_generator import CliFilterArgGenerator
 from picno.specs import Specification
 
 from .exceptions import InvalidArgumentInputError
@@ -105,6 +106,26 @@ def with_filters(
             filter_args,
             param_name=param_name,
             param_builder=builder.convert_args_filter,
+        )(func)
+
+    return decorator
+
+
+def with_filters_new(
+    filter_generator: CliFilterArgGenerator, *, param_name: str = '_filter'
+) -> Callable:
+    """Create a decorator for a filter arguments."""
+
+    def decorator(func: Callable) -> Callable:
+        """Decorator to add filters to CLI commands."""
+        filter_args: list[inspect.Parameter] = (
+            filter_generator.signature_parameters
+        )
+
+        return shared_filter_args(
+            filter_args,
+            param_name=param_name,
+            param_builder=filter_generator.parse_args,
         )(func)
 
     return decorator

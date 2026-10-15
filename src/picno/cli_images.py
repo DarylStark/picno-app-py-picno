@@ -5,24 +5,22 @@ from enum import Enum
 
 from typer import Argument, Context, Option, Typer
 
+from picno.cli_filter_arg_generator import CliFilterArgGenerator
 from picno.cli_helpers import (
-    FilterParamBuilder,
     create_label_confirm_callback,
     create_unlabel_confirm_callback,
     create_update_confirm_callback,
-    with_filters,
+    with_filters_new,
 )
 from picno.database import RetrieveOption
-from picno.filter import ImageFilter
 from picno.model import Image, ResourceStatus
-from picno.specs import Specification
+from picno.resource_filter import ResourceFilter
 
 from .cli_context import get_initialized_project
 from .cli_format import TableColumn, print_table
 
 images = Typer(name='images', help='Image management')
-filter = ImageFilter()
-filter_builder = FilterParamBuilder(filter)
+filter_gen = CliFilterArgGenerator(Image)
 
 
 class OutputFormat(Enum):
@@ -33,9 +31,9 @@ class OutputFormat(Enum):
 
 
 @images.command(name='ls', help='List images')
-@with_filters(filter_builder)
+@with_filters_new(filter_generator=filter_gen)
 def ls(
-    _filter: Specification[Image],
+    _filter: ResourceFilter[Image],
     ctx: Context,
     output_format: OutputFormat = Option(
         default=OutputFormat.TABLE, help='The way to output data'
@@ -46,7 +44,7 @@ def ls(
 
     # Retrieve the images
     images = db.get_images(
-        specification=_filter,
+        specification=_filter.as_spec(),
         options=[
             RetrieveOption.LOAD_IMAGE_LABELS,
             RetrieveOption.LOAD_IMAGE_PERSONS,
@@ -115,9 +113,9 @@ def ls(
 
 
 @images.command(name='set-status', help='Set the status for images')
-@with_filters(filter_builder)
+@with_filters_new(filter_generator=filter_gen)
 def set_status(
-    _filter: Specification[Image],
+    _filter: ResourceFilter[Image],
     ctx: Context,
     new_status: ResourceStatus = Argument(help='The status to set'),
     force: bool = Option(default=False, help="Don't ask for confirmation"),
@@ -127,16 +125,16 @@ def set_status(
     select_callback = create_update_confirm_callback(force, console, 'title')
     images = db.set_image_status(
         status=new_status,
-        specification=_filter,
+        specification=_filter.as_spec(),
         select_callback=select_callback,
     )
     console.print(f'Updated {len(images)} images')
 
 
 @images.command(name='label', help='Label specific images')
-@with_filters(filter_builder)
+@with_filters_new(filter_generator=filter_gen)
 def label(
-    _filter: Specification[Image],
+    _filter: ResourceFilter[Image],
     ctx: Context,
     label_name: str = Argument(help='The name of the label to add'),
     force: bool = Option(default=False, help="Don't ask for confirmation"),
@@ -146,16 +144,16 @@ def label(
     select_callback = create_label_confirm_callback(force, console, 'title')
     images = db.add_label_to_images(
         label_name,
-        specification=_filter,
+        specification=_filter.as_spec(),
         select_callback=select_callback,
     )
     console.print(f'Added label "{label_name}" to {len(images)} images')
 
 
 @images.command(name='unlabel', help='Unlabel specific images')
-@with_filters(filter_builder)
+@with_filters_new(filter_generator=filter_gen)
 def unlabel(
-    _filter: Specification[Image],
+    _filter: ResourceFilter[Image],
     ctx: Context,
     label_name: str = Argument(help='The name of the label to remove'),
     force: bool = Option(default=False, help="Don't ask for confirmation"),
@@ -165,16 +163,16 @@ def unlabel(
     select_callback = create_unlabel_confirm_callback(force, console, 'title')
     images = db.remove_label_from_images(
         label_name,
-        specification=_filter,
+        specification=_filter.as_spec(),
         select_callback=select_callback,
     )
     console.print(f'Removed label "{label_name}" from {len(images)} images')
 
 
 @images.command(name='favourite', help='Favourite specific images')
-@with_filters(filter_builder)
+@with_filters_new(filter_generator=filter_gen)
 def favourite(
-    _filter: Specification[Image],
+    _filter: ResourceFilter[Image],
     ctx: Context,
     force: bool = Option(default=False, help="Don't ask for confirmation"),
 ) -> None:
@@ -183,16 +181,16 @@ def favourite(
     select_callback = create_update_confirm_callback(force, console, 'title')
     images = db.set_favourite_for_images(
         favourite=True,
-        specification=_filter,
+        specification=_filter.as_spec(),
         select_callback=select_callback,
     )
     console.print(f'Set {len(images)} images as favourite')
 
 
 @images.command(name='unfavourite', help='Unfavourite specific images')
-@with_filters(filter_builder)
+@with_filters_new(filter_generator=filter_gen)
 def unfavourite(
-    _filter: Specification[Image],
+    _filter: ResourceFilter[Image],
     ctx: Context,
     force: bool = Option(default=False, help="Don't ask for confirmation"),
 ) -> None:
@@ -201,7 +199,7 @@ def unfavourite(
     select_callback = create_update_confirm_callback(force, console, 'title')
     images = db.set_favourite_for_images(
         favourite=False,
-        specification=_filter,
+        specification=_filter.as_spec(),
         select_callback=select_callback,
     )
     console.print(f'Removed the favourite flag for {len(images)} images')
@@ -222,9 +220,9 @@ def mv(
 
 
 @images.command(name='exec', help='Execute a command for specific images')
-@with_filters(filter_builder)
+@with_filters_new(filter_generator=filter_gen)
 def exec(
-    _filter: Specification[Image],
+    _filter: ResourceFilter[Image],
     ctx: Context,
     executor: str = Argument(help='The executor to run'),
     options: list[str] | None = Option(
@@ -247,15 +245,15 @@ def exec(
 
     pm.exec_for_images(
         executor=executor,
-        specification=_filter,
+        specification=_filter.as_spec(),
         options=option_dict,
     )
 
 
 @images.command(name='tag-person', help='Tag a person for specific labels')
-@with_filters(filter_builder)
+@with_filters_new(filter_generator=filter_gen)
 def tag_person(
-    _filter: Specification[Image],
+    _filter: ResourceFilter[Image],
     ctx: Context,
     person_name: str = Argument(help='The name of the person to tag'),
     force: bool = Option(default=False, help="Don't ask for confirmation"),
@@ -265,16 +263,16 @@ def tag_person(
     select_callback = create_update_confirm_callback(force, console, 'title')
     images = db.add_person_to_images(
         person_name,
-        specification=_filter,
+        specification=_filter.as_spec(),
         select_callback=select_callback,
     )
     console.print(f'Added person "{person_name}" to {len(images)} images')
 
 
 @images.command(name='untag-person', help='Untag a person from specific images')
-@with_filters(filter_builder)
+@with_filters_new(filter_generator=filter_gen)
 def untag_person(
-    _filter: Specification[Image],
+    _filter: ResourceFilter[Image],
     ctx: Context,
     person_name: str = Argument(help='The name of the person to untag'),
     force: bool = Option(default=False, help="Don't ask for confirmation"),
@@ -284,7 +282,7 @@ def untag_person(
     select_callback = create_update_confirm_callback(force, console, 'title')
     images = db.remove_person_from_images(
         person_name,
-        specification=_filter,
+        specification=_filter.as_spec(),
         select_callback=select_callback,
     )
     console.print(f'Removed person "{person_name}" from {len(images)} images')

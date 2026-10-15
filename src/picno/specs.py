@@ -287,3 +287,43 @@ class NumercFieldSpecification[SqlTable: SQLModel, NumT: int | float](
             return field >= self._expected_value
         elif self._spec_type == SpecType.GT:
             return field > self._expected_value
+
+
+class StrSpecification[SqlTable](Specification[SqlTable]):
+    """Specification that checks if a specific string is equal."""
+
+    def __init__(
+        self,
+        model: type[SqlTable],
+        field: str,
+        value: str,
+        is_exact: bool = False,
+        case_sensitive: bool = True,
+    ) -> None:
+        """Set the default values."""
+        self._model = model
+        self._field = field
+        self._value = value
+        self._is_exact = is_exact
+        self._case_sensitive = case_sensitive
+
+    def _as_sql_exact(self) -> ColumnElement[bool]:
+        """Return the query for the specification."""
+        field = getattr(self._model, self._field)
+        if not self._case_sensitive:
+            return col(field).ilike(self._value)
+        return col(field) == self._value
+
+    def _as_sql_not_exact(self) -> ColumnElement[bool]:
+        """Return the query for the specification."""
+        field = getattr(self._model, self._field)
+        if not self._case_sensitive:
+            return col(field).ilike(f'%{self._value}%')
+        return col(field).contains(self._value)
+
+    @override
+    def as_sql(self) -> ColumnElement[bool]:
+        """Return the query for the specification."""
+        if self._is_exact:
+            return self._as_sql_exact()
+        return self._as_sql_not_exact()

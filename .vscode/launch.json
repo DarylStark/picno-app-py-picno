@@ -12,8 +12,8 @@
             "args": [
                 "images",
                 "ls",
-                "--label",
-                "test"
+                "--title",
+                "^test"
             ],
             "cwd": "${workspaceFolder}/tests/unmanaged_project",
             "python": "${workspaceFolder}/.venv/bin/python",

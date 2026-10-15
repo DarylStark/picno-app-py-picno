@@ -12,8 +12,14 @@
             "args": [
                 "images",
                 "ls",
-                "--width",
-                "100"
+                "--id",
+                "1",
+                "--id",
+                "1..",
+                "--id",
+                "..2",
+                "--id",
+                "1..10"
             ],
             "cwd": "${workspaceFolder}/tests/unmanaged_project",
             "python": "${workspaceFolder}/.venv/bin/python",

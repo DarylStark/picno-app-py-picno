@@ -104,22 +104,49 @@ class FilterValueStr[SqlTable: SQLModel](FilterValue[SqlTable, str]):
 
 
 @dataclass
-class FilterValueInt[SqlTable: SQLModel](FilterValue[SqlTable, int | str]):
+class FilterValueInt[SqlTable: SQLModel](
+    FilterValue[SqlTable, None | int | str]
+):
     """A value for a filter for a string."""
 
     operator_type: NumericOperatorType = NumericOperatorType.EQ
 
+    high_value: int | str | None = None
+    op_set: bool = False
+
     @override
     def _as_spec(self) -> Specification[SqlTable]:
         """Generate a specification for this filter."""
-        # TODO: Implement
-        spec = NumercFieldSpecification(
-            self.model,
-            self.field,
-            int(self.value),
-            operator_type=self.operator_type,
-        )
-        return spec
+        if self.op_set is False and self.value is not None:
+            spec = NumercFieldSpecification(
+                self.model,
+                self.field,
+                int(self.value),
+                operator_type=NumericOperatorType.EQ,
+            )
+            return spec
+
+        all_spec = AllSpecification[SqlTable]()
+
+        if self.value:
+            low_spec = NumercFieldSpecification(
+                self.model,
+                self.field,
+                int(self.value),
+                operator_type=NumericOperatorType.GE,
+            )
+            all_spec.append(low_spec)
+
+        if self.high_value:
+            high_spec = NumercFieldSpecification(
+                self.model,
+                self.field,
+                int(self.high_value),
+                operator_type=NumericOperatorType.LE,
+            )
+            all_spec.append(high_spec)
+
+        return all_spec
 
     @override
     @classmethod
@@ -127,7 +154,7 @@ class FilterValueInt[SqlTable: SQLModel](FilterValue[SqlTable, int | str]):
         cls,
         model: type[SqlTable],
         field_name: str,
-        value: int | str,
+        value: None | int | str,
         *,
         is_any: bool = False,
     ) -> FilterValueInt:
@@ -135,30 +162,31 @@ class FilterValueInt[SqlTable: SQLModel](FilterValue[SqlTable, int | str]):
         is_negated = False
         operator_type = NumericOperatorType.EQ
         if isinstance(value, str):
-            match = re.match(r'^(?P<op>(>|<|~|>=|<=))?(?P<nr>[0-9]+)$', value)
-            if not match or not match.group('nr'):
+            match = re.match(
+                r'^(?P<low>[0-9]+)?(?P<op>\.{2})?(?P<high>[0-9]+)?$', value
+            )
+            if not match or (
+                match.group('low') is None and match.group('high') is None
+            ):
+                # TODO: CustomException
                 raise ValueError(f'Incorrect value for integer: {value}')
 
-            operators = {
-                '<': NumericOperatorType.LT,
-                '>': NumericOperatorType.GT,
-                '>=': NumericOperatorType.GE,
-                '<=': NumericOperatorType.LE,
-            }
+            low = match.group('low')
+            high = match.group('high')
 
-            op = match.group('op')
-            if op:
-                if op == '~':
-                    is_negated = True
-                operator_type = operators.get(op, NumericOperatorType.EQ)
-            real_value = match.group('nr')
+            low_value = int(low) if low else None
+            high_value = int(high) if high else None
+            op_set = match.group('op') is not None
         else:
-            real_value = value
+            high_value = None
+            low_value = int(value) if value else None
 
         return FilterValueInt[SqlTable](
             model=model,
             field=field_name,
-            value=int(real_value),
+            value=low_value,
+            high_value=high_value,
+            op_set=op_set,
             is_any=is_any,
             is_negated=is_negated,
             operator_type=operator_type,

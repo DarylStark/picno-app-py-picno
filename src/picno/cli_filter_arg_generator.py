@@ -87,6 +87,7 @@ class CliFilterArgGenerator[SqlTable: SQLModel]:
                 self._signature_parameters.extend(
                     self._generate_parameters_generic(field, field_type.type)
                 )
+        self._signature_parameters.sort(key=lambda x: x.name)
 
     def parse_args(
         self, args: dict[str, str | int | bool | list[str] | list[int]]

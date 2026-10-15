@@ -6,7 +6,7 @@ from picno.cli_filter_arg_generator import CliFilterArgGenerator
 from picno.cli_helpers import (
     create_delete_confirm_callback,
     create_update_confirm_callback,
-    with_filters_new,
+    with_filters,
 )
 from picno.model import Label
 from picno.resource_filter import ResourceFilter
@@ -19,7 +19,7 @@ filter_gen = CliFilterArgGenerator(Label)
 
 
 @labels.command(name='ls', help='List labels')
-@with_filters_new(filter_generator=filter_gen)
+@with_filters(filter_generator=filter_gen)
 def ls(
     _filter: ResourceFilter[Label],
     ctx: Context,
@@ -71,7 +71,7 @@ def mv(
 
 
 @labels.command(name='rm', help='Delete a label')
-@with_filters_new(filter_generator=filter_gen)
+@with_filters(filter_generator=filter_gen)
 def rm(
     _filter: ResourceFilter[Label],
     ctx: Context,

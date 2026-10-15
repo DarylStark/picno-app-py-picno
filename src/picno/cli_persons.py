@@ -14,7 +14,7 @@ from .cli_helpers import (
     create_unlabel_confirm_callback,
     create_update_confirm_callback,
     date_string_to_date,
-    with_filters_new,
+    with_filters,
 )
 from .database import RetrieveOption
 
@@ -23,7 +23,7 @@ filter_gen = CliFilterArgGenerator(Person)
 
 
 @persons.command(name='ls', help='List persons')
-@with_filters_new(filter_gen)
+@with_filters(filter_gen)
 def ls(
     _filter: ResourceFilter[Person],
     ctx: Context,
@@ -87,7 +87,7 @@ def mv(
 
 
 @persons.command(name='set-birthdate', help='Set the birthdate for a person')
-@with_filters_new(filter_gen)
+@with_filters(filter_gen)
 def set_birthdate(
     _filter: ResourceFilter[Person],
     ctx: Context,
@@ -108,7 +108,7 @@ def set_birthdate(
 @persons.command(
     name='delete-birthdate', help='Delete the birthdate for a person'
 )
-@with_filters_new(filter_gen)
+@with_filters(filter_gen)
 def delete_birthdate(
     _filter: ResourceFilter[Person],
     ctx: Context,
@@ -126,7 +126,7 @@ def delete_birthdate(
 
 
 @persons.command(name='rm', help='Delete a person')
-@with_filters_new(filter_gen)
+@with_filters(filter_gen)
 def rm(
     _filter: ResourceFilter[Person],
     ctx: Context,
@@ -143,7 +143,7 @@ def rm(
 
 
 @persons.command(name='label', help='Label specific persons')
-@with_filters_new(filter_gen)
+@with_filters(filter_gen)
 def label(
     _filter: ResourceFilter[Person],
     ctx: Context,
@@ -162,7 +162,7 @@ def label(
 
 
 @persons.command(name='unlabel', help='Unlabel specific persons')
-@with_filters_new(filter_gen)
+@with_filters(filter_gen)
 def unlabel(
     _filter: ResourceFilter[Person],
     ctx: Context,

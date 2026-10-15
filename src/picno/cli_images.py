@@ -10,7 +10,7 @@ from picno.cli_helpers import (
     create_label_confirm_callback,
     create_unlabel_confirm_callback,
     create_update_confirm_callback,
-    with_filters_new,
+    with_filters,
 )
 from picno.database import RetrieveOption
 from picno.model import Image, ResourceStatus
@@ -31,7 +31,7 @@ class OutputFormat(Enum):
 
 
 @images.command(name='ls', help='List images')
-@with_filters_new(filter_generator=filter_gen)
+@with_filters(filter_generator=filter_gen)
 def ls(
     _filter: ResourceFilter[Image],
     ctx: Context,
@@ -113,7 +113,7 @@ def ls(
 
 
 @images.command(name='set-status', help='Set the status for images')
-@with_filters_new(filter_generator=filter_gen)
+@with_filters(filter_generator=filter_gen)
 def set_status(
     _filter: ResourceFilter[Image],
     ctx: Context,
@@ -132,7 +132,7 @@ def set_status(
 
 
 @images.command(name='label', help='Label specific images')
-@with_filters_new(filter_generator=filter_gen)
+@with_filters(filter_generator=filter_gen)
 def label(
     _filter: ResourceFilter[Image],
     ctx: Context,
@@ -151,7 +151,7 @@ def label(
 
 
 @images.command(name='unlabel', help='Unlabel specific images')
-@with_filters_new(filter_generator=filter_gen)
+@with_filters(filter_generator=filter_gen)
 def unlabel(
     _filter: ResourceFilter[Image],
     ctx: Context,
@@ -170,7 +170,7 @@ def unlabel(
 
 
 @images.command(name='favourite', help='Favourite specific images')
-@with_filters_new(filter_generator=filter_gen)
+@with_filters(filter_generator=filter_gen)
 def favourite(
     _filter: ResourceFilter[Image],
     ctx: Context,
@@ -188,7 +188,7 @@ def favourite(
 
 
 @images.command(name='unfavourite', help='Unfavourite specific images')
-@with_filters_new(filter_generator=filter_gen)
+@with_filters(filter_generator=filter_gen)
 def unfavourite(
     _filter: ResourceFilter[Image],
     ctx: Context,
@@ -220,7 +220,7 @@ def mv(
 
 
 @images.command(name='exec', help='Execute a command for specific images')
-@with_filters_new(filter_generator=filter_gen)
+@with_filters(filter_generator=filter_gen)
 def exec(
     _filter: ResourceFilter[Image],
     ctx: Context,
@@ -251,7 +251,7 @@ def exec(
 
 
 @images.command(name='tag-person', help='Tag a person for specific labels')
-@with_filters_new(filter_generator=filter_gen)
+@with_filters(filter_generator=filter_gen)
 def tag_person(
     _filter: ResourceFilter[Image],
     ctx: Context,
@@ -270,7 +270,7 @@ def tag_person(
 
 
 @images.command(name='untag-person', help='Untag a person from specific images')
-@with_filters_new(filter_generator=filter_gen)
+@with_filters(filter_generator=filter_gen)
 def untag_person(
     _filter: ResourceFilter[Image],
     ctx: Context,

@@ -63,16 +63,29 @@ class CliFilterArgGenerator[SqlTable: SQLModel]:
             for field_name in (field, f'{field}__all')
         ]
 
+    def _generate_parameters_for_int(
+        self, field: str
+    ) -> list[inspect.Parameter]:
+        """Generate a Parameters for a string field."""
+        return [
+            self._build_parameter(field_name, str, multiple=True)
+            for field_name in (field, f'{field}__all')
+        ]
+
     def _generate_parameters(self) -> None:
         """Generate the signature parameters."""
         for field, field_type in self._resource_filter.fields.items():
-            if field_type is str:
+            if field_type.type is str:
                 self._signature_parameters.extend(
                     self._generate_parameters_for_str(field)
                 )
-            elif field_type is bool or issubclass(field_type, Enum):
+            elif field_type.type is int:
                 self._signature_parameters.extend(
-                    self._generate_parameters_generic(field, field_type)
+                    self._generate_parameters_for_int(field)
+                )
+            elif field_type.type is bool or issubclass(field_type.type, Enum):
+                self._signature_parameters.extend(
+                    self._generate_parameters_generic(field, field_type.type)
                 )
 
     def parse_args(

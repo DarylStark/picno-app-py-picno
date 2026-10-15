@@ -237,8 +237,8 @@ class StrContainsSpecification[SqlTable](Specification[SqlTable]):
         return col(field).contains(self._search_value)
 
 
-class SpecType(Enum):
-    """Enum for specification types."""
+class NumericOperatorType(Enum):
+    """Enum for specific operator types for numeric specification."""
 
     EQ = 0
     LE = 1
@@ -258,27 +258,27 @@ class NumercFieldSpecification[SqlTable: SQLModel, NumT: int | float](
         field_name: str,
         expected_value: NumT,
         *,
-        spec_type: SpecType = SpecType.EQ,
+        operator_type: NumericOperatorType = NumericOperatorType.EQ,
     ) -> None:
         """Set the default values."""
         self._model = model
         self._field_name = field_name
         self._expected_value = expected_value
-        self._spec_type = spec_type
+        self._operator_type = operator_type
 
     @override
     def as_sql(self) -> ColumnElement[bool]:
         """Return the query for the specification."""
         field = getattr(self._model, self._field_name)
-        if self._spec_type == SpecType.EQ:
+        if self._operator_type == NumericOperatorType.EQ:
             return field == self._expected_value
-        elif self._spec_type == SpecType.LE:
+        elif self._operator_type == NumericOperatorType.LE:
             return field <= self._expected_value
-        elif self._spec_type == SpecType.LT:
+        elif self._operator_type == NumericOperatorType.LT:
             return field < self._expected_value
-        elif self._spec_type == SpecType.GE:
+        elif self._operator_type == NumericOperatorType.GE:
             return field >= self._expected_value
-        elif self._spec_type == SpecType.GT:
+        elif self._operator_type == NumericOperatorType.GT:
             return field > self._expected_value
 
 

@@ -3,9 +3,8 @@
 import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from enum import Enum
 from types import NoneType, UnionType
-from typing import Any, get_args, override
+from typing import Any, Self, get_args, override
 
 from sqlmodel import SQLModel
 
@@ -14,15 +13,18 @@ from picno.specs import (
     AnySpecification,
     FieldIsSpecification,
     NotSpecification,
+    NumercFieldSpecification,
+    NumericOperatorType,
     Specification,
     StrSpecification,
 )
 
 
 @dataclass
-class FilterValue[SqlTable: SQLModel](ABC):
+class FilterValue[SqlTable: SQLModel, ValueType](ABC):
     """Filter values."""
 
+    value: ValueType
     model: type[SqlTable]
     field: str
     is_all: bool = False
@@ -39,12 +41,23 @@ class FilterValue[SqlTable: SQLModel](ABC):
             spec = NotSpecification(spec)
         return spec
 
+    @classmethod
+    @abstractmethod
+    def from_value(
+        cls,
+        model: type[SqlTable],
+        field_name: str,
+        value: Any,  # noqa: ANN401
+        *,
+        is_all: bool = False,
+    ) -> Self:
+        """Create a object from value."""
+
 
 @dataclass
-class FilterValueStr[SqlTable: SQLModel](FilterValue[SqlTable]):
+class FilterValueStr[SqlTable: SQLModel](FilterValue[SqlTable, str]):
     """A value for a filter for a string."""
 
-    value: str = ''
     is_exact: bool = False
     is_case_sensitive: bool = False
 
@@ -60,12 +73,103 @@ class FilterValueStr[SqlTable: SQLModel](FilterValue[SqlTable]):
         )
         return spec
 
+    @override
+    @classmethod
+    def from_value(
+        cls,
+        model: type[SqlTable],
+        field_name: str,
+        value: str,
+        *,
+        is_all: bool = False,
+    ) -> FilterValueStr:
+        """Create a object from value."""
+        match = re.match(
+            r'^(?P<ci>\^)?(?P<neg>!)?(?P<exact>=)?(?P<value>.*)$', value
+        )
+
+        if not match or not match.group('value'):
+            # TODO: Custom exception
+            raise ValueError('Filter value is incorrect')
+
+        return FilterValueStr[SqlTable](
+            model=model,
+            field=field_name,
+            value=match.group('value'),
+            is_exact=match.group('exact') is not None,
+            is_case_sensitive=match.group('ci') is not None,
+            is_negated=match.group('neg') is not None,
+            is_all=is_all,
+        )
+
 
 @dataclass
-class FilterValueGeneric[SqlTable: SQLModel, ValueType](FilterValue[SqlTable]):
-    """A value for a filter for generic types."""
+class FilterValueInt[SqlTable: SQLModel](FilterValue[SqlTable, int | str]):
+    """A value for a filter for a string."""
 
-    value: ValueType | None = None
+    operator_type: NumericOperatorType = NumericOperatorType.EQ
+
+    @override
+    def _as_spec(self) -> Specification[SqlTable]:
+        """Generate a specification for this filter."""
+        # TODO: Implement
+        spec = NumercFieldSpecification(
+            self.model,
+            self.field,
+            int(self.value),
+            operator_type=self.operator_type,
+        )
+        return spec
+
+    @override
+    @classmethod
+    def from_value(
+        cls,
+        model: type[SqlTable],
+        field_name: str,
+        value: int | str,
+        *,
+        is_all: bool = False,
+    ) -> FilterValueInt:
+        """Create a object from value."""
+        is_negated = False
+        operator_type = NumericOperatorType.EQ
+        if isinstance(value, str):
+            match = re.match(r'^(?P<op>(>|<|~|>=|<=))?(?P<nr>[0-9]+)$', value)
+            if not match or not match.group('nr'):
+                raise ValueError(f'Incorrect value for integer: {value}')
+
+            operators = {
+                '<': NumericOperatorType.LT,
+                '>': NumericOperatorType.GT,
+                '>=': NumericOperatorType.GE,
+                '<=': NumericOperatorType.LE,
+            }
+
+            op = match.group('op')
+            if op:
+                if op == '~':
+                    is_negated = True
+                operator_type = operators.get(op, NumericOperatorType.EQ)
+            real_value = match.group('nr')
+        else:
+            real_value = value
+
+        return FilterValueInt[SqlTable](
+            model=model,
+            field=field_name,
+            value=int(real_value),
+            is_all=is_all,
+            is_negated=is_negated,
+            operator_type=operator_type,
+        )
+
+
+@dataclass
+class FilterValueGeneric[SqlTable: SQLModel, ValueType](
+    FilterValue[SqlTable, ValueType]
+):
+    """A value for a filter for generic types."""
 
     @override
     def _as_spec(self) -> Specification[SqlTable]:
@@ -73,10 +177,25 @@ class FilterValueGeneric[SqlTable: SQLModel, ValueType](FilterValue[SqlTable]):
         spec = FieldIsSpecification(self.model, self.field, self.value)
         return spec
 
+    @override
+    @classmethod
+    def from_value[ClsValueType](
+        cls,
+        model: type[SqlTable],
+        field_name: str,
+        value: ClsValueType,
+        *,
+        is_all: bool = False,
+    ) -> FilterValueGeneric[SqlTable, ClsValueType]:
+        """Create a object from value."""
+        return FilterValueGeneric(
+            model=model, field=field_name, value=value, is_all=is_all
+        )
+
 
 @dataclass
-class FieldFilter[SqlTable: SQLModel]:
-    """A class that specifies a filter field."""
+class ResourceFieldFilter[SqlTable: SQLModel]:
+    """A class that specifies a field that is filtered on."""
 
     field: str
     # TODO: Reanme these fields; they are not specs!
@@ -103,7 +222,7 @@ class FieldFilter[SqlTable: SQLModel]:
 class ResourceFilter[SqlTable: SQLModel]:
     """A class for a filter for a model."""
 
-    fields: dict[str, FieldFilter[SqlTable]]
+    fields: dict[str, ResourceFieldFilter[SqlTable]]
 
     def as_spec(self) -> Specification[SqlTable]:
         """Generate a specification for this filter."""
@@ -116,13 +235,22 @@ class ResourceFilter[SqlTable: SQLModel]:
         return all_spec
 
 
+@dataclass
+class FilterField[ValueType]:
+    """Class for a field that can be filtered on."""
+
+    name: str
+    type: type[ValueType]
+    value_type: type[FilterValue]
+
+
 class FilterBuilder[SqlTable: SQLModel]:
     """A class that can filter resources."""
 
     def __init__(self, model: type[SqlTable]) -> None:
         """Set the values."""
         self._model = model
-        self._fields: dict[str, type] = {}
+        self._fields: dict[str, FilterField] = {}
 
     def _get_type_from_annotation(self, annotation: Any) -> type:  # ruff: ignore[ANN401]
         """Check if a type list contains a specific object."""
@@ -145,12 +273,19 @@ class FilterBuilder[SqlTable: SQLModel]:
     def _generate_from_model_fields(self) -> None:
         """Generate fields from the model fields."""
         for field_name, field_type in self._model.model_fields.items():
-            self._fields[field_name] = self._get_type_from_annotation(
-                field_type.annotation
+            value_types: dict[type, type[FilterValue]] = {
+                str: FilterValueStr,
+                int: FilterValueInt,
+            }
+            annotation = self._get_type_from_annotation(field_type.annotation)
+            self._fields[field_name] = FilterField(
+                name=field_name,
+                type=annotation,
+                value_type=value_types.get(annotation, FilterValueGeneric),
             )
 
     @property
-    def fields(self) -> dict[str, type]:
+    def fields(self) -> dict[str, FilterField]:
         """Property for the fields on which can be filtered."""
         if not self._fields:
             self._generate_fields()
@@ -175,68 +310,22 @@ class FilterBuilder[SqlTable: SQLModel]:
 
         return (field_name, is_all)
 
-    def convert_str_argument(
-        self, field_name: str, value: str, is_all: bool = False
-    ) -> FilterValueStr:
-        """Convert a given 'str' parameter to the correct FilterValue."""
-        match = re.match(
-            r'^(?P<ci>\^)?(?P<neg>!)?(?P<exact>=)?(?P<value>.*)$', value
-        )
-
-        if not match or not match.group('value'):
-            # TODO: Custom exception
-            raise ValueError('Filter value is incorrect')
-
-        return FilterValueStr[SqlTable](
-            model=self._model,
-            field=field_name,
-            value=match.group('value'),
-            is_exact=match.group('exact') is not None,
-            is_case_sensitive=match.group('ci') is not None,
-            is_negated=match.group('neg') is not None,
-            is_all=is_all,
-        )
-
-    def convert_generic_argument[ValueType](
-        self, field_name: str, value: ValueType, is_all: bool = False
-    ) -> FilterValueGeneric:
-        """Convert a given 'str' parameter to the correct FilterValue."""
-        return FilterValueGeneric[SqlTable, ValueType](
-            model=self._model,
-            field=field_name,
-            value=value,
-            is_all=is_all,
-        )
-
     def _append_filter_value_to_filter(
         self,
         field_name: str,
         value: str | int | bool,
         is_all: bool,
-        flt: FieldFilter[SqlTable],
+        flt: ResourceFieldFilter[SqlTable],
     ) -> None:
         """Create a Filter Value and append it to a Filter object."""
         if field_name not in self.fields:
             # TODO: Custom exception
             raise ValueError(f'Field "{field_name}" cannot be filtered on')
 
-        if self.fields[field_name] is not type(value):
-            # TODO: Custom exception
-            raise ValueError(
-                f'Wrong type for field "{field_name}". Expeced '
-                f'"{self.fields[field_name]}", got "{type(value)}"'
-            )
-
-        flt_value: FilterValue | None = None
-
-        if isinstance(value, str):
-            flt_value = self.convert_str_argument(field_name, value, is_all)
-        elif isinstance(value, bool) or issubclass(type(value), Enum):
-            flt_value = self.convert_generic_argument(field_name, value, is_all)
-
-        if flt_value is None:
-            # TODO: Custom exception
-            raise TypeError(f'Cannot filter on field "{field_name}"')
+        field = self.fields[field_name]
+        flt_value = field.value_type.from_value(
+            model=self._model, field_name=field_name, value=value, is_all=is_all
+        )
 
         if flt_value.is_all:
             flt.all_spec.append(flt_value)
@@ -247,11 +336,11 @@ class FilterBuilder[SqlTable: SQLModel]:
         self, arguments: dict[str, str | int | bool | list[str] | list[int]]
     ) -> ResourceFilter[SqlTable]:
         """Convert given arguments to FilterValue objects."""
-        filter_values: dict[str, FieldFilter[SqlTable]] = {}
+        filter_values: dict[str, ResourceFieldFilter[SqlTable]] = {}
         for argument, value in arguments.items():
             field_name, is_all = self._get_argument_properties(argument)
             flt = filter_values.setdefault(
-                field_name, FieldFilter[SqlTable](field=field_name)
+                field_name, ResourceFieldFilter[SqlTable](field=field_name)
             )
 
             if isinstance(value, list):

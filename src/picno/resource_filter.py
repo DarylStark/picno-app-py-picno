@@ -85,7 +85,7 @@ class FilterValueStr[SqlTable: SQLModel](FilterValue[SqlTable, str]):
     ) -> FilterValueStr:
         """Create a object from value."""
         match = re.match(
-            r'^(?P<ci>\^)?(?P<neg>!)?(?P<exact>=)?(?P<value>.*)$', value
+            r'^(?P<ci>\^)?(?P<neg>~)?(?P<exact>=)?(?P<value>.*)$', value
         )
 
         if not match or not match.group('value'):

@@ -181,6 +181,13 @@ class FilterValueInt[SqlTable: SQLModel](
             high_value = None
             low_value = int(value) if value else None
 
+        if low_value and high_value and (int(low_value) > int(high_value)):
+            # TODO: CustomException
+            raise ValueError(
+                'Low value cannot be lower then high value: '
+                f'{low_value} - {high_value}'
+            )
+
         return FilterValueInt[SqlTable](
             model=model,
             field=field_name,

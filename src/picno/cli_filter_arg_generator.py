@@ -1,6 +1,7 @@
 """Module with a class to generate Typer args for filters."""
 
 import inspect
+from enum import Enum
 from typing import Any
 
 from sqlmodel import SQLModel
@@ -33,21 +34,32 @@ class CliFilterArgGenerator[SqlTable: SQLModel]:
             return list[field_type] | None  # ty: ignore[invalid-type-form]
         return field_type | None
 
+    def _build_parameter(
+        self, field_name: str, field_type: type, *, multiple: bool = True
+    ) -> inspect.Parameter:
+        return inspect.Parameter(
+            name=field_name,
+            kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
+            annotation=self._build_annotation(field_type, multiple=multiple),
+            default=Option(
+                default=None,
+                help=f'Filter on the field "{field_name}"',
+                rich_help_panel='Filter',
+            ),
+        )
+
+    def _generate_parameters_generic(
+        self, field: str, field_type: type
+    ) -> list[inspect.Parameter]:
+        """Generate a Parameters for a string field."""
+        return [self._build_parameter(field, field_type, multiple=True)]
+
     def _generate_parameters_for_str(
         self, field: str
     ) -> list[inspect.Parameter]:
         """Generate a Parameters for a string field."""
         return [
-            inspect.Parameter(
-                name=field_name,
-                kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
-                annotation=self._build_annotation(str, multiple=True),
-                default=Option(
-                    default=None,
-                    help='The filter',
-                    rich_help_panel='FILTERRRRR',
-                ),
-            )
+            self._build_parameter(field_name, str, multiple=True)
             for field_name in (field, f'{field}__all')
         ]
 
@@ -57,6 +69,10 @@ class CliFilterArgGenerator[SqlTable: SQLModel]:
             if field_type is str:
                 self._signature_parameters.extend(
                     self._generate_parameters_for_str(field)
+                )
+            elif field_type is bool or issubclass(field_type, Enum):
+                self._signature_parameters.extend(
+                    self._generate_parameters_generic(field, field_type)
                 )
 
     def parse_args(

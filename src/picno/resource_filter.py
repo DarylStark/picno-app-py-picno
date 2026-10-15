@@ -3,6 +3,7 @@
 import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from enum import Enum
 from types import NoneType, UnionType
 from typing import Any, get_args, override
 
@@ -11,6 +12,7 @@ from sqlmodel import SQLModel
 from picno.specs import (
     AllSpecification,
     AnySpecification,
+    FieldIsSpecification,
     NotSpecification,
     Specification,
     StrSpecification,
@@ -56,6 +58,19 @@ class FilterValueStr[SqlTable: SQLModel](FilterValue[SqlTable]):
             self.is_exact,
             self.is_case_sensitive,
         )
+        return spec
+
+
+@dataclass
+class FilterValueGeneric[SqlTable: SQLModel, ValueType](FilterValue[SqlTable]):
+    """A value for a filter for generic types."""
+
+    value: ValueType | None = None
+
+    @override
+    def _as_spec(self) -> Specification[SqlTable]:
+        """Generate a specification for this filter."""
+        spec = FieldIsSpecification(self.model, self.field, self.value)
         return spec
 
 
@@ -182,6 +197,17 @@ class FilterBuilder[SqlTable: SQLModel]:
             is_all=is_all,
         )
 
+    def convert_generic_argument[ValueType](
+        self, field_name: str, value: ValueType, is_all: bool = False
+    ) -> FilterValueGeneric:
+        """Convert a given 'str' parameter to the correct FilterValue."""
+        return FilterValueGeneric[SqlTable, ValueType](
+            model=self._model,
+            field=field_name,
+            value=value,
+            is_all=is_all,
+        )
+
     def _append_filter_value_to_filter(
         self,
         field_name: str,
@@ -205,9 +231,12 @@ class FilterBuilder[SqlTable: SQLModel]:
 
         if isinstance(value, str):
             flt_value = self.convert_str_argument(field_name, value, is_all)
+        elif isinstance(value, bool) or issubclass(type(value), Enum):
+            flt_value = self.convert_generic_argument(field_name, value, is_all)
 
         if flt_value is None:
-            return None
+            # TODO: Custom exception
+            raise TypeError(f'Cannot filter on field "{field_name}"')
 
         if flt_value.is_all:
             flt.all_spec.append(flt_value)

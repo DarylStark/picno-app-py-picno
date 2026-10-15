@@ -126,24 +126,17 @@ class FieldIsSpecification[SqlTable, T2](Specification[SqlTable]):
     """Specification that checks if a specific field is equal."""
 
     def __init__(
-        self,
-        model: type[SqlTable],
-        field_name: str,
-        expected_value: T2,
-        case_insensitive: bool = True,
+        self, model: type[SqlTable], field_name: str, expected_value: T2
     ) -> None:
         """Set the default values."""
         self._model = model
         self._field_name = field_name
         self._expected_value = expected_value
-        self._case_insensitive = case_insensitive
 
     @override
     def as_sql(self) -> ColumnElement[bool]:
         """Return the query for the specification."""
         field = getattr(self._model, self._field_name)
-        if self._case_insensitive:
-            return col(field).ilike(self._expected_value)
         return col(field) == self._expected_value
 
 

@@ -27,7 +27,7 @@ class FilterValue[SqlTable: SQLModel, ValueType](ABC):
     value: ValueType
     model: type[SqlTable]
     field: str
-    is_all: bool = False
+    is_any: bool = False
     is_negated: bool = False
 
     @abstractmethod
@@ -49,7 +49,7 @@ class FilterValue[SqlTable: SQLModel, ValueType](ABC):
         field_name: str,
         value: Any,  # noqa: ANN401
         *,
-        is_all: bool = False,
+        is_any: bool = False,
     ) -> Self:
         """Create a object from value."""
 
@@ -81,7 +81,7 @@ class FilterValueStr[SqlTable: SQLModel](FilterValue[SqlTable, str]):
         field_name: str,
         value: str,
         *,
-        is_all: bool = False,
+        is_any: bool = False,
     ) -> FilterValueStr:
         """Create a object from value."""
         match = re.match(
@@ -99,7 +99,7 @@ class FilterValueStr[SqlTable: SQLModel](FilterValue[SqlTable, str]):
             is_exact=match.group('exact') is not None,
             is_case_sensitive=match.group('ci') is not None,
             is_negated=match.group('neg') is not None,
-            is_all=is_all,
+            is_any=is_any,
         )
 
 
@@ -129,7 +129,7 @@ class FilterValueInt[SqlTable: SQLModel](FilterValue[SqlTable, int | str]):
         field_name: str,
         value: int | str,
         *,
-        is_all: bool = False,
+        is_any: bool = False,
     ) -> FilterValueInt:
         """Create a object from value."""
         is_negated = False
@@ -159,7 +159,7 @@ class FilterValueInt[SqlTable: SQLModel](FilterValue[SqlTable, int | str]):
             model=model,
             field=field_name,
             value=int(real_value),
-            is_all=is_all,
+            is_any=is_any,
             is_negated=is_negated,
             operator_type=operator_type,
         )
@@ -185,11 +185,11 @@ class FilterValueGeneric[SqlTable: SQLModel, ValueType](
         field_name: str,
         value: ClsValueType,
         *,
-        is_all: bool = False,
+        is_any: bool = False,
     ) -> FilterValueGeneric[SqlTable, ClsValueType]:
         """Create a object from value."""
         return FilterValueGeneric(
-            model=model, field=field_name, value=value, is_all=is_all
+            model=model, field=field_name, value=value, is_any=is_any
         )
 
 
@@ -304,17 +304,17 @@ class FilterBuilder[SqlTable: SQLModel]:
         """
         field_splitted = argument_name.split('__', maxsplit=2)
         field_name = field_splitted[0]
-        is_all = False
-        if len(field_splitted) == 2 and field_splitted[1] == 'all':
-            is_all = True
+        is_any = False
+        if len(field_splitted) == 2 and field_splitted[1] == 'any':
+            is_any = True
 
-        return (field_name, is_all)
+        return (field_name, is_any)
 
     def _append_filter_value_to_filter(
         self,
         field_name: str,
         value: str | int | bool,
-        is_all: bool,
+        is_any: bool,
         flt: ResourceFieldFilter[SqlTable],
     ) -> None:
         """Create a Filter Value and append it to a Filter object."""
@@ -324,13 +324,13 @@ class FilterBuilder[SqlTable: SQLModel]:
 
         field = self.fields[field_name]
         flt_value = field.value_type.from_value(
-            model=self._model, field_name=field_name, value=value, is_all=is_all
+            model=self._model, field_name=field_name, value=value, is_any=is_any
         )
 
-        if flt_value.is_all:
-            flt.all_spec.append(flt_value)
-        else:
+        if flt_value.is_any:
             flt.any_spec.append(flt_value)
+        else:
+            flt.all_spec.append(flt_value)
 
     def convert_arguments_to_filter_objects(
         self, arguments: dict[str, str | int | bool | list[str] | list[int]]
@@ -338,7 +338,7 @@ class FilterBuilder[SqlTable: SQLModel]:
         """Convert given arguments to FilterValue objects."""
         filter_values: dict[str, ResourceFieldFilter[SqlTable]] = {}
         for argument, value in arguments.items():
-            field_name, is_all = self._get_argument_properties(argument)
+            field_name, is_any = self._get_argument_properties(argument)
             flt = filter_values.setdefault(
                 field_name, ResourceFieldFilter[SqlTable](field=field_name)
             )
@@ -346,11 +346,11 @@ class FilterBuilder[SqlTable: SQLModel]:
             if isinstance(value, list):
                 for argument_value in value:
                     self._append_filter_value_to_filter(
-                        field_name, argument_value, is_all, flt
+                        field_name, argument_value, is_any, flt
                     )
             else:
                 self._append_filter_value_to_filter(
-                    field_name, value, is_all, flt
+                    field_name, value, is_any, flt
                 )
 
         return ResourceFilter(fields=filter_values)

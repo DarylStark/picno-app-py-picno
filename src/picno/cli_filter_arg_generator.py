@@ -60,7 +60,7 @@ class CliFilterArgGenerator[SqlTable: SQLModel]:
         """Generate a Parameters for a string field."""
         return [
             self._build_parameter(field_name, str, multiple=True)
-            for field_name in (field, f'{field}__all')
+            for field_name in (field, f'{field}__any')
         ]
 
     def _generate_parameters_for_int(
@@ -69,7 +69,7 @@ class CliFilterArgGenerator[SqlTable: SQLModel]:
         """Generate a Parameters for a string field."""
         return [
             self._build_parameter(field_name, str, multiple=True)
-            for field_name in (field, f'{field}__all')
+            for field_name in (field, f'{field}__any')
         ]
 
     def _generate_parameters(self) -> None:

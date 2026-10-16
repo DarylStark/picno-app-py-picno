@@ -13,10 +13,16 @@ from picno.resource_filter import ResourceFilter, ResourceFilterBuilder
 class CliFilterArgGenerator[SqlTable: SQLModel]:
     """Class to generate Typer args for filters."""
 
-    def __init__(self, filter_builder: ResourceFilterBuilder[SqlTable]) -> None:
+    def __init__(
+        self,
+        filter_builder: ResourceFilterBuilder[SqlTable],
+        *,
+        help_text_group: str = 'Fitler',
+    ) -> None:
         """Set default values."""
         self._resource_filter = filter_builder
         self._signature_parameters: list[inspect.Parameter] = []
+        self._help_text_group = help_text_group
 
     @property
     def signature_parameters(self) -> list[inspect.Parameter]:
@@ -25,25 +31,30 @@ class CliFilterArgGenerator[SqlTable: SQLModel]:
             self._generate_parameters()
         return self._signature_parameters
 
-    def _build_annotation(
-        self, field_type: type, *, multiple: bool = True
-    ) -> Any:  # noqa: ANN401
+    def _build_annotation(self, field_type: type) -> Any:  # noqa: ANN401
         """Build annotation for a specific type."""
-        if multiple:
-            return list[field_type] | None  # ty: ignore[invalid-type-form]
-        return field_type | None
+        return list[field_type] | None  # ty: ignore[invalid-type-form]
 
     def _build_parameter(
-        self, field_name: str, field_type: type, *, multiple: bool = True
+        self, field_name: str, field_type: type, *, help_text: str | None = None
     ) -> inspect.Parameter:
+        print(field_name)
+        print(field_type)
+        param_help_text = (
+            f'Filter on the field "{field_name.split("__", maxsplit=1)[0]}"'
+        )
+
+        if help_text:
+            param_help_text = f'{param_help_text} ({help_text})'
+
         return inspect.Parameter(
             name=field_name,
             kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
-            annotation=self._build_annotation(field_type, multiple=multiple),
+            annotation=self._build_annotation(field_type),
             default=Option(
                 default=None,
-                help=f'Filter on the field "{field_name}"',
-                rich_help_panel='Filter',
+                help=param_help_text,
+                rich_help_panel=self._help_text_group,
             ),
         )
 
@@ -51,14 +62,18 @@ class CliFilterArgGenerator[SqlTable: SQLModel]:
         self, field: str, field_type: type
     ) -> list[inspect.Parameter]:
         """Generate a Parameters for a string field."""
-        return [self._build_parameter(field, field_type, multiple=True)]
+        return [self._build_parameter(field, field_type)]
 
     def _generate_parameters_for_str(
         self, field: str
     ) -> list[inspect.Parameter]:
         """Generate a Parameters for a string field."""
         return [
-            self._build_parameter(field_name, str, multiple=True)
+            self._build_parameter(
+                field_name,
+                str,
+                help_text='<string value>',
+            )
             for field_name in (field, f'{field}__any')
         ]
 
@@ -67,7 +82,11 @@ class CliFilterArgGenerator[SqlTable: SQLModel]:
     ) -> list[inspect.Parameter]:
         """Generate a Parameters for a string field."""
         return [
-            self._build_parameter(field_name, str, multiple=True)
+            self._build_parameter(
+                field_name,
+                str,
+                help_text='<integer value>',
+            )
             for field_name in (field, f'{field}__any')
         ]
 

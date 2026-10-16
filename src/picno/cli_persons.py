@@ -3,11 +3,10 @@
 from typer import Argument, Context, Option, Typer
 
 from picno.cli_filter_arg_generator import CliFilterArgGenerator
-from picno.model import Label, Person, PersonLabelLink
+from picno.model import Person
 from picno.resource_filter import (
-    FilterBuilder,
-    RelationshipFilter,
     ResourceFilter,
+    ResourceFilterBuilderPerson,
 )
 
 from .cli_context import get_initialized_project
@@ -23,22 +22,7 @@ from .cli_helpers import (
 from .database import RetrieveOption
 
 persons = Typer(name='persons', help='Person management')
-filter_gen = CliFilterArgGenerator(
-    FilterBuilder(
-        Person,
-        relationship_filters={
-            'has_label': RelationshipFilter(
-                Person,
-                Label,
-                PersonLabelLink,
-                'person_id',
-                'label_id',
-                'name',
-                str,
-            )
-        },
-    )
-)
+filter_gen = CliFilterArgGenerator(ResourceFilterBuilderPerson())
 
 
 @persons.command(name='ls', help='List persons')

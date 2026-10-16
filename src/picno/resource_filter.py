@@ -8,6 +8,14 @@ from typing import Any, Self, get_args, override
 
 from sqlmodel import SQLModel
 
+from picno.model import (
+    Image,
+    ImageLabelLink,
+    ImagePersonLink,
+    Label,
+    Person,
+    PersonLabelLink,
+)
 from picno.specs import (
     AllSpecification,
     AnySpecification,
@@ -404,7 +412,7 @@ class FilterFieldRelation[ValueType](FilterField[ValueType]):
         )
 
 
-class FilterBuilder[SqlTable: SQLModel]:
+class ResourceFilterBuilder[SqlTable: SQLModel]:
     """A class that can filter resources."""
 
     def __init__(
@@ -535,3 +543,54 @@ class FilterBuilder[SqlTable: SQLModel]:
                 )
 
         return ResourceFilter(fields=filter_values)
+
+
+class ResourceFilterBuilderPerson(ResourceFilterBuilder):
+    """Convenience class for a filter builder for persons."""
+
+    def __init__(self) -> None:
+        """Call the base class with the correct values."""
+        super().__init__(
+            Person,
+            relationship_filters={
+                'has_label': RelationshipFilter(
+                    Person,
+                    Label,
+                    PersonLabelLink,
+                    'person_id',
+                    'label_id',
+                    'name',
+                    str,
+                )
+            },
+        )
+
+
+class ResourceFilterBuilderImage(ResourceFilterBuilder):
+    """Convenience class for a filter builder for images."""
+
+    def __init__(self) -> None:
+        """Call the base class with the correct values."""
+        super().__init__(
+            Image,
+            relationship_filters={
+                'has_label': RelationshipFilter(
+                    Image,
+                    Label,
+                    ImageLabelLink,
+                    'image_id',
+                    'label_id',
+                    'name',
+                    str,
+                ),
+                'has_person_tagged': RelationshipFilter(
+                    Image,
+                    Person,
+                    ImagePersonLink,
+                    'image_id',
+                    'person_id',
+                    'name',
+                    str,
+                ),
+            },
+        )

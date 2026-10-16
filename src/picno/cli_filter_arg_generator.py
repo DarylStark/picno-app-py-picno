@@ -7,13 +7,13 @@ from typing import Any
 from sqlmodel import SQLModel
 from typer import Option
 
-from picno.resource_filter import FilterBuilder, ResourceFilter
+from picno.resource_filter import ResourceFilter, ResourceFilterBuilder
 
 
 class CliFilterArgGenerator[SqlTable: SQLModel]:
     """Class to generate Typer args for filters."""
 
-    def __init__(self, filter_builder: FilterBuilder[SqlTable]) -> None:
+    def __init__(self, filter_builder: ResourceFilterBuilder[SqlTable]) -> None:
         """Set default values."""
         self._resource_filter = filter_builder
         self._signature_parameters: list[inspect.Parameter] = []

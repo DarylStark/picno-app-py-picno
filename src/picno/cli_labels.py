@@ -9,13 +9,13 @@ from picno.cli_helpers import (
     with_filters,
 )
 from picno.model import Label
-from picno.resource_filter import FilterBuilder, ResourceFilter
+from picno.resource_filter import ResourceFilter, ResourceFilterBuilder
 
 from .cli_context import get_initialized_project
 from .cli_format import TableColumn, print_table
 
 labels = Typer(name='labels', help='Label management')
-filter_gen = CliFilterArgGenerator(FilterBuilder(Label))
+filter_gen = CliFilterArgGenerator(ResourceFilterBuilder(Label))
 
 
 @labels.command(name='ls', help='List labels')

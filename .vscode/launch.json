@@ -10,8 +10,9 @@
             "request": "launch",
             "module": "picno",
             "args": [
-                "persons",
-                "ls"
+                "labels",
+                "testtest",
+                "--force"
             ],
             "cwd": "${workspaceFolder}/tests/unmanaged_project",
             "python": "${workspaceFolder}/.venv/bin/python",

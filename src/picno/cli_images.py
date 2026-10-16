@@ -11,6 +11,7 @@ from picno.cli_helpers import (
     create_unlabel_confirm_callback,
     create_update_confirm_callback,
     with_filters,
+    with_force_flag,
 )
 from picno.database import RetrieveOption
 from picno.model import (
@@ -120,15 +121,16 @@ def ls(
 
 @images.command(name='set-status', help='Set the status for images')
 @with_filters(filter_generator=filter_gen)
+@with_force_flag()
 def set_status(
+    _force: bool,
     _filter: ResourceFilter[Image],
     ctx: Context,
     new_status: ResourceStatus = Argument(help='The status to set'),
-    force: bool = Option(default=False, help="Don't ask for confirmation"),
 ) -> None:
     """List the images in the database."""
     (_, _, db, console) = get_initialized_project(ctx)
-    select_callback = create_update_confirm_callback(force, console, 'title')
+    select_callback = create_update_confirm_callback(_force, console, 'title')
     images = db.set_image_status(
         status=new_status,
         specification=_filter.as_spec(),
@@ -139,15 +141,16 @@ def set_status(
 
 @images.command(name='label', help='Label specific images')
 @with_filters(filter_generator=filter_gen)
+@with_force_flag()
 def label(
+    _force: bool,
     _filter: ResourceFilter[Image],
     ctx: Context,
     label_name: str = Argument(help='The name of the label to add'),
-    force: bool = Option(default=False, help="Don't ask for confirmation"),
 ) -> None:
     """Add a label to images."""
     (_, _, db, console) = get_initialized_project(ctx)
-    select_callback = create_label_confirm_callback(force, console, 'title')
+    select_callback = create_label_confirm_callback(_force, console, 'title')
     images = db.add_label_to_images(
         label_name,
         specification=_filter.as_spec(),
@@ -158,15 +161,16 @@ def label(
 
 @images.command(name='unlabel', help='Unlabel specific images')
 @with_filters(filter_generator=filter_gen)
+@with_force_flag()
 def unlabel(
+    _force: bool,
     _filter: ResourceFilter[Image],
     ctx: Context,
     label_name: str = Argument(help='The name of the label to remove'),
-    force: bool = Option(default=False, help="Don't ask for confirmation"),
 ) -> None:
     """Remove a label from images."""
     (_, _, db, console) = get_initialized_project(ctx)
-    select_callback = create_unlabel_confirm_callback(force, console, 'title')
+    select_callback = create_unlabel_confirm_callback(_force, console, 'title')
     images = db.remove_label_from_images(
         label_name,
         specification=_filter.as_spec(),
@@ -177,14 +181,15 @@ def unlabel(
 
 @images.command(name='favourite', help='Favourite specific images')
 @with_filters(filter_generator=filter_gen)
+@with_force_flag()
 def favourite(
+    _force: bool,
     _filter: ResourceFilter[Image],
     ctx: Context,
-    force: bool = Option(default=False, help="Don't ask for confirmation"),
 ) -> None:
     """List the images in the database."""
     (_, _, db, console) = get_initialized_project(ctx)
-    select_callback = create_update_confirm_callback(force, console, 'title')
+    select_callback = create_update_confirm_callback(_force, console, 'title')
     images = db.set_favourite_for_images(
         favourite=True,
         specification=_filter.as_spec(),
@@ -195,14 +200,15 @@ def favourite(
 
 @images.command(name='unfavourite', help='Unfavourite specific images')
 @with_filters(filter_generator=filter_gen)
+@with_force_flag()
 def unfavourite(
+    _force: bool,
     _filter: ResourceFilter[Image],
     ctx: Context,
-    force: bool = Option(default=False, help="Don't ask for confirmation"),
 ) -> None:
     """List the images in the database."""
     (_, _, db, console) = get_initialized_project(ctx)
-    select_callback = create_update_confirm_callback(force, console, 'title')
+    select_callback = create_update_confirm_callback(_force, console, 'title')
     images = db.set_favourite_for_images(
         favourite=False,
         specification=_filter.as_spec(),
@@ -212,15 +218,16 @@ def unfavourite(
 
 
 @images.command(name='mv', help='Rename a image')
+@with_force_flag()
 def mv(
+    _force: bool,
     ctx: Context,
     old_title: str = Argument(help='Current title of the image'),
     new_title: str = Argument(help='New title of the image'),
-    force: bool = Option(default=False, help="Don't ask for confirmation"),
 ) -> None:
     """Rename a image."""
     (_, _, db, console) = get_initialized_project(ctx)
-    select_callback = create_update_confirm_callback(force, console, 'title')
+    select_callback = create_update_confirm_callback(_force, console, 'title')
     db.rename_image(old_title, new_title, select_callback=select_callback)
     console.print(f'Renamed image "{old_title}" to "{new_title}"')
 
@@ -258,15 +265,16 @@ def exec(
 
 @images.command(name='tag-person', help='Tag a person for specific labels')
 @with_filters(filter_generator=filter_gen)
+@with_force_flag()
 def tag_person(
+    _force: bool,
     _filter: ResourceFilter[Image],
     ctx: Context,
     person_name: str = Argument(help='The name of the person to tag'),
-    force: bool = Option(default=False, help="Don't ask for confirmation"),
 ) -> None:
     """Add a person to images."""
     (_, _, db, console) = get_initialized_project(ctx)
-    select_callback = create_update_confirm_callback(force, console, 'title')
+    select_callback = create_update_confirm_callback(_force, console, 'title')
     images = db.add_person_to_images(
         person_name,
         specification=_filter.as_spec(),
@@ -277,15 +285,16 @@ def tag_person(
 
 @images.command(name='untag-person', help='Untag a person from specific images')
 @with_filters(filter_generator=filter_gen)
+@with_force_flag()
 def untag_person(
+    _force: bool,
     _filter: ResourceFilter[Image],
     ctx: Context,
     person_name: str = Argument(help='The name of the person to untag'),
-    force: bool = Option(default=False, help="Don't ask for confirmation"),
 ) -> None:
     """Remove a person from images."""
     (_, _, db, console) = get_initialized_project(ctx)
-    select_callback = create_update_confirm_callback(force, console, 'title')
+    select_callback = create_update_confirm_callback(_force, console, 'title')
     images = db.remove_person_from_images(
         person_name,
         specification=_filter.as_spec(),

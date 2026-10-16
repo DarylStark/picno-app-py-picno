@@ -106,7 +106,9 @@ class CliFilterArgGenerator[SqlTable: SQLModel]:
         self._signature_parameters.sort(key=lambda x: x.name)
 
     def parse_args(
-        self, args: dict[str, str | int | bool | list[str] | list[int]]
+        self,
+        args: dict[str, str | int | bool | list[str] | list[int]],
+        all_kwargs: dict[Any, str],
     ) -> ResourceFilter[SqlTable]:
         """Parse arguments into a ResourceFilter model."""
         return self._resource_filter.convert_arguments_to_filter_objects(args)

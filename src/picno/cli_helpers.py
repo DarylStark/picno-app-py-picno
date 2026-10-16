@@ -4,11 +4,10 @@ import inspect
 from collections.abc import Callable, Sequence
 from datetime import date
 from enum import Enum
-from typing import Any, TypeVar
+from typing import Any
 
 from rich.console import Console
 from rich.prompt import Confirm
-from sqlmodel import SQLModel
 
 from picno.cli_filter_arg_generator import CliFilterArgGenerator
 
@@ -43,12 +42,35 @@ def date_string_to_date(date_str: str | None) -> date | None:
     return parsed_date
 
 
-def shared_filter_args[T](
+def replace_args_with_arg[T](
     shared_args: list[inspect.Parameter],
     param_name: str,
     param_builder: Callable[[dict[str, Any]], T | None],
 ) -> Callable:
-    """Decorator to add filters to CLI commands."""
+    """Decorator to replace multiple args with one arg.
+
+    Can be used if you want to create a function with one or more args that
+    are going to be replaces by one arg. For instance, if you want a function
+    that takes in the args `id` and `name` and use that into one parameter
+    called `resource`, you call this method like this:
+
+        @replace_args_with_arg(
+            [
+                inspect.Parameter(name='id'),
+                inspect.Parameter(name='name')
+            ],
+            'resource',
+            make_resource(id, name)
+        )
+        def (resource):
+            # ... do something with resource
+
+    The `make_resource` function will take the "fake" parameters and create the
+    resource object that is passed to the function.
+
+    This can be used for instance when you want to add filters to mulitple
+    functions that always have to be parsed the same way.
+    """
 
     def decorator(func: Callable) -> Callable:
         sig = inspect.signature(func)
@@ -86,7 +108,11 @@ def shared_filter_args[T](
 def with_filters(
     filter_generator: CliFilterArgGenerator, *, param_name: str = '_filter'
 ) -> Callable:
-    """Create a decorator for a filter arguments."""
+    """Add filters from a CliFilterArgGenerator to the function.
+
+    Will parse the given filters and give a ResourceFilter object in the given
+    parameter called `param`.
+    """
 
     def decorator(func: Callable) -> Callable:
         """Decorator to add filters to CLI commands."""
@@ -94,25 +120,13 @@ def with_filters(
             filter_generator.signature_parameters
         )
 
-        return shared_filter_args(
+        return replace_args_with_arg(
             filter_args,
             param_name=param_name,
             param_builder=filter_generator.parse_args,
         )(func)
 
     return decorator
-
-
-class NumberSpecifier(Enum):
-    """Specifiers for numbers."""
-
-    LE = 'le'
-    LT = 'lt'
-    GE = 'ge'
-    GT = 'gt'
-
-
-SqlTable = TypeVar('SqlTable', bound=SQLModel)
 
 
 def create_confirm_callback[T](

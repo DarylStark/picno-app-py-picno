@@ -232,7 +232,7 @@ class MediaResource(BaseModel):
     """Base class for media items."""
 
     status: ResourceStatus = ResourceStatus.NEW
-    favourite: bool = False
+    favorite: bool = False
 
 
 class Image(

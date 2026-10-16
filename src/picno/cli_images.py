@@ -69,8 +69,8 @@ def ls(
                         lambda image: str(image.status.value).capitalize(),
                     ),
                     TableColumn(
-                        'Favourite',
-                        lambda image: str(image.favourite),
+                        'Favorite',
+                        lambda image: str(image.favorite),
                     ),
                     TableColumn(
                         'Physical path', lambda image: image.physical_path
@@ -179,10 +179,10 @@ def unlabel(
     console.print(f'Removed label "{label_name}" from {len(images)} images')
 
 
-@images.command(name='favourite', help='Favourite specific images')
+@images.command(name='favorite', help='Favorite specific images')
 @with_filters(filter_generator=filter_gen)
 @with_force_flag()
-def favourite(
+def favorite(
     _force: bool,
     _filter: ResourceFilter[Image],
     ctx: Context,
@@ -190,18 +190,18 @@ def favourite(
     """List the images in the database."""
     (_, _, db, console) = get_initialized_project(ctx)
     select_callback = create_update_confirm_callback(_force, console, 'title')
-    images = db.set_favourite_for_images(
-        favourite=True,
+    images = db.set_favorite_for_images(
+        favorite=True,
         specification=_filter.as_spec(),
         select_callback=select_callback,
     )
-    console.print(f'Set {len(images)} images as favourite')
+    console.print(f'Set {len(images)} images as favorite')
 
 
-@images.command(name='unfavourite', help='Unfavourite specific images')
+@images.command(name='unfavorite', help='Unfavorite specific images')
 @with_filters(filter_generator=filter_gen)
 @with_force_flag()
-def unfavourite(
+def unfavorite(
     _force: bool,
     _filter: ResourceFilter[Image],
     ctx: Context,
@@ -209,12 +209,12 @@ def unfavourite(
     """List the images in the database."""
     (_, _, db, console) = get_initialized_project(ctx)
     select_callback = create_update_confirm_callback(_force, console, 'title')
-    images = db.set_favourite_for_images(
-        favourite=False,
+    images = db.set_favorite_for_images(
+        favorite=False,
         specification=_filter.as_spec(),
         select_callback=select_callback,
     )
-    console.print(f'Removed the favourite flag for {len(images)} images')
+    console.print(f'Removed the favorite flag for {len(images)} images')
 
 
 @images.command(name='mv', help='Rename a image')

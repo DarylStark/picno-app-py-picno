@@ -35,7 +35,7 @@ filter_gen = CliFilterArgGenerator(
     FilterBuilder(
         Image,
         relationship_filters={
-            'label': RelationshipFilter(
+            'has_label': RelationshipFilter(
                 Image,
                 Label,
                 ImageLabelLink,
@@ -44,16 +44,7 @@ filter_gen = CliFilterArgGenerator(
                 'name',
                 str,
             ),
-            'label_id': RelationshipFilter(
-                Image,
-                Label,
-                ImageLabelLink,
-                'image_id',
-                'label_id',
-                'id',
-                int,
-            ),
-            'person': RelationshipFilter(
+            'has_person_tagged': RelationshipFilter(
                 Image,
                 Person,
                 ImagePersonLink,
@@ -61,15 +52,6 @@ filter_gen = CliFilterArgGenerator(
                 'person_id',
                 'name',
                 str,
-            ),
-            'person_id': RelationshipFilter(
-                Image,
-                Person,
-                ImagePersonLink,
-                'image_id',
-                'person_id',
-                'id',
-                int,
             ),
         },
     )

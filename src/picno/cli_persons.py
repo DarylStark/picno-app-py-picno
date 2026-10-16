@@ -27,7 +27,7 @@ filter_gen = CliFilterArgGenerator(
     FilterBuilder(
         Person,
         relationship_filters={
-            'label': RelationshipFilter(
+            'has_label': RelationshipFilter(
                 Person,
                 Label,
                 PersonLabelLink,
@@ -35,16 +35,7 @@ filter_gen = CliFilterArgGenerator(
                 'label_id',
                 'name',
                 str,
-            ),
-            'label_id': RelationshipFilter(
-                Person,
-                Label,
-                PersonLabelLink,
-                'person_id',
-                'label_id',
-                'id',
-                int,
-            ),
+            )
         },
     )
 )

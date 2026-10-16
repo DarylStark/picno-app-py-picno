@@ -175,16 +175,20 @@ class RelationshipSpec[
         link_b = getattr(self._link_table, self._link_table_field_b)
         search_col = getattr(self._model_b, self._search_field)
 
+        search_clause = search_col == self._search_value
+        if isinstance(self._search_value, str):
+            search_clause = search_col.ilike(self._search_value)
+
+        and_clause = and_(
+            link_a == model_a_id,
+            search_clause,
+        )
+
         return exists(
             select(1)
             .select_from(self._link_table)
             .join(self._model_b, model_b_id == link_b)
-            .where(
-                and_(
-                    link_a == model_a_id,
-                    search_col == self._search_value,
-                )
-            )
+            .where(and_clause)
         )
 
 

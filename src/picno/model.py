@@ -18,7 +18,7 @@ class ResourceStatus(Enum):
 class TableResource(SQLModel):
     """Base class for resources that get a SQL table."""
 
-    id: int | None = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True, unique=True)
 
 
 class LabelLinkTable(SQLModel):

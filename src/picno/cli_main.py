@@ -72,6 +72,6 @@ def main() -> None:
         sys.exit(0)
     except DatabaseError as e:
         err_console.print(f'[red][b]Database error:[/b][/red] {e}')
-    except Exception as e:
-        err_console.print(f'[red][b]Unknown error:[/b][/red] {e}')
+    # except Exception as e:
+    #     err_console.print(f'[red][b]Unknown error:[/b][/red] {e}')
     sys.exit(1)

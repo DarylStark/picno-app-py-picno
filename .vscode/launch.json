@@ -11,9 +11,9 @@
             "module": "picno",
             "args": [
                 "persons",
-                "test",
-                "--name",
-                "test_name"
+                "ls",
+                "--label",
+                "Testfilter"
             ],
             "cwd": "${workspaceFolder}/tests/unmanaged_project",
             "python": "${workspaceFolder}/.venv/bin/python",

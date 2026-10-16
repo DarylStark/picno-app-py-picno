@@ -2,17 +2,14 @@
 
 import inspect
 from collections.abc import Callable, Sequence
-from dataclasses import fields
 from datetime import date
 from enum import Enum
-from types import UnionType
-from typing import Any, get_args, get_origin
+from typing import Any
 
 from rich.console import Console
 from rich.prompt import Confirm
-from typer import Option
 
-from picno.filter import Filter
+from picno.cli_filter_arg_generator import CliFilterArgGenerator
 
 from .exceptions import InvalidArgumentInputError
 
@@ -45,12 +42,35 @@ def date_string_to_date(date_str: str | None) -> date | None:
     return parsed_date
 
 
-def shared_filter_args[T](
+def replace_args_with_arg[T](
     shared_args: list[inspect.Parameter],
     param_name: str,
-    param_builder: Callable[[dict[str, Any]], T],
+    param_builder: Callable[[dict[str, Any]], T | None],
 ) -> Callable:
-    """Decorator to add filters to CLI commands."""
+    """Decorator to replace multiple args with one arg.
+
+    Can be used if you want to create a function with one or more args that
+    are going to be replaces by one arg. For instance, if you want a function
+    that takes in the args `id` and `name` and use that into one parameter
+    called `resource`, you call this method like this:
+
+        @replace_args_with_arg(
+            [
+                inspect.Parameter(name='id'),
+                inspect.Parameter(name='name')
+            ],
+            'resource',
+            make_resource(id, name)
+        )
+        def (resource):
+            # ... do something with resource
+
+    The `make_resource` function will take the "fake" parameters and create the
+    resource object that is passed to the function.
+
+    This can be used for instance when you want to add filters to mulitple
+    functions that always have to be parsed the same way.
+    """
 
     def decorator(func: Callable) -> Callable:
         sig = inspect.signature(func)
@@ -61,8 +81,13 @@ def shared_filter_args[T](
                 shared_kwarg.name: kwargs[shared_kwarg.name]
                 for shared_kwarg in shared_args
             }
-            # filter = param_type.build_from_locals(shared_kwargs)
-            filter = param_builder(shared_kwargs)
+            filter = param_builder(
+                {
+                    filter: value
+                    for filter, value in shared_kwargs.items()
+                    if value is not None
+                }
+            )
             kwargs = {
                 kwarg[0]: kwarg[1]
                 for kwarg in kwargs.items()
@@ -80,73 +105,25 @@ def shared_filter_args[T](
     return decorator
 
 
-def contains_list_type(tp: Any) -> bool:  # ruff: ignore[ANN401]
-    """Check if a type list contains a `list` object."""
-    origin = get_origin(tp)
-
-    if origin is UnionType:
-        return any(contains_list_type(arg) for arg in get_args(tp))
-
-    return origin is list
-
-
-def with_filtering(
-    filter: type[Filter],
-    *,
-    param_name: str = '_filter',
-    filter_prefix: str | None = None,
-    filter_group: str = 'Filter',
+def with_filters(
+    filter_generator: CliFilterArgGenerator, *, param_name: str = '_filter'
 ) -> Callable:
-    """Create a decorator for a filter arguments."""
+    """Add filters from a CliFilterArgGenerator to the function.
+
+    Will parse the given filters and give a ResourceFilter object in the given
+    parameter called `param`.
+    """
 
     def decorator(func: Callable) -> Callable:
         """Decorator to add filters to CLI commands."""
-        filter_args: list[inspect.Parameter] = []
+        filter_args: list[inspect.Parameter] = (
+            filter_generator.signature_parameters
+        )
 
-        for field in fields(filter):
-            help_text_notes: list[str] = []
-            field_name_splitted = field.name.split('__')
-            field_name = field_name_splitted[0]
-            arg_name = field.name
-            flags = (
-                field_name_splitted[1].split('_')
-                if len(field_name_splitted) == 2
-                else []
-            )
-            if 'ci' in flags:
-                help_text_notes.append('case insensitive')
-            if 'contains' in flags:
-                help_text_notes.append('containing')
-
-            if contains_list_type(field.type):
-                help_text_notes.append('repeatable')
-
-            help_text = f'Filter on field "{field_name}"'
-            if help_text_notes:
-                help_text += f' ({", ".join(help_text_notes)})'
-
-            if filter_prefix:
-                arg_name = f'{filter_prefix}_{field.name}'
-
-            filter_args.append(
-                inspect.Parameter(
-                    arg_name,
-                    kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
-                    annotation=field.type,
-                    default=Option(
-                        default=None,
-                        help=help_text,
-                        rich_help_panel=filter_group,
-                    ),
-                )
-            )
-
-            filter_args.sort(key=lambda x: x.name)
-
-        return shared_filter_args(
+        return replace_args_with_arg(
             filter_args,
             param_name=param_name,
-            param_builder=filter.build_from_locals,
+            param_builder=filter_generator.parse_args,
         )(func)
 
     return decorator

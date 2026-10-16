@@ -47,7 +47,7 @@ def context(
     else:
         console = Console()
 
-    ctx.obj = CliContext(file=project_file, console=console)
+    ctx.obj = CliContext(file=project_file, console=console, quiet=quiet)
 
     # Create a manager if a project is given
     if project_file.is_file():

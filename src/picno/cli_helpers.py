@@ -8,7 +8,10 @@ from typing import Any
 
 from rich.console import Console
 from rich.prompt import Confirm
+from typer import Option
+from typer._click.core import Context
 
+from picno.cli_context import get_initialized_project
 from picno.cli_filter_arg_generator import CliFilterArgGenerator
 
 from .exceptions import InvalidArgumentInputError
@@ -45,7 +48,7 @@ def date_string_to_date(date_str: str | None) -> date | None:
 def replace_args_with_arg[T](
     shared_args: list[inspect.Parameter],
     param_name: str,
-    param_builder: Callable[[dict[str, Any]], T | None],
+    param_builder: Callable[[dict[str, Any], dict[str, Any]], T | None],
 ) -> Callable:
     """Decorator to replace multiple args with one arg.
 
@@ -86,7 +89,8 @@ def replace_args_with_arg[T](
                     filter: value
                     for filter, value in shared_kwargs.items()
                     if value is not None
-                }
+                },
+                kwargs,
             )
             kwargs = {
                 kwarg[0]: kwarg[1]
@@ -124,6 +128,46 @@ def with_filters(
             filter_args,
             param_name=param_name,
             param_builder=filter_generator.parse_args,
+        )(func)
+
+    return decorator
+
+
+def process_force(params: dict[Any, bool], all_kwargs: dict[Any, str]) -> bool:  # noqa: F821
+    """Processor the `force` flag."""
+    ctx = all_kwargs.get('ctx')
+    if not isinstance(ctx, Context):
+        raise TypeError('No valid context given')
+
+    if 'force' in params and 'ctx' in all_kwargs:
+        (cli_ctx, _, _, _) = get_initialized_project(ctx)
+        return cli_ctx.quiet or params.get('force', False)
+    return params.get('force', True)
+
+
+def with_force_flag(*, param_name: str = '_force') -> Callable:
+    """Add a force flag to a Typer CLI method.
+
+    Connect the `force` flag to the `process_force` method that and gives the
+    return value to the `_force` flag.
+    """
+
+    def decorator(func: Callable) -> Callable:
+        """Decorator to add filters to CLI commands."""
+        return replace_args_with_arg(
+            [
+                inspect.Parameter(
+                    name='force',
+                    kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                    annotation=bool,
+                    default=Option(
+                        default=False,
+                        help='Do not prompt for confirmation.',
+                    ),
+                )
+            ],
+            param_name=param_name,
+            param_builder=process_force,
         )(func)
 
     return decorator

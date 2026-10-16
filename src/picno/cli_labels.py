@@ -1,12 +1,14 @@
 """Module with the `pico labels` options."""
 
-from typer import Argument, Context, Option, Typer
+from typer import Argument, Typer
+from typer._click.core import Context
 
 from picno.cli_filter_arg_generator import CliFilterArgGenerator
 from picno.cli_helpers import (
     create_delete_confirm_callback,
     create_update_confirm_callback,
     with_filters,
+    with_force_flag,
 )
 from picno.model import Label
 from picno.resource_filter import ResourceFilter, ResourceFilterBuilder
@@ -57,29 +59,31 @@ def add(
 
 
 @labels.command(name='mv', help='Rename a label')
+@with_force_flag()
 def mv(
+    _force: bool,
     ctx: Context,
     old_name: str = Argument(help='Current name of the label'),
     new_name: str = Argument(help='New name of the label'),
-    force: bool = Option(default=False, help="Don't ask for confirmation"),
 ) -> None:
     """Rename a label."""
     (_, _, db, console) = get_initialized_project(ctx)
-    select_callback = create_update_confirm_callback(force, console, 'name')
+    select_callback = create_update_confirm_callback(_force, console, 'name')
     db.rename_label(old_name, new_name, select_callback=select_callback)
     console.print(f'Renamed label "{old_name}" to "{new_name}"')
 
 
 @labels.command(name='rm', help='Delete a label')
 @with_filters(filter_generator=filter_gen)
+@with_force_flag()
 def rm(
+    _force: bool,
     _filter: ResourceFilter[Label],
     ctx: Context,
-    force: bool = Option(default=False, help="Don't ask for confirmation"),
 ) -> None:
     """Delete a label."""
     (_, _, db, console) = get_initialized_project(ctx)
-    select_callback = create_delete_confirm_callback(force, console, 'name')
+    select_callback = create_delete_confirm_callback(_force, console, 'name')
     labels = db.delete_labels(
         specification=_filter.as_spec(),
         select_callback=select_callback,

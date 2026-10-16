@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from rich.console import Console
-from typer import Context
+from typer._click.core import Context
 
 from picno.database import Database
 
@@ -18,6 +18,7 @@ class CliContext:
 
     file: Path
     console: Console
+    quiet: bool = False
     manager: ProjectManager | None = None
 
 

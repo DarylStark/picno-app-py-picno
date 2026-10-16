@@ -42,42 +42,42 @@ def test_database_sql_filled_db_get_all_images_with_labels(
     assert len(images[1].labels) == 0
 
 
-def test_database_sql_filled_db_favourite_image(filled_db: DatabaseSql) -> None:
+def test_database_sql_filled_db_favorite_image(filled_db: DatabaseSql) -> None:
     """Test with a filled database.
 
-    Test if we can favourite images.
+    Test if we can favorite images.
     """
-    set_favourite = filled_db.set_favourite_for_images(
+    set_favorite = filled_db.set_favorite_for_images(
         True,
         specification=NameIsImageSpec(name='image_001.jpg'),
     )
-    assert len(set_favourite) == 1
+    assert len(set_favorite) == 1
     images = filled_db.get_images(
         specification=NameIsImageSpec(name='image_001.jpg')
     )
     assert len(images) == 1
-    assert images[0].favourite
+    assert images[0].favorite
 
 
-def test_database_sql_filled_db_unfavourite_image(
+def test_database_sql_filled_db_unffavorite_image(
     filled_db: DatabaseSql,
 ) -> None:
     """Test with a filled database.
 
-    Test if we can unfavourite images.
+    Test if we can unfavorite images.
     """
-    set_favourite = filled_db.set_favourite_for_images(
+    set_favorite = filled_db.set_favorite_for_images(
         False,
         specification=NameIsImageSpec(name='image_002.jpg'),
     )
 
-    assert len(set_favourite) == 1
+    assert len(set_favorite) == 1
 
     images = filled_db.get_images(
         specification=NameIsImageSpec(name='image_002.jpg')
     )
     assert len(images) == 1
-    assert not images[0].favourite
+    assert not images[0].favorite
 
 
 def test_database_sql_filled_db_add_label_to_images(

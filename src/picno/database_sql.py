@@ -958,17 +958,17 @@ class DatabaseSql(Database):
         )
 
     @override
-    def set_favourite_for_images(
+    def set_favorite_for_images(
         self,
-        favourite: bool,
+        favorite: bool,
         *,
         specification: ImageSpecification | None = None,
         select_callback: SelectCallbackImage | None = None,
     ) -> list[Image]:
-        """Set the favourite flag for specific images."""
+        """Set the favorite flag for specific images."""
         return self._update_resources(
             Image,
-            {'favourite': favourite},
+            {'favorite': favorite},
             specification=specification,
             select_callback=select_callback,
             callback_before_updating=False,

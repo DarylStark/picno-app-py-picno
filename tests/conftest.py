@@ -79,7 +79,7 @@ def filled_db(empty_db: DatabaseSql) -> DatabaseSql:
             Image(
                 physical_path='./image_002.jpg',
                 title='image_002.jpg',
-                favourite=True,
+                favorite=True,
             ),
             Image(physical_path='./image_003.jpg', title='image_003.jpg'),
             Image(physical_path='./image_004.jpg', title='image_004.jpg'),

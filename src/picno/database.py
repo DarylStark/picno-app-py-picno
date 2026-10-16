@@ -200,14 +200,14 @@ class Database(ABC):
         """Method to remove a person from images."""
 
     @abstractmethod
-    def set_favourite_for_images(
+    def set_favorite_for_images(
         self,
-        favourite: bool,
+        favorite: bool,
         *,
         specification: ImageSpecification | None = None,
         select_callback: SelectCallbackImage | None = None,
     ) -> list[Image]:
-        """Set the favourite flag for specific images."""
+        """Set the favorite flag for specific images."""
 
     @abstractmethod
     def rename_image(

@@ -38,8 +38,6 @@ class CliFilterArgGenerator[SqlTable: SQLModel]:
     def _build_parameter(
         self, field_name: str, field_type: type, *, help_text: str | None = None
     ) -> inspect.Parameter:
-        print(field_name)
-        print(field_type)
         param_help_text = (
             f'Filter on the field "{field_name.split("__", maxsplit=1)[0]}"'
         )

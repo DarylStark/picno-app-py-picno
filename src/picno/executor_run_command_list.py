@@ -19,7 +19,6 @@ class RunCommandList(Executor):
         self._command = command
         self._extra_args = extra_args
         self._files: list[str] = []
-        print(self._extra_args)
 
     @override
     def start(self) -> None:

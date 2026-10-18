@@ -157,7 +157,7 @@ class DatabaseSql(Database):
 
             sort_col = (
                 func.lower(column)
-                if is_string and sortfield.case_insensitive_sort
+                if is_string and not sortfield.case_sensitive_sort
                 else column
             )
             sort_col = (

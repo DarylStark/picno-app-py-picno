@@ -9,8 +9,9 @@ from picno.cli_helpers import (
     create_update_confirm_callback,
     with_filters,
     with_force_flag,
+    with_sort_field,
 )
-from picno.database import SortField, SortOrder
+from picno.database import SortField
 from picno.model import Label
 from picno.resource_filter import ResourceFilter, ResourceFilterBuilder
 
@@ -23,20 +24,16 @@ filter_gen = CliFilterArgGenerator(ResourceFilterBuilder(Label))
 
 @labels.command(name='ls', help='List labels')
 @with_filters(filter_generator=filter_gen)
+@with_sort_field(default_sort='name,id')
 def ls(
+    _sort: list[SortField] | None,
     _filter: ResourceFilter[Label],
     ctx: Context,
 ) -> None:
     """List the labels in the database."""
     (_, _, db, console) = get_initialized_project(ctx)
     # Retrieve the labels
-    labels = db.get_labels(
-        specification=_filter.as_spec(),
-        sorting=[
-            SortField(field='name', order=SortOrder.ASC),
-            SortField(field='id', order=SortOrder.ASC),
-        ],
-    )
+    labels = db.get_labels(specification=_filter.as_spec(), sorting=_sort)
     if labels:
         print_table(
             console,

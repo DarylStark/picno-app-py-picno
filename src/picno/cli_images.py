@@ -12,8 +12,9 @@ from picno.cli_helpers import (
     create_update_confirm_callback,
     with_filters,
     with_force_flag,
+    with_sort_field,
 )
-from picno.database import RetrieveOption, SortField, SortOrder
+from picno.database import RetrieveOption, SortField
 from picno.model import (
     Image,
     ResourceStatus,
@@ -39,7 +40,9 @@ class OutputFormat(Enum):
 
 @images.command(name='ls', help='List images')
 @with_filters(filter_generator=filter_gen)
+@with_sort_field(default_sort='title,id')
 def ls(
+    _sort: list[SortField] | None,
     _filter: ResourceFilter[Image],
     ctx: Context,
     output_format: OutputFormat = Option(
@@ -48,7 +51,6 @@ def ls(
 ) -> None:
     """List the images in the database."""
     (_, _, db, console) = get_initialized_project(ctx)
-
     # Retrieve the images
     images = db.get_images(
         specification=_filter.as_spec(),
@@ -56,10 +58,7 @@ def ls(
             RetrieveOption.LOAD_IMAGE_LABELS,
             RetrieveOption.LOAD_IMAGE_PERSONS,
         ],
-        sorting=[
-            SortField(field='title', order=SortOrder.DESC),
-            SortField(field='id', order=SortOrder.ASC),
-        ],
+        sorting=_sort,
     )
     if images:
         if output_format == OutputFormat.TABLE:

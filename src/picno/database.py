@@ -29,7 +29,7 @@ class SortField:
 
     field: str
     order: SortOrder
-    case_insensitive_sort = True
+    case_sensitive_sort: bool = True
 
 
 class RetrieveOption(Enum):

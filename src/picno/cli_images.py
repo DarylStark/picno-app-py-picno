@@ -13,7 +13,7 @@ from picno.cli_helpers import (
     with_filters,
     with_force_flag,
 )
-from picno.database import RetrieveOption
+from picno.database import RetrieveOption, SortField, SortOrder
 from picno.model import (
     Image,
     ResourceStatus,
@@ -55,6 +55,10 @@ def ls(
         options=[
             RetrieveOption.LOAD_IMAGE_LABELS,
             RetrieveOption.LOAD_IMAGE_PERSONS,
+        ],
+        sorting=[
+            SortField(field='title', order=SortOrder.DESC),
+            SortField(field='id', order=SortOrder.ASC),
         ],
     )
     if images:

@@ -10,6 +10,7 @@ from picno.cli_helpers import (
     with_filters,
     with_force_flag,
 )
+from picno.database import SortField, SortOrder
 from picno.model import Label
 from picno.resource_filter import ResourceFilter, ResourceFilterBuilder
 
@@ -29,7 +30,13 @@ def ls(
     """List the labels in the database."""
     (_, _, db, console) = get_initialized_project(ctx)
     # Retrieve the labels
-    labels = db.get_labels(specification=_filter.as_spec())
+    labels = db.get_labels(
+        specification=_filter.as_spec(),
+        sorting=[
+            SortField(field='name', order=SortOrder.ASC),
+            SortField(field='id', order=SortOrder.ASC),
+        ],
+    )
     if labels:
         print_table(
             console,

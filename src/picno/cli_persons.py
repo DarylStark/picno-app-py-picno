@@ -20,7 +20,7 @@ from .cli_helpers import (
     with_filters,
     with_force_flag,
 )
-from .database import RetrieveOption
+from .database import RetrieveOption, SortField, SortOrder
 
 persons = Typer(name='persons', help='Person management')
 filter_gen = CliFilterArgGenerator(ResourceFilterBuilderPerson())
@@ -39,6 +39,10 @@ def ls(
     persons = db.get_persons(
         specification=_filter.as_spec(),
         options=[RetrieveOption.LOAD_PERSON_LABELS],
+        sorting=[
+            SortField(field='name', order=SortOrder.ASC),
+            SortField(field='id', order=SortOrder.ASC),
+        ],
     )
     if persons:
         print_table(

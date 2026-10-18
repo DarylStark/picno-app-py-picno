@@ -49,6 +49,10 @@ class ResourceNotFoundError(DatabaseError):
     """Exception when a generic resource is not found."""
 
 
+class InvalidSortFieldForResourceError(DatabaseError):
+    """Exception when a invalid sort field is given."""
+
+
 class PersonAlreadyExistsError(DatabaseError):
     """Exception when a Person is created that already exists."""
 

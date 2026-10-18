@@ -11,8 +11,7 @@
             "module": "picno",
             "args": [
                 "labels",
-                "testtest",
-                "--force"
+                "ls"
             ],
             "cwd": "${workspaceFolder}/tests/unmanaged_project",
             "python": "${workspaceFolder}/.venv/bin/python",

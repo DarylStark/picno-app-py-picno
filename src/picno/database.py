@@ -2,6 +2,7 @@
 
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Sequence
+from dataclasses import dataclass
 from datetime import date
 from enum import Enum
 
@@ -13,6 +14,22 @@ from .specs_persons import PersonSpecification
 SelectCallbackLabel = Callable[[Sequence[Label]], bool]
 SelectCallbackPerson = Callable[[Sequence[Person]], bool]
 SelectCallbackImage = Callable[[Sequence[Image]], bool]
+
+
+class SortOrder(Enum):
+    """Specify a sorting order."""
+
+    ASC = 1
+    DESC = 2
+
+
+@dataclass
+class SortField:
+    """Class to specify a sorting."""
+
+    field: str
+    order: SortOrder
+    case_insensitive_sort = True
 
 
 class RetrieveOption(Enum):
@@ -36,7 +53,10 @@ class Database(ABC):
 
     @abstractmethod
     def get_labels(
-        self, *, specification: LabelSpecification | None = None
+        self,
+        *,
+        specification: LabelSpecification | None = None,
+        sorting: Sequence[SortField] | None = None,
     ) -> list[Label]:
         """Method to retrieve (a subset of) the labels in the database."""
 
@@ -75,6 +95,7 @@ class Database(ABC):
         *,
         specification: PersonSpecification | None = None,
         options: Sequence[RetrieveOption] | None = None,
+        sorting: Sequence[SortField] | None = None,
     ) -> list[Person]:
         """Method to retrieve (a subset of) the persons in the database."""
 
@@ -143,6 +164,7 @@ class Database(ABC):
         *,
         specification: ImageSpecification | None = None,
         options: Sequence[RetrieveOption] | None = None,
+        sorting: Sequence[SortField] | None = None,
     ) -> list[Image]:
         """Method to retrieve (a subset of) the labels in the database."""
 

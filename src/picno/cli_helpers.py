@@ -1,6 +1,7 @@
 """Module with CLI helper functions."""
 
 import inspect
+import re
 from collections.abc import Callable, Sequence
 from datetime import date
 from enum import Enum
@@ -13,6 +14,7 @@ from typer._click.core import Context
 
 from picno.cli_context import get_initialized_project
 from picno.cli_filter_arg_generator import CliFilterArgGenerator
+from picno.database import SortField, SortOrder
 
 from .exceptions import InvalidArgumentInputError
 
@@ -168,6 +170,68 @@ def with_force_flag(*, param_name: str = '_force') -> Callable:
             ],
             param_name=param_name,
             param_builder=process_force,
+        )(func)
+
+    return decorator
+
+
+def process_sorting_str(
+    params: dict[Any, bool],
+    all_kwargs: dict[Any, str],
+) -> list[SortField] | None:
+    """Process a sorting-str from the CLI."""
+    if 'sort' not in params:
+        return None
+
+    sorting_str = str(params['sort'])
+
+    sort_list: list[SortField] = []
+    fields = [field.strip() for field in sorting_str.split(',')]
+    for field in fields:
+        if len(field) == 0:
+            continue
+
+        match = re.match(
+            r'^(?P<cs>\^)?(?P<reverse>_)?(?P<fieldname>.*)$', field
+        )
+
+        if not match or not match.group('fieldname'):
+            # TODO: Custom exception
+            raise ValueError('Sort column is incorrect')
+
+        fieldname = match.group('fieldname')
+        order = SortOrder.DESC if match.group('reverse') else SortOrder.ASC
+        cs = match.group('cs') is not None
+
+        sort_obj = SortField(
+            field=fieldname, order=order, case_sensitive_sort=cs
+        )
+        sort_list.append(sort_obj)
+
+    return sort_list
+
+
+def with_sort_field(
+    default_sort: str, *, param_name: str = '_sort'
+) -> Callable:
+    """Add a sort field to a CLI method."""
+
+    def decorator(func: Callable) -> Callable:
+        """Decorator to add filters to CLI commands."""
+        return replace_args_with_arg(
+            [
+                inspect.Parameter(
+                    name='sort',
+                    kind=inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                    annotation=str,
+                    default=Option(
+                        default=default_sort,
+                        help='The fields to sort on in a comma seperated list',
+                    ),
+                )
+            ],
+            param_name=param_name,
+            param_builder=process_sorting_str,
         )(func)
 
     return decorator

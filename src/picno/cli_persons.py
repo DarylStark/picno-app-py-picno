@@ -19,8 +19,9 @@ from .cli_helpers import (
     date_string_to_date,
     with_filters,
     with_force_flag,
+    with_sort_field,
 )
-from .database import RetrieveOption
+from .database import RetrieveOption, SortField
 
 persons = Typer(name='persons', help='Person management')
 filter_gen = CliFilterArgGenerator(ResourceFilterBuilderPerson())
@@ -28,7 +29,9 @@ filter_gen = CliFilterArgGenerator(ResourceFilterBuilderPerson())
 
 @persons.command(name='ls', help='List persons')
 @with_filters(filter_gen)
+@with_sort_field(default_sort='name,id')
 def ls(
+    _sort: list[SortField] | None,
     _filter: ResourceFilter[Person],
     ctx: Context,
 ) -> None:
@@ -39,6 +42,7 @@ def ls(
     persons = db.get_persons(
         specification=_filter.as_spec(),
         options=[RetrieveOption.LOAD_PERSON_LABELS],
+        sorting=_sort,
     )
     if persons:
         print_table(

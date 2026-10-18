@@ -6,11 +6,22 @@ from sqlite3 import Connection as SQLiteConnection
 from sqlite3 import Cursor as SQLiteCursor
 from typing import Any, TypeVar, cast, override
 
-from sqlalchemy import Delete, event
+from sqlalchemy import ColumnElement, Delete, event
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import InstrumentedAttribute, selectinload
 from sqlalchemy.orm.interfaces import ORMOption
-from sqlmodel import Session, SQLModel, and_, col, create_engine, delete, select
+from sqlalchemy.sql.sqltypes import String
+from sqlmodel import (
+    AutoString,
+    Session,
+    SQLModel,
+    and_,
+    col,
+    create_engine,
+    delete,
+    func,
+    select,
+)
 from sqlmodel.sql.expression import SelectOfScalar
 
 from picno.specs_labels import NameIsLabelSpec
@@ -22,11 +33,14 @@ from .database import (
     SelectCallbackImage,
     SelectCallbackLabel,
     SelectCallbackPerson,
+    SortField,
+    SortOrder,
 )
 from .exceptions import (
     CallbackAbortedError,
     ImageAlreadyExistsError,
     ImageDoesNotExistError,
+    InvalidSortFieldForResourceError,
     LabelAlreadyExistsError,
     LabelDoesNotExistError,
     PersonAlreadyExistsError,
@@ -120,6 +134,54 @@ class DatabaseSql(Database):
         sql_options = self._convert_options_to_sql_options(options=options)
         for option in sql_options:
             statement = statement.options(option)
+        return statement
+
+    def _convert_sorting_to_sql_sorting[SqlTable: SQLModel](
+        self, model: type[SqlTable], sorting: Sequence[SortField] | None
+    ) -> list[ColumnElement]:
+        """Convert a sorting list to sorting SQLModel can understand."""
+        sorts: list[ColumnElement] = []
+        for sortfield in sorting or []:
+            attr = getattr(model, sortfield.field, None)
+
+            if not isinstance(attr, InstrumentedAttribute):
+                raise InvalidSortFieldForResourceError(
+                    f'Field "{sortfield.field}" is not a valid field to sort '
+                    f'on for model "{model.__name__}"'
+                )
+
+            column_type = attr.property.columns[0].type
+            is_string = isinstance(column_type, (String, AutoString))
+
+            column = col(attr)
+
+            sort_col = (
+                func.lower(column)
+                if is_string and not sortfield.case_sensitive_sort
+                else column
+            )
+            sort_col = (
+                sort_col.desc()
+                if sortfield.order == SortOrder.DESC
+                else sort_col.asc()
+            )
+
+            sorts.append(sort_col)
+        return sorts
+
+    def _set_sorting_in_statement[SqlTable: SQLModel](
+        self,
+        model: type[SqlTable],
+        statement: SelectOfScalar,
+        *,
+        sorting: Sequence[SortField] | None = None,
+    ) -> SelectOfScalar:
+        """Set the sorting in a statement."""
+        sql_sorting = self._convert_sorting_to_sql_sorting(
+            model, sorting=sorting
+        )
+        if sql_sorting:
+            statement = statement.order_by(*sql_sorting)
         return statement
 
     def _build_composite_specification[SqlTable: SQLModel](
@@ -254,6 +316,7 @@ class DatabaseSql(Database):
         specification: Specification[SqlTable] | None = None,
         options: Sequence[RetrieveOption] | None = None,
         session: Session | None = None,
+        sorting: Sequence[SortField] | None = None,
     ) -> list[SqlTable]:
         """Method to retrieve (a subset of) the resources in the database."""
         if session is None:
@@ -263,6 +326,7 @@ class DatabaseSql(Database):
                     model,
                     specification=specification,
                     options=options,
+                    sorting=sorting,
                 )
         return self._get_resources_with_session(
             session,
@@ -278,14 +342,16 @@ class DatabaseSql(Database):
         *,
         specification: Specification[SqlTable] | None = None,
         options: Sequence[RetrieveOption] | None = None,
+        sorting: Sequence[SortField] | None = None,
     ) -> list[SqlTable]:
         """Method to retrieve (a subset of) the resources in the database."""
         statement = select(model)
+        statement = self._set_sorting_in_statement(
+            model, statement, sorting=sorting
+        )
         if specification:
             statement = statement.where(specification.as_sql())
         statement = self._set_options_in_statement(statement, options=options)
-
-        # TODO: Sorting
         return list(session.exec(statement).all())
 
     def _connect_one_resource_to_many_resources(
@@ -656,10 +722,15 @@ class DatabaseSql(Database):
 
     @override
     def get_labels(
-        self, *, specification: LabelSpecification | None = None
+        self,
+        *,
+        specification: LabelSpecification | None = None,
+        sorting: Sequence[SortField] | None = None,
     ) -> list[Label]:
         """Method to retrieve (a subset of) the labels in the database."""
-        return self._get_resources(Label, specification=specification)
+        return self._get_resources(
+            Label, specification=specification, sorting=sorting
+        )
 
     @override
     def rename_label(
@@ -723,10 +794,14 @@ class DatabaseSql(Database):
         *,
         specification: PersonSpecification | None = None,
         options: Sequence[RetrieveOption] | None = None,
+        sorting: Sequence[SortField] | None = None,
     ) -> list[Person]:
         """Method to retrieve (a subset of) the persons in the database."""
         return self._get_resources(
-            Person, specification=specification, options=options
+            Person,
+            specification=specification,
+            options=options,
+            sorting=sorting,
         )
 
     @override
@@ -857,10 +932,11 @@ class DatabaseSql(Database):
         *,
         specification: ImageSpecification | None = None,
         options: Sequence[RetrieveOption] | None = None,
+        sorting: Sequence[SortField] | None = None,
     ) -> list[Image]:
         """Method to retrieve (a subset of) the labels in the database."""
         return self._get_resources(
-            Image, specification=specification, options=options
+            Image, specification=specification, options=options, sorting=sorting
         )
 
     @override

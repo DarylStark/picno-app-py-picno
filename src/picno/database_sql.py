@@ -59,7 +59,6 @@ from .specs_persons import (
     PersonSpecification,
 )
 
-T = TypeVar('T')
 LabelLinkTableType = TypeVar('LabelLinkTableType', bound=LabelLinkTable)
 PersonLinkTableType = TypeVar('PersonLinkTableType', bound=PersonLinkTable)
 TableResourceType = TypeVar('TableResourceType', bound=TableResource)
@@ -123,33 +122,41 @@ class DatabaseSql(Database):
             statement = statement.options(option)
         return statement
 
-    def _build_composite_specification[T](
+    def _build_composite_specification[SqlTable: SQLModel](
         self,
-        specification: Specification[T],
-        specifications: Specification[T] | None,
-    ) -> Specification[T]:
+        specification: Specification[SqlTable],
+        specifications: Specification[SqlTable] | None,
+    ) -> Specification[SqlTable]:
         """Method to combine two specifications into one."""
         if specifications:
             return AndSpecification(spec_a=specification, spec_b=specifications)
         return specification
 
-    def _build_select_statement(
-        self, model: type[T], *, specification: Specification[T] | None = None
-    ) -> SelectOfScalar[T]:
+    def _build_select_statement[SqlTable: SQLModel](
+        self,
+        model: type[SqlTable],
+        *,
+        specification: Specification[SqlTable] | None = None,
+    ) -> SelectOfScalar[SqlTable]:
         statement = select(model)
         if specification:
             statement = statement.where(specification.as_sql())
         return statement
 
-    def _build_delete_statement(
-        self, model: type[T], *, specification: Specification[T] | None = None
+    def _build_delete_statement[SqlTable: SQLModel](
+        self,
+        model: type[SqlTable],
+        *,
+        specification: Specification[SqlTable] | None = None,
     ) -> Delete:
         statement = delete(model)
         if specification:
             statement = statement.where(specification.as_sql())
         return statement
 
-    def _create_resource(self, obj: T, *, session: Session | None = None) -> T:
+    def _create_resource[SqlTable: SQLModel](
+        self, obj: SqlTable, *, session: Session | None = None
+    ) -> SqlTable:
         """Method to create resources in the database."""
         if session is None:
             with Session(self._engine) as created_session:
@@ -163,14 +170,16 @@ class DatabaseSql(Database):
                 return obj
         return self._create_resource_with_session(session, obj)
 
-    def _create_resource_with_session(self, session: Session, obj: T) -> T:
+    def _create_resource_with_session[SqlTable: SQLModel](
+        self, session: Session, obj: SqlTable
+    ) -> SqlTable:
         """Method to create resources in the database."""
         session.add(obj)
         return obj
 
-    def _create_resources(
-        self, objs: list[T], *, session: Session | None = None
-    ) -> list[T]:
+    def _create_resources[SqlTable: SQLModel](
+        self, objs: list[SqlTable], *, session: Session | None = None
+    ) -> list[SqlTable]:
         """Method to create many resourcess in the database."""
         if session is None:
             with Session(self._engine) as created_session:
@@ -187,23 +196,23 @@ class DatabaseSql(Database):
                 return objs
         return self._create_resources_with_session(session, objs)
 
-    def _create_resources_with_session(
-        self, session: Session, objs: list[T]
-    ) -> list[T]:
+    def _create_resources_with_session[SqlTable: SQLModel](
+        self, session: Session, objs: list[SqlTable]
+    ) -> list[SqlTable]:
         """Method to create many resourcess in the database."""
         for obj in objs:
             session.add(obj)
         return objs
 
-    def _get_resource_from_field(
+    def _get_resource_from_field[SqlTable: SQLModel](
         self,
-        model: type[T],
+        model: type[SqlTable],
         field_name: str,
         field_value: str,
         *,
         session: Session | None = None,
         options: Sequence[RetrieveOption] | None = None,
-    ) -> T | None:
+    ) -> SqlTable | None:
         """Generic method to retrieve a single item on a arbitrary value."""
         if session is None:
             with Session(self._engine) as created_session:
@@ -222,15 +231,15 @@ class DatabaseSql(Database):
             options=options,
         )
 
-    def _get_resource_from_field_with_session(
+    def _get_resource_from_field_with_session[SqlTable: SQLModel](
         self,
         session: Session,
-        model: type[T],
+        model: type[SqlTable],
         field_name: str,
         field_value: str,
         *,
         options: Sequence[RetrieveOption] | None = None,
-    ) -> T | None:
+    ) -> SqlTable | None:
         """Generic method to retrieve a single item on a arbitrary value."""
         field_name_sql = getattr(model, field_name)
         query = col(field_name_sql) == field_value
@@ -238,14 +247,14 @@ class DatabaseSql(Database):
         statement = self._set_options_in_statement(statement, options=options)
         return session.exec(statement).one_or_none()
 
-    def _get_resources(
+    def _get_resources[SqlTable: SQLModel](
         self,
-        model: type[T],
+        model: type[SqlTable],
         *,
-        specification: Specification[T] | None = None,
+        specification: Specification[SqlTable] | None = None,
         options: Sequence[RetrieveOption] | None = None,
         session: Session | None = None,
-    ) -> list[T]:
+    ) -> list[SqlTable]:
         """Method to retrieve (a subset of) the resources in the database."""
         if session is None:
             with Session(self._engine) as created_session:
@@ -262,14 +271,14 @@ class DatabaseSql(Database):
             options=options,
         )
 
-    def _get_resources_with_session(
+    def _get_resources_with_session[SqlTable: SQLModel](
         self,
         session: Session,
-        model: type[T],
+        model: type[SqlTable],
         *,
-        specification: Specification[T] | None = None,
+        specification: Specification[SqlTable] | None = None,
         options: Sequence[RetrieveOption] | None = None,
-    ) -> list[T]:
+    ) -> list[SqlTable]:
         """Method to retrieve (a subset of) the resources in the database."""
         statement = select(model)
         if specification:
@@ -389,16 +398,16 @@ class DatabaseSql(Database):
 
         return return_list
 
-    def _update_resources(
+    def _update_resources[SqlTable: SQLModel](
         self,
-        model: type[T],
+        model: type[SqlTable],
         new_data: dict[str, Any],
         *,
-        specification: Specification[T] | None = None,
-        select_callback: Callable[[Sequence[T]], bool] | None = None,
+        specification: Specification[SqlTable] | None = None,
+        select_callback: Callable[[Sequence[SqlTable]], bool] | None = None,
         callback_before_updating: bool = False,
-    ) -> list[T]:
-        updated_resources: list[T] = []
+    ) -> list[SqlTable]:
+        updated_resources: list[SqlTable] = []
         with Session(self._engine) as session:
             resources = self._get_resources_with_session(
                 session, model, specification=specification
@@ -573,12 +582,12 @@ class DatabaseSql(Database):
                 f'Person "{person}" does not exist'
             ) from exc
 
-    def _delete_resources(
+    def _delete_resources[SqlTable: SQLModel](
         self,
-        model: type[T],
+        model: type[SqlTable],
         *,
-        specification: Specification[T] | None = None,
-        select_callback: Callable[[Sequence[T]], bool] | None = None,
+        specification: Specification[SqlTable] | None = None,
+        select_callback: Callable[[Sequence[SqlTable]], bool] | None = None,
         session: Session | None = None,
     ) -> int:
         """Delete resources matching a specification.
@@ -604,13 +613,13 @@ class DatabaseSql(Database):
             select_callback=select_callback,
         )
 
-    def _delete_resources_with_session(
+    def _delete_resources_with_session[SqlTable: SQLModel](
         self,
         session: Session,
-        model: type[T],
+        model: type[SqlTable],
         *,
-        specification: Specification[T] | None = None,
-        select_callback: Callable[[Sequence[T]], bool] | None = None,
+        specification: Specification[SqlTable] | None = None,
+        select_callback: Callable[[Sequence[SqlTable]], bool] | None = None,
     ) -> int:
         """Delete resources matching a specification.
 

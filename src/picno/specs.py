@@ -9,7 +9,7 @@ from sqlalchemy.sql.elements import ColumnElement
 from sqlmodel import SQLModel, col, exists, false, or_, select
 
 
-class Specification[SqlTable](ABC):
+class Specification[SqlTable: SQLModel](ABC):
     """Generic baseclass for Specifications."""
 
     @abstractmethod
@@ -17,7 +17,7 @@ class Specification[SqlTable](ABC):
         """Abstract method to create a SQL query object."""
 
 
-class AndSpecification[SqlTable](Specification[SqlTable]):
+class AndSpecification[SqlTable: SQLModel](Specification[SqlTable]):
     """Specification for AND logic."""
 
     def __init__(
@@ -33,7 +33,7 @@ class AndSpecification[SqlTable](Specification[SqlTable]):
         return self._spec_a.as_sql() & self._spec_b.as_sql()
 
 
-class OrSpecification[SqlTable](Specification[SqlTable]):
+class OrSpecification[SqlTable: SQLModel](Specification[SqlTable]):
     """Specification for OR logic."""
 
     def __init__(
@@ -49,7 +49,7 @@ class OrSpecification[SqlTable](Specification[SqlTable]):
         return self._spec_a.as_sql() & self._spec_b.as_sql()
 
 
-class NotSpecification[SqlTable](Specification[SqlTable]):
+class NotSpecification[SqlTable: SQLModel](Specification[SqlTable]):
     """Specification for NOT logic."""
 
     def __init__(self, spec: Specification[SqlTable]) -> None:
@@ -62,7 +62,7 @@ class NotSpecification[SqlTable](Specification[SqlTable]):
         return ~self._spec.as_sql()
 
 
-class AllSpecification[SqlTable](Specification[SqlTable]):
+class AllSpecification[SqlTable: SQLModel](Specification[SqlTable]):
     """Specification for ALL logic."""
 
     def __init__(self) -> None:
@@ -84,7 +84,7 @@ class AllSpecification[SqlTable](Specification[SqlTable]):
         return and_(*(spec.as_sql() for spec in self._specs))
 
 
-class AnySpecification[SqlTable](Specification[SqlTable]):
+class AnySpecification[SqlTable: SQLModel](Specification[SqlTable]):
     """Specification for ALL logic."""
 
     def __init__(self) -> None:
@@ -106,7 +106,7 @@ class AnySpecification[SqlTable](Specification[SqlTable]):
         return or_(*(spec.as_sql() for spec in self._specs))
 
 
-class ParentSpecification[SqlTable](Specification[SqlTable]):
+class ParentSpecification[SqlTable: SQLModel](Specification[SqlTable]):
     """Specification with a parent.
 
     Can be used to simplify specifications.
@@ -122,11 +122,13 @@ class ParentSpecification[SqlTable](Specification[SqlTable]):
         return self._parent_spec.as_sql()
 
 
-class FieldIsSpecification[SqlTable, T2](Specification[SqlTable]):
+class FieldIsSpecification[SqlTable: SQLModel, ValueType](
+    Specification[SqlTable]
+):
     """Specification that checks if a specific field is equal."""
 
     def __init__(
-        self, model: type[SqlTable], field_name: str, expected_value: T2
+        self, model: type[SqlTable], field_name: str, expected_value: ValueType
     ) -> None:
         """Set the default values."""
         self._model = model
@@ -192,7 +194,7 @@ class RelationshipSpec[
         )
 
 
-class StrIsSpecification[SqlTable](Specification[SqlTable]):
+class StrIsSpecification[SqlTable: SQLModel](Specification[SqlTable]):
     """Specification that checks if a specific string is equal."""
 
     def __init__(
@@ -217,7 +219,7 @@ class StrIsSpecification[SqlTable](Specification[SqlTable]):
         return col(field) == self._expected_value
 
 
-class StrContainsSpecification[SqlTable](Specification[SqlTable]):
+class StrContainsSpecification[SqlTable: SQLModel](Specification[SqlTable]):
     """Specification that checks if a specific string is equal."""
 
     def __init__(
@@ -287,7 +289,7 @@ class NumercFieldSpecification[SqlTable: SQLModel, NumT: int | float](
             return field > self._expected_value
 
 
-class StrSpecification[SqlTable](Specification[SqlTable]):
+class StrSpecification[SqlTable: SQLModel](Specification[SqlTable]):
     """Specification that checks if a specific string is equal."""
 
     def __init__(

@@ -4,14 +4,11 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable, Sequence
 from datetime import date
 from enum import Enum
-from typing import TypeVar
 
 from .model import Image, Label, Person, ResourceStatus
 from .specs_images import ImageSpecification
 from .specs_labels import LabelSpecification
 from .specs_persons import PersonSpecification
-
-T = TypeVar('T')
 
 SelectCallbackLabel = Callable[[Sequence[Label]], bool]
 SelectCallbackPerson = Callable[[Sequence[Person]], bool]

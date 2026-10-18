@@ -3,7 +3,7 @@
 from enum import Enum
 from pathlib import Path
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class ProjectType(Enum):
@@ -20,7 +20,7 @@ class Project(BaseModel):
     data_folder: Path
     project_type: ProjectType = ProjectType.UNMANAGED
     database_str: str
-    sync_ignore: list[Path] = []
+    sync_ignore: list[Path] = Field(default_factory=list)
 
     def set_sync_ignore_list_to_path(self) -> None:
         """Add the parent path to the sync_ignore list."""

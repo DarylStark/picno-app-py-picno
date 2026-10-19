@@ -1,22 +1,23 @@
 """Module with the `pico labels` options."""
 
-from typer import Argument, Typer
+from typer import Argument, Option, Typer
 from typer._click.core import Context
 
 from picno.cli_filter_arg_generator import CliFilterArgGenerator
 from picno.cli_helpers import (
+    OutputFormat,
     create_delete_confirm_callback,
     create_update_confirm_callback,
     with_filters,
     with_force_flag,
     with_sort_field,
 )
+from picno.cli_output import OutputFormatLabel
 from picno.database import SortField
 from picno.model import Label
 from picno.resource_filter import ResourceFilter, ResourceFilterBuilder
 
 from .cli_context import get_initialized_project
-from .cli_format import TableColumn, print_table
 
 labels = Typer(name='labels', help='Label management')
 filter_gen = CliFilterArgGenerator(ResourceFilterBuilder(Label))
@@ -29,24 +30,22 @@ def ls(
     _sort: list[SortField] | None,
     _filter: ResourceFilter[Label],
     ctx: Context,
+    output_format: OutputFormat = Option(
+        default=OutputFormat.TABLE, help='The way to output data'
+    ),
 ) -> None:
     """List the labels in the database."""
     (_, _, db, console) = get_initialized_project(ctx)
     # Retrieve the labels
     labels = db.get_labels(specification=_filter.as_spec(), sorting=_sort)
+
+    formatter = OutputFormatLabel(console)
+
     if labels:
-        print_table(
-            console,
-            labels,
-            columns=[
-                TableColumn('ID', lambda label: label.id),
-                TableColumn('Name', lambda label: label.name),
-                TableColumn('Group', lambda label: label.group or ''),
-                TableColumn(
-                    'Name in group', lambda label: label.label_name or ''
-                ),
-            ],
-        )
+        if output_format == OutputFormat.TABLE:
+            formatter.as_table(labels, title='Labels')
+        elif output_format == OutputFormat.DETAILS:
+            formatter.as_details(labels)
     else:
         console.print('[yellow]No labels match the filter[/yellow]')
 

@@ -1,12 +1,12 @@
 """Module with the `pico images` options."""
 
 import re
-from enum import Enum
 
 from typer import Argument, Context, Option, Typer
 
 from picno.cli_filter_arg_generator import CliFilterArgGenerator
 from picno.cli_helpers import (
+    OutputFormat,
     create_label_confirm_callback,
     create_unlabel_confirm_callback,
     create_update_confirm_callback,
@@ -14,6 +14,7 @@ from picno.cli_helpers import (
     with_force_flag,
     with_sort_field,
 )
+from picno.cli_output import OutputFormatImages
 from picno.database import RetrieveOption, SortField
 from picno.model import (
     Image,
@@ -25,17 +26,9 @@ from picno.resource_filter import (
 )
 
 from .cli_context import get_initialized_project
-from .cli_format import TableColumn, print_table
 
 images = Typer(name='images', help='Image management')
 filter_gen = CliFilterArgGenerator(ResourceFilterBuilderImage())
-
-
-class OutputFormat(Enum):
-    """Output foramts."""
-
-    TABLE = 'table'
-    DETAILS = 'details'
 
 
 @images.command(name='ls', help='List images')
@@ -60,64 +53,14 @@ def ls(
         ],
         sorting=_sort,
     )
+
+    formatter = OutputFormatImages(console)
+
     if images:
         if output_format == OutputFormat.TABLE:
-            print_table(
-                console,
-                images,
-                columns=[
-                    TableColumn('ID', lambda image: image.id),
-                    TableColumn(
-                        'Status',
-                        lambda image: str(image.status.value).capitalize(),
-                    ),
-                    TableColumn(
-                        'Favorite',
-                        lambda image: str(image.favorite),
-                    ),
-                    TableColumn(
-                        'Physical path', lambda image: image.physical_path
-                    ),
-                    TableColumn('Name', lambda image: image.title),
-                    TableColumn('Width', lambda image: image.width),
-                    TableColumn('Height', lambda image: image.height),
-                    TableColumn('Megapixels', lambda image: image.megapixels),
-                    TableColumn('Datetime', lambda image: image.date or ''),
-                    TableColumn(
-                        'Camera make', lambda image: image.camera_make or ''
-                    ),
-                    TableColumn(
-                        'Camera model', lambda image: image.camera_model or ''
-                    ),
-                    TableColumn(
-                        'Has location',
-                        lambda image: (
-                            image.latitude is not None
-                            and image.longitude is not None
-                        ),
-                    ),
-                    TableColumn(
-                        'Labels',
-                        lambda image: (
-                            ', '.join([label.name for label in image.labels])
-                            or ''
-                        ),
-                    ),
-                    TableColumn(
-                        'Persons',
-                        lambda image: (
-                            ', '.join([person.name for person in image.persons])
-                            or ''
-                        ),
-                    ),
-                ],
-            )
+            formatter.as_table(images, title='Images')
         elif output_format == OutputFormat.DETAILS:
-            for image in images:
-                console.print(f'[b]Title: [/b]: {image.title}')
-                console.print(
-                    f'[b]Location: [/b]: {image.latitude}, {image.longitude}'
-                )
+            formatter.as_details(images)
     else:
         console.print('[yellow]No images match the filter[/yellow]')
 

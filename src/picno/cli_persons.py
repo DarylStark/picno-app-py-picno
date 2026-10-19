@@ -3,6 +3,7 @@
 from typer import Argument, Context, Option, Typer
 
 from picno.cli_filter_arg_generator import CliFilterArgGenerator
+from picno.cli_output import OutputFormatPerson
 from picno.model import Person
 from picno.resource_filter import (
     ResourceFilter,
@@ -10,8 +11,8 @@ from picno.resource_filter import (
 )
 
 from .cli_context import get_initialized_project
-from .cli_format import TableColumn, print_table
 from .cli_helpers import (
+    OutputFormat,
     create_delete_confirm_callback,
     create_label_confirm_callback,
     create_unlabel_confirm_callback,
@@ -34,6 +35,9 @@ def ls(
     _sort: list[SortField] | None,
     _filter: ResourceFilter[Person],
     ctx: Context,
+    output_format: OutputFormat = Option(
+        default=OutputFormat.TABLE, help='The way to output data'
+    ),
 ) -> None:
     """List the persons in the database."""
     (_, _, db, console) = get_initialized_project(ctx)
@@ -44,22 +48,14 @@ def ls(
         options=[RetrieveOption.LOAD_PERSON_LABELS],
         sorting=_sort,
     )
+
+    formatter = OutputFormatPerson(console)
+
     if persons:
-        print_table(
-            console,
-            persons,
-            columns=[
-                TableColumn('ID', lambda person: person.id),
-                TableColumn('Name', lambda person: person.name),
-                TableColumn('Birthdate', lambda person: person.birthdate or ''),
-                TableColumn(
-                    'Labels',
-                    lambda person: (
-                        ', '.join([label.name for label in person.labels]) or ''
-                    ),
-                ),
-            ],
-        )
+        if output_format == OutputFormat.TABLE:
+            formatter.as_table(persons, title='Persons')
+        elif output_format == OutputFormat.DETAILS:
+            formatter.as_details(persons)
     else:
         console.print('[yellow]No persons match the filter[/yellow]')
 

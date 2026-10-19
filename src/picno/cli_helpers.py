@@ -19,6 +19,13 @@ from picno.database import SortField, SortOrder
 from .exceptions import InvalidArgumentInputError
 
 
+class OutputFormat(Enum):
+    """Output foramts."""
+
+    TABLE = 'table'
+    DETAILS = 'details'
+
+
 class Noun(Enum):
     """Enum class for nouns."""
 

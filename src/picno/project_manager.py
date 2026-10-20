@@ -1,5 +1,6 @@
 """Module with the project manager."""
 
+import hashlib
 from collections.abc import Callable
 from datetime import UTC, datetime
 from fractions import Fraction
@@ -14,12 +15,13 @@ from .database_sql import DatabaseSql
 from .exceptions import FileNotInDataDirectoryError, ImageFileNotFoundError
 from .executor import Executor
 from .executor_run_command_list import create_run_command_list
-from .model import Image
+from .model import Image, ResourceStatus
 from .project import Project
 from .specs_images import (
     ImageSpecification,
     NameIsImageSpec,
     PathNameIsImageSpec,
+    Sha256IsImageSpec,
 )
 
 ProgressCallbackStartScanning = Callable[[], None]
@@ -95,6 +97,21 @@ class ProjectManager:
             )
 
         image_obj = Image(physical_path=str(file), title=file.name)
+
+        # Get file details
+        filestat = file.stat()
+        image_obj.file_size = filestat.st_size
+        image_obj.modified_datetime = datetime.fromtimestamp(
+            filestat.st_mtime, tz=UTC
+        )
+        image_obj.first_index = datetime.now(tz=UTC)
+
+        sha256 = hashlib.sha256()
+        with file.open('rb') as in_file:
+            for chunk in iter(lambda: in_file.read(1024 * 1024), b''):
+                sha256.update(chunk)
+        sha256_hex = sha256.hexdigest()
+        image_obj.sha256 = sha256_hex
 
         with PilImage.open(file) as img:
             image_obj.width, image_obj.height = img.size
@@ -203,6 +220,19 @@ class ProjectManager:
             > 0
         )
 
+    def _is_double_checksum(self, image: Image) -> bool:
+        """Check if a checksum is already in the database."""
+        if image.sha256 is None:
+            return False
+        return (
+            len(
+                self.database.get_images(
+                    specification=Sha256IsImageSpec(sha256=image.sha256)
+                )
+            )
+            > 0
+        )
+
     def _get_new_files_in_data_directory(
         self,
         *,
@@ -225,6 +255,7 @@ class ProjectManager:
         if callback_processing_image:
             callback_processing_image(len(all_media), 0)
         added_titles: list[str] = []
+        added_sha256: list[str] = []
         for idx, media in enumerate(all_media):
             if self._is_new_image(media):
                 image_obj = self.get_image_object_from_file(media)
@@ -241,7 +272,14 @@ class ProjectManager:
                         f'{media.stem}{name_extension}{media.suffix}'
                     )
 
+                if (
+                    self._is_double_checksum(image_obj)
+                    or image_obj.sha256 in added_sha256
+                ):
+                    image_obj.status = ResourceStatus.DOUBLE
+
                 added_titles.append(image_obj.title or '')
+                added_sha256.append(image_obj.sha256 or '')
                 new_data.append(image_obj)
             if callback_processing_image:
                 callback_processing_image(len(all_media), idx + 1)

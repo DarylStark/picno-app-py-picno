@@ -64,4 +64,4 @@ def test_scan_data_directory() -> None:
         )
     )
     new_files = manager.scan_directory(Path('./tests/unmanaged_project'))
-    assert len(new_files) == 5
+    assert len(new_files) == 6

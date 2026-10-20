@@ -13,6 +13,7 @@ class ResourceStatus(Enum):
 
     NEW = 'new'
     ARCHIVED = 'archived'
+    DOUBLE = 'double'
 
 
 class TableResource(SQLModel):
@@ -157,6 +158,10 @@ class FileResource(SQLModel):
 
     physical_path: str
     title: str | None = Field(default=None, unique=True)
+    file_size: int | None = None
+    modified_datetime: datetime | None = None
+    sha256: str | None = None
+    first_index: datetime | None = None
 
     @model_validator(mode='after')
     def set_title_from_path(self) -> FileResource:

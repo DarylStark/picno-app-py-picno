@@ -33,6 +33,16 @@ class NameIsImageSpec(ParentSpecification[Image]):
         )
 
 
+class Sha256IsImageSpec(ParentSpecification[Image]):
+    """Specification for when the sha256 should be the same."""
+
+    def __init__(self, sha256: str) -> None:
+        """Set the given values."""
+        super().__init__(
+            StrIsSpecification(Image, 'sha256', sha256, case_insensitive=False)
+        )
+
+
 class PathNameIsImageSpec(ParentSpecification[Image]):
     """Specification for when the path should be the same."""
 

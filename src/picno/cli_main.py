@@ -18,6 +18,7 @@ from .exceptions import (
     CallbackAbortedError,
     CliError,
     DatabaseError,
+    ProjectError,
     ProjectParseError,
 )
 from .project import Project
@@ -70,6 +71,8 @@ def main() -> None:
         err_console.print(f'[red][b]CLI error:[/b][/red] {e}')
     except CallbackAbortedError:
         sys.exit(0)
+    except ProjectError as e:
+        err_console.print(f'[red][b]Project error:[/b][/red] {e}')
     except DatabaseError as e:
         err_console.print(f'[red][b]Database error:[/b][/red] {e}')
     # except Exception as e:

@@ -17,6 +17,10 @@ class FileNotInDataDirectoryError(ProjectError):
     """Error when a file is not in de data directory."""
 
 
+class NotAvailableForManagedError(ProjectError):
+    """Error when a task is performed that is not available for this project."""
+
+
 class CliError(PicnoError):
     """Base class for CLI errors."""
 

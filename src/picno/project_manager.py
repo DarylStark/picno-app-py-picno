@@ -12,11 +12,15 @@ from PIL.TiffImagePlugin import IFDRational
 
 from .database import Database, RetrieveOption
 from .database_sql import DatabaseSql
-from .exceptions import FileNotInDataDirectoryError, ImageFileNotFoundError
+from .exceptions import (
+    FileNotInDataDirectoryError,
+    ImageFileNotFoundError,
+    NotAvailableForManagedError,
+)
 from .executor import Executor
 from .executor_run_command_list import create_run_command_list
 from .model import Image, ResourceStatus
-from .project import Project
+from .project import Project, ProjectType
 from .specs_images import (
     ImageSpecification,
     NameIsImageSpec,
@@ -299,6 +303,11 @@ class ProjectManager:
 
         Returns a list of new media items.
         """
+        if self._structure.project_type != ProjectType.UNMANAGED:
+            raise NotAvailableForManagedError(
+                'Sync is only possible for unmanaged projects'
+            )
+
         files = self._get_new_files_in_data_directory(
             callback_scanning_done=callback_scanning_done,
             callback_scanning_starting=callback_scanning_starting,
